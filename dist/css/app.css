@@ -117,9 +117,9 @@
   padding-bottom: 16px;
 }
 .sidebar-avatar {
-  width: 72px;
-  height: 72px;
-  border: 3px solid #fff;
+  width: 56px;
+  height: 56px;
+  border: 2px solid #fff;
   margin-bottom: 8px;
 }
 .sidebar-username {
@@ -154,13 +154,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 12px 28px;
   color: #fff;
   font-size: 13.5px;
   font-weight: 300;
   text-decoration: none;
   background: var(--bd-body-5);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   transition: background 0.15s;
 }
 .sidebar-nav-item:hover,
@@ -169,8 +169,8 @@
   color: #fff;
 }
 .nav-icon {
-  width: 18px;
-  height: 18px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -623,7 +623,7 @@
   padding: 5px 10px;
   font-size: 14px;
   font-weight: 300;
-  color: var(--tertiary);
+  color: var(--text-body);
   background: none;
   display: inline-flex;
   align-items: center;
@@ -1227,6 +1227,7 @@
   --primary:     #3AA9DA;
   --secondary:   #5FBF91;
   --tertiary:    #414141;
+  --text-body:   #414141;
   --bg-body:     #3AA9DA;
   --light:       #fff;
   --dark:        #000;
@@ -1329,7 +1330,7 @@ button {
 .cnw-social-worker-tag-outline {
   background: transparent;
   border: 1px solid var(--tertiary);
-  color: var(--tertiary);
+  color: var(--text-body);
   border-radius: 2px;
   font-weight: 300;
   font-size: 14px;

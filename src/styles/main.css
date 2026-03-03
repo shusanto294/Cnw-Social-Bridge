@@ -10,6 +10,7 @@
   --primary:     #3AA9DA;
   --secondary:   #5FBF91;
   --tertiary:    #414141;
+  --text-body:   #414141;
   --bg-body:     #3AA9DA;
   --light:       #fff;
   --dark:        #000;
@@ -112,7 +113,7 @@ button {
 .cnw-social-worker-tag-outline {
   background: transparent;
   border: 1px solid var(--tertiary);
-  color: var(--tertiary);
+  color: var(--text-body);
   border-radius: 2px;
   font-weight: 300;
   font-size: 14px;

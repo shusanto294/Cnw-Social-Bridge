@@ -196,7 +196,7 @@ export default {
   padding: 5px 10px;
   font-size: 14px;
   font-weight: 300;
-  color: var(--tertiary);
+  color: var(--text-body);
   background: none;
   display: inline-flex;
   align-items: center;
