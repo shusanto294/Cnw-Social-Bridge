@@ -106,10 +106,63 @@ class Cnw_Social_Bridge {
             KEY created_at   (created_at)
         ) $charset_collate;";
 
+        $sql_categories = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_categories (
+            id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            name        varchar(100)        NOT NULL,
+            slug        varchar(100)        NOT NULL,
+            description text                DEFAULT NULL,
+            parent_id   bigint(20) unsigned DEFAULT NULL,
+            icon        varchar(50)         DEFAULT NULL,
+            color       varchar(7)          DEFAULT NULL,
+            sort_order  int(11)             DEFAULT 0,
+            is_active   tinyint(1)          DEFAULT 1,
+            created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
+            updated_at  datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY slug (slug),
+            KEY parent_id  (parent_id),
+            KEY sort_order (sort_order),
+            KEY is_active  (is_active)
+        ) $charset_collate;";
+
+        $sql_votes = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_votes (
+            id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id     bigint(20) unsigned NOT NULL,
+            target_type enum('thread','reply') NOT NULL,
+            target_id   bigint(20) unsigned NOT NULL,
+            vote_type   tinyint(1)          NOT NULL COMMENT '1=upvote, -1=downvote',
+            created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY user_target (user_id, target_type, target_id),
+            KEY target_type (target_type),
+            KEY target_id   (target_id),
+            KEY vote_type   (vote_type)
+        ) $charset_collate;";
+
+        $sql_reputation = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_reputation (
+            id             bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id        bigint(20) unsigned NOT NULL,
+            points         int(11)             NOT NULL,
+            action_type    varchar(50)         NOT NULL COMMENT 'thread_created, reply_created, received_upvote, received_downvote, etc.',
+            reference_type enum('thread','reply','vote') DEFAULT NULL,
+            reference_id   bigint(20) unsigned DEFAULT NULL,
+            description    varchar(255)        DEFAULT NULL,
+            created_at     datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id        (user_id),
+            KEY action_type    (action_type),
+            KEY reference_type (reference_type),
+            KEY reference_id   (reference_id),
+            KEY created_at     (created_at)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $sql_threads );
         dbDelta( $sql_replies );
         dbDelta( $sql_messages );
+        dbDelta( $sql_categories );
+        dbDelta( $sql_votes );
+        dbDelta( $sql_reputation );
 
         $this->create_user_roles();
 
