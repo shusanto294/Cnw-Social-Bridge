@@ -189,7 +189,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .question-card {
   background: #fff;
   border-radius: var(--radius);

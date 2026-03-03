@@ -22,7 +22,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </span>
           <span>Questions</span>
-          <span v-if="questionCount > 0" class="nav-badge">{{ questionCount }}</span>
+          <span class="nav-badge">1</span>
         </router-link>
 
         <router-link to="/tags" class="sidebar-nav-item" active-class="is-active">
@@ -30,7 +30,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </span>
           <span>Tags</span>
-          <span class="nav-badge">{{ tagCount }}</span>
+          <span class="nav-badge">1</span>
         </router-link>
 
         <router-link to="/ask" class="sidebar-nav-item" active-class="is-active">
@@ -62,30 +62,30 @@
         </router-link>
       </div>
 
-      <!-- Support section -->
+<!-- Support section -->
       <div class="sidebar-nav-group">
         <p class="sidebar-section-label">Support</p>
 
-        <a href="#" class="sidebar-nav-item">
+        <router-link to="/saved" class="sidebar-nav-item" active-class="is-active">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           </span>
           <span>Saved Threads</span>
-        </a>
+        </router-link>
 
-        <a href="#" class="sidebar-nav-item">
+        <router-link to="/guidelines" class="sidebar-nav-item" active-class="is-active">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </span>
           <span>Community Guidelines</span>
-        </a>
+        </router-link>
 
-        <a href="#" class="sidebar-nav-item">
+        <router-link to="/report" class="sidebar-nav-item" active-class="is-active">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </span>
           <span>Report an Issue</span>
-        </a>
+        </router-link>
 
         <a href="/wp-login.php?action=logout" class="sidebar-nav-item">
           <span class="nav-icon">
@@ -99,15 +99,11 @@
 </template>
 
 <script>
-import { getThreads } from '@/api/index.js';
-
 export default {
   name: 'AppSidebar',
-  data() {
+data() {
     return {
       currentUser: window.cnwData?.currentUser || { name: '', first_name: '', last_name: '', avatar: '' },
-      questionCount: 0,
-      tagCount: 8,
       defaultAvatar: 'https://www.gravatar.com/avatar/?d=mp&s=72',
     };
   },
@@ -118,17 +114,11 @@ export default {
       const full = (fn + ' ' + ln).trim();
       return full || this.currentUser.name || 'Guest';
     },
-  },
-  async mounted() {
-    try {
-      const data = await getThreads({ page: 1 });
-      this.questionCount = data.total || 0;
-    } catch (e) { /* silent */ }
-  },
+},
 };
 </script>
 
-<style scoped>
+<style>
 .cnw-social-worker-sidebar {
   width: 278px;
   flex-shrink: 0;
@@ -190,11 +180,10 @@ export default {
 }
 
 .sidebar-section-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
+  font-size: 14px;
+  font-weight: 600;
   padding: 2px 6px;
+  text-align: center;
 }
 
 .sidebar-nav-item {
@@ -204,7 +193,7 @@ export default {
   padding: 10px 16px;
   color: #fff;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 300;
   text-decoration: none;
   background: var(--bd-body-5);
   border-radius: var(--radius-sm);
@@ -228,7 +217,7 @@ export default {
 
 .nav-badge {
   margin-left: auto;
-  background: var(--teal);
+  background: var(--primary);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -239,5 +228,8 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 0 5px;
+}
+.sidebar-nav-item.is-active .nav-badge {
+  background: var(--tertiary);
 }
 </style>

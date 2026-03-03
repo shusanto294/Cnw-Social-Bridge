@@ -163,7 +163,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .question-list-view {
   display: flex;
   flex-direction: column;
@@ -193,15 +193,15 @@ export default {
 }
 
 .filter-tab {
-  padding: 7px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: 300;
   color: var(--tertiary);
   background: none;
-  border: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  line-height: 1;
   border: 1px solid var(--tertiary);
 }
 .filter-tab:hover {

@@ -132,7 +132,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .ask-view {
   display: flex;
   flex-direction: column;

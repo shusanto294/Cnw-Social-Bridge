@@ -85,7 +85,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .reply-card {
   padding: 14px 0 10px;
   border-top: 1px solid var(--border);

@@ -95,11 +95,10 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .cnw-social-worker-right-sidebar {
   width: 291px;
   flex-shrink: 0;
-  background: #fff;
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -138,10 +137,12 @@ export default {
 }
 
 .tags-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
 }
 
 .tag-item {

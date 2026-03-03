@@ -56,7 +56,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .cnw-social-worker-header {
   position: sticky;
   top: 0;

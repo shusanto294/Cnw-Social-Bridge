@@ -111,8 +111,11 @@ button {
 }
 .cnw-social-worker-tag-outline {
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-med);
+  border: 1px solid var(--tertiary);
+  color: var(--tertiary);
+  border-radius: 2px;
+  font-weight: 300;
+  font-size: 14px;
 }
 
 .cnw-social-worker-btn {
@@ -127,11 +130,11 @@ button {
   transition: background 0.15s, opacity 0.15s;
 }
 .cnw-social-worker-btn-primary {
-  background: var(--teal);
+  background: var(--primary);
   color: #fff;
 }
 .cnw-social-worker-btn-primary:hover {
-  background: var(--teal-dark);
+  background: var(--secondary);
 }
 .cnw-social-worker-btn-sm {
   padding: 5px 14px;

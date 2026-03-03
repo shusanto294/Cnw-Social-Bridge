@@ -12,7 +12,7 @@
 export default { name: 'UsersView' };
 </script>
 
-<style scoped>
+<style>
 .cnw-social-worker-users-view { display: flex; flex-direction: column; gap: 16px; }
 .cnw-social-worker-view-heading { font-size: 20px; font-weight: 800; color: var(--text-dark); }
 .cnw-social-worker-placeholder-card {

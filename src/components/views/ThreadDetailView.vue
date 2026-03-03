@@ -182,7 +182,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .thread-detail-view {
   display: flex;
   flex-direction: column;

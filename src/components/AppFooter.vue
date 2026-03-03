@@ -18,7 +18,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .cnw-social-worker-footer {
   background: #1a1a2e;
   color: rgba(255,255,255,0.65);
