@@ -1,0 +1,1313 @@
+/*!**************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppHeader.vue?vue&type=style&index=0&id=bb50a5e4&scoped=true&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-header[data-v-bb50a5e4] {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.cnw-social-worker-header-inner[data-v-bb50a5e4] {
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Logo */
+.cnw-social-worker-header-logo[data-v-bb50a5e4] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+.cnw-social-worker-header-logo[data-v-bb50a5e4]:focus {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.custom-logo[data-v-bb50a5e4] {
+  max-height: 44px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+.logo-text[data-v-bb50a5e4] {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-dark);
+  letter-spacing: 1.5px;
+  line-height: 1;
+}
+.logo-wave[data-v-bb50a5e4] {
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+/* Actions */
+.cnw-social-worker-header-actions[data-v-bb50a5e4] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ask-btn[data-v-bb50a5e4] {
+  padding: 9px 20px;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+}
+.notif-btn[data-v-bb50a5e4] {
+  position: relative;
+  border-radius: var(--radius-sm);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.notif-badge[data-v-bb50a5e4] {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--light);
+}
+@media (max-width: 480px) {
+.cnw-social-worker-header-inner[data-v-bb50a5e4] { padding: 8px 12px;
+}
+.ask-btn[data-v-bb50a5e4] { padding: 8px 12px; font-size: 13px;
+}
+}
+
+/*!***************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppSidebar.vue?vue&type=style&index=0&id=4c2e56ab&scoped=true&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-sidebar[data-v-4c2e56ab] {
+  width: 278px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: var(--radius);
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+}
+.sidebar-user-card[data-v-4c2e56ab] {
+  margin-bottom: 12px;
+}
+.sidebar-user-bg[data-v-4c2e56ab] {
+  height: 78px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.sidebar-user-identity[data-v-4c2e56ab] {
+  margin-top: -36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 16px;
+}
+.sidebar-avatar[data-v-4c2e56ab] {
+  width: 72px;
+  height: 72px;
+  border: 3px solid #fff;
+  margin-bottom: 8px;
+}
+.sidebar-username[data-v-4c2e56ab] {
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  padding: 0 8px;
+}
+.sidebar-nav[data-v-4c2e56ab] {
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 0 20px 20px;
+}
+.sidebar-nav-group[data-v-4c2e56ab] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-nav-group[data-v-4c2e56ab]:last-child {
+  border-bottom: none;
+}
+.sidebar-section-label[data-v-4c2e56ab] {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 6px;
+}
+.sidebar-nav-item[data-v-4c2e56ab] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  background: var(--bd-body-5);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.sidebar-nav-item[data-v-4c2e56ab]:hover,
+.sidebar-nav-item.is-active[data-v-4c2e56ab] {
+  background: linear-gradient(88deg, var(--bg-body) 22.95%, var(--secondary) 80.13%);
+  color: #fff;
+}
+.nav-icon[data-v-4c2e56ab] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+.nav-badge[data-v-4c2e56ab] {
+  margin-left: auto;
+  background: var(--teal);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+/*!********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppRightSidebar.vue?vue&type=style&index=0&id=51eb403e&scoped=true&lang=css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-right-sidebar[data-v-51eb403e] {
+  width: 291px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rsidebar-card[data-v-51eb403e] {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.rsidebar-card-header[data-v-51eb403e] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  border-bottom: 1px solid var(--border);
+}
+.rsidebar-card-header h3[data-v-51eb403e] {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.edit-tags-btn[data-v-51eb403e] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--white);
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+}
+.tags-grid[data-v-51eb403e] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+}
+.tag-item[data-v-51eb403e] {
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  transition: border-color 0.12s, color 0.12s;
+}
+.tag-item[data-v-51eb403e]:hover {
+  border-color: var(--teal);
+  color: var(--teal-dark);
+}
+
+/* Hot Questions */
+.hot-questions-header[data-v-51eb403e] {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  padding: 12px 16px;
+}
+.hot-questions-header h3[data-v-51eb403e] {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.hot-questions-list[data-v-51eb403e] {
+  display: flex;
+  flex-direction: column;
+}
+.hot-question-item[data-v-51eb403e] {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.hot-question-item[data-v-51eb403e]:last-child {
+  border-bottom: none;
+}
+.hot-question-item[data-v-51eb403e]:hover {
+  background: var(--bg);
+}
+.hq-title[data-v-51eb403e] {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.hq-excerpt[data-v-51eb403e] {
+  font-size: 12px;
+  color: var(--text-med);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.hq-tags[data-v-51eb403e] {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.hq-tags .cnw-social-worker-tag-badge[data-v-51eb403e] {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+.hq-stats[data-v-51eb403e],
+.hq-meta[data-v-51eb403e] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-light);
+}
+.hq-stats[data-v-51eb403e] {
+  margin-bottom: 4px;
+}
+.hq-stats span[data-v-51eb403e],
+.hq-meta span[data-v-51eb403e] {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/*!**************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppFooter.vue?vue&type=style&index=0&id=fdb56dc8&scoped=true&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-footer[data-v-fdb56dc8] {
+  background: #1a1a2e;
+  color: rgba(255,255,255,0.65);
+  text-align: center;
+  padding: 18px 24px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.footer-credit[data-v-fdb56dc8] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.heart-icon[data-v-fdb56dc8] {
+  vertical-align: middle;
+}
+
+/*!*********************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/App.vue?vue&type=style&index=0&id=7ba5bd90&lang=css ***!
+  \*********************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.cnw-social-worker-layout {
+  display: flex;
+  flex: 1;
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
+  gap: 20px;
+}
+.cnw-social-worker-main {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 24px;
+}
+@media (max-width: 1100px) {
+.cnw-social-worker-right-sidebar { display: none;
+}
+}
+@media (max-width: 760px) {
+.cnw-social-worker-sidebar { display: none;
+}
+.cnw-social-worker-layout { padding: 12px;
+}
+}
+
+/*!*********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/shared/ReplyCard.vue?vue&type=style&index=0&id=228dffe0&scoped=true&lang=css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************/
+
+.reply-card[data-v-228dffe0] {
+  padding: 14px 0 10px;
+  border-top: 1px solid var(--border);
+}
+.reply-card.is-nested[data-v-228dffe0] {
+  border-top: none;
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+  margin-top: 10px;
+}
+.reply-header[data-v-228dffe0] {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+.reply-avatar[data-v-228dffe0] {
+  border: 2px solid var(--border);
+}
+.reply-author[data-v-228dffe0] {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.reply-date[data-v-228dffe0] {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 4px;
+}
+.reply-body[data-v-228dffe0] {
+  font-size: 13.5px;
+  color: var(--text-med);
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+.reply-footer[data-v-228dffe0] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stat-btn[data-v-228dffe0] {
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  color: var(--text-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  transition: color 0.12s;
+}
+.stat-btn[data-v-228dffe0]:hover {
+  color: var(--text-dark);
+}
+.helpful-btn[data-v-228dffe0]:hover {
+  color: var(--red);
+}
+.reply-action-btn[data-v-228dffe0] {
+  color: var(--teal);
+  font-weight: 500;
+}
+.reply-action-btn[data-v-228dffe0]:hover {
+  color: var(--teal-dark);
+}
+.stat-sep[data-v-228dffe0] {
+  color: var(--border);
+}
+.nested-replies[data-v-228dffe0] {
+  margin-top: 4px;
+}
+
+/*!************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/shared/QuestionCard.vue?vue&type=style&index=0&id=57814880&scoped=true&lang=css ***!
+  \************************************************************************************************************************************************************************************************************************************************************************/
+
+.question-card[data-v-57814880] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.15s;
+}
+.question-card[data-v-57814880]:hover {
+  box-shadow: var(--shadow-md);
+}
+.qcard-meta[data-v-57814880] {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.qcard-avatar[data-v-57814880] {
+  border: 2px solid var(--border);
+}
+.qcard-author[data-v-57814880] {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.qcard-date[data-v-57814880] {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 4px;
+}
+.qcard-title[data-v-57814880] {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.4;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.qcard-title[data-v-57814880]:hover {
+  color: var(--teal-dark);
+}
+.qcard-excerpt[data-v-57814880] {
+  font-size: 13.5px;
+  color: var(--text-med);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+.qcard-tags[data-v-57814880] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.qcard-footer[data-v-57814880] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.stat-btn[data-v-57814880] {
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  color: var(--text-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  transition: color 0.12s;
+}
+.stat-btn[data-v-57814880]:hover {
+  color: var(--text-dark);
+}
+.helpful-btn[data-v-57814880]:hover { color: var(--red);
+}
+.reply-link[data-v-57814880] {
+  color: var(--teal);
+  font-weight: 500;
+}
+.reply-link[data-v-57814880]:hover { color: var(--teal-dark);
+}
+.stat-text[data-v-57814880] {
+  font-size: 12.5px;
+  color: var(--text-light);
+}
+.stat-sep[data-v-57814880] {
+  color: var(--border);
+  font-size: 12px;
+}
+.answered-badge[data-v-57814880] {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+.answered-badge.is-answered[data-v-57814880] {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+.answered-badge.is-unanswered[data-v-57814880] {
+  background: var(--bg);
+  color: var(--text-light);
+}
+
+/* Inline replies */
+.qcard-replies[data-v-57814880] {
+  margin-top: 16px;
+  border-top: 2px solid var(--border);
+  padding-top: 4px;
+}
+.inline-reply-form[data-v-57814880] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.inline-reply-input-wrap[data-v-57814880] {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+.inline-reply-input[data-v-57814880] {
+  flex: 1;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-dark);
+  background: var(--bg);
+  transition: border-color 0.12s;
+}
+.inline-reply-input[data-v-57814880]:focus {
+  outline: none;
+  border-color: var(--teal);
+  background: #fff;
+}
+.inline-reply-send[data-v-57814880] {
+  flex-shrink: 0;
+}
+
+/*!***************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/QuestionListView.vue?vue&type=style&index=0&id=26b9551a&scoped=true&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************/
+
+.question-list-view[data-v-26b9551a] {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Top bar */
+.list-topbar[data-v-26b9551a] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.list-heading[data-v-26b9551a] {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.filter-tabs[data-v-26b9551a] {
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+  background: #fff;
+}
+.filter-tab[data-v-26b9551a] {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tertiary);
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--tertiary);
+}
+.filter-tab[data-v-26b9551a]:hover {
+  background: var(--bg);
+}
+.filter-tab.is-active[data-v-26b9551a] {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  color: #fff;
+  border: none;
+}
+.more-btn[data-v-26b9551a] {
+  padding: 7px 10px;
+}
+.filter-dots-btn[data-v-26b9551a] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  background: var(--tertiary);
+  border: 1px solid var(--tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.filter-dots-btn[data-v-26b9551a]:hover {
+  opacity: 0.85;
+}
+
+/* Search */
+.list-search[data-v-26b9551a] {
+  display: flex;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.search-input[data-v-26b9551a] {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-dark);
+  background: transparent;
+}
+.search-input[data-v-26b9551a]:focus {
+  outline: none;
+}
+.search-btn[data-v-26b9551a] {
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-light);
+  transition: color 0.12s, background 0.12s;
+}
+.search-btn[data-v-26b9551a]:hover {
+  background: var(--bg);
+  color: var(--teal);
+}
+
+/* New Question */
+.new-question-row[data-v-26b9551a] {
+  text-align: center;
+}
+.new-question-btn[data-v-26b9551a] {
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0;
+  transition: color 0.12s;
+}
+.new-question-btn[data-v-26b9551a]:hover {
+  color: var(--teal-dark);
+  text-decoration: underline;
+}
+
+/* Questions list */
+.questions-list[data-v-26b9551a] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Pagination */
+.pagination[data-v-26b9551a] {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.page-btn[data-v-26b9551a] {
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-med);
+  transition: background 0.12s, color 0.12s;
+}
+.page-btn[data-v-26b9551a]:hover:not(:disabled) {
+  background: var(--teal-light);
+  color: var(--teal-dark);
+}
+.page-btn.is-active[data-v-26b9551a] {
+  background: var(--teal);
+  color: #fff;
+  border-color: var(--teal);
+}
+.page-btn[data-v-26b9551a]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*!***************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/ThreadDetailView.vue?vue&type=style&index=0&id=e890191e&scoped=true&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************/
+
+.thread-detail-view[data-v-e890191e] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.back-btn[data-v-e890191e] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 0;
+  align-self: flex-start;
+}
+.back-btn[data-v-e890191e]:hover { color: var(--teal-dark);
+}
+
+/* Thread card */
+.thread-card[data-v-e890191e] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.thread-meta[data-v-e890191e] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.thread-author[data-v-e890191e] {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.thread-date[data-v-e890191e] {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 4px;
+}
+.thread-title[data-v-e890191e] {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.35;
+  margin-bottom: 16px;
+}
+.thread-content[data-v-e890191e] {
+  font-size: 14.5px;
+  color: var(--text-med);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+.thread-tags[data-v-e890191e] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.thread-stats[data-v-e890191e] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.stat-btn[data-v-e890191e] {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--text-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+}
+.stat-btn[data-v-e890191e]:hover { color: var(--text-dark);
+}
+.helpful-btn[data-v-e890191e]:hover { color: var(--red);
+}
+.stat-text[data-v-e890191e] { font-size: 13px; color: var(--text-light);
+}
+.stat-sep[data-v-e890191e] { color: var(--border);
+}
+.answered-badge[data-v-e890191e] {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+}
+.is-answered[data-v-e890191e] { background: var(--green-light); color: var(--green-dark);
+}
+.is-unanswered[data-v-e890191e] { background: var(--bg); color: var(--text-light);
+}
+
+/* Replies */
+.replies-section[data-v-e890191e] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.replies-heading[data-v-e890191e] {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--teal);
+}
+.replies-list[data-v-e890191e] { display: flex; flex-direction: column;
+}
+
+/* Reply form */
+.reply-form[data-v-e890191e] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.reply-form-heading[data-v-e890191e] {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--text-dark);
+}
+.reply-form-inner[data-v-e890191e] {
+  display: flex;
+  gap: 12px;
+}
+.reply-input-wrap[data-v-e890191e] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reply-textarea[data-v-e890191e] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  color: var(--text-dark);
+  background: var(--bg);
+}
+.reply-textarea[data-v-e890191e]:focus {
+  outline: none;
+  border-color: var(--teal);
+  background: #fff;
+}
+.cnw-social-worker-btn[data-v-e890191e] { align-self: flex-end;
+}
+.login-prompt[data-v-e890191e] {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-light);
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.login-prompt a[data-v-e890191e] { color: var(--teal);
+}
+
+/*!**************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/AskQuestionView.vue?vue&type=style&index=0&id=2f92dda3&scoped=true&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************/
+
+.ask-view[data-v-2f92dda3] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.back-btn[data-v-2f92dda3] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 0;
+  align-self: flex-start;
+}
+.back-btn[data-v-2f92dda3]:hover { color: var(--teal-dark);
+}
+.ask-card[data-v-2f92dda3] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.ask-heading[data-v-2f92dda3] {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 24px;
+}
+.ask-form[data-v-2f92dda3] {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.form-group[data-v-2f92dda3] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-label[data-v-2f92dda3] {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.form-input[data-v-2f92dda3],
+.form-textarea[data-v-2f92dda3] {
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-dark);
+  background: var(--bg);
+  transition: border-color 0.12s;
+}
+.form-input[data-v-2f92dda3]:focus,
+.form-textarea[data-v-2f92dda3]:focus {
+  outline: none;
+  border-color: var(--teal);
+  background: #fff;
+}
+.form-textarea[data-v-2f92dda3] { resize: vertical;
+}
+.tag-input-box[data-v-2f92dda3] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  min-height: 46px;
+  transition: border-color 0.12s;
+}
+.tag-input-box.focused[data-v-2f92dda3] {
+  border-color: var(--teal);
+  background: #fff;
+}
+.selected-tag[data-v-2f92dda3] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--teal);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+.remove-tag-btn[data-v-2f92dda3] {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.remove-tag-btn[data-v-2f92dda3]:hover { color: #fff;
+}
+.tag-input-field[data-v-2f92dda3] {
+  flex: 1;
+  min-width: 140px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text-dark);
+  padding: 2px 4px;
+}
+.tag-input-field[data-v-2f92dda3]:focus { outline: none;
+}
+.form-hint[data-v-2f92dda3] {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+.form-actions[data-v-2f92dda3] {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.submit-btn[data-v-2f92dda3] {
+  padding: 11px 28px;
+  font-size: 14px;
+}
+.cancel-btn[data-v-2f92dda3] {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-med);
+  padding: 11px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+.cancel-btn[data-v-2f92dda3]:hover { background: var(--bg);
+}
+.form-error[data-v-2f92dda3] {
+  color: var(--red);
+  font-size: 13px;
+  padding: 10px 14px;
+  background: var(--red-light);
+  border-radius: var(--radius-sm);
+}
+.login-prompt[data-v-2f92dda3] {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+}
+.login-prompt a[data-v-2f92dda3] { color: var(--teal);
+}
+
+/*!***********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/MessagesView.vue?vue&type=style&index=0&id=626e6542&scoped=true&lang=css ***!
+  \***********************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-messages-view[data-v-626e6542] { display: flex; flex-direction: column; gap: 16px;
+}
+.cnw-social-worker-view-heading[data-v-626e6542] { font-size: 20px; font-weight: 800; color: var(--text-dark);
+}
+.cnw-social-worker-placeholder-card[data-v-626e6542] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 60px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-light);
+  font-size: 15px;
+}
+
+/*!********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/UsersView.vue?vue&type=style&index=0&id=a2c27b28&scoped=true&lang=css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************/
+
+.cnw-social-worker-users-view[data-v-a2c27b28] { display: flex; flex-direction: column; gap: 16px;
+}
+.cnw-social-worker-view-heading[data-v-a2c27b28] { font-size: 20px; font-weight: 800; color: var(--text-dark);
+}
+.cnw-social-worker-placeholder-card[data-v-a2c27b28] {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 60px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-light);
+  font-size: 15px;
+}
+
+/*!***********************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./src/styles/main.css ***!
+  \***********************************************************************/
+/* CNW Social Bridge — Global Styles */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary:     #3AA9DA;
+  --secondary:   #5FBF91;
+  --tertiary:    #414141;
+  --bg-body:     #3AA9DA;
+  --light:       #fff;
+  --dark:        #000;
+  --bd-body-5:   #414141;
+  --teal:        #3bbdd4;
+  --teal-dark:   #2a9ab8;
+  --teal-light:  #e6f7fb;
+  --teal-tag-bg: #cdf0f8;
+  --teal-tag-tx: #0c7a96;
+  --green:       #22a55b;
+  --green-light: #d6f5e4;
+  --green-dark:  #178047;
+  --green-hdr:   #20a85a;
+  --red:         #e53935;
+  --red-light:   #fde8e8;
+  --orange:      #f59e0b;
+  --orange-light:#fef3c7;
+  --blue:        #2271b1;
+  --text-dark:   #1a1a2e;
+  --text-med:    #555565;
+  --text-light:  #888899;
+  --border:      #e2e4e8;
+  --bg:          #F7F7F7;
+  --white:       #ffffff;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:   0 2px 8px rgba(0,0,0,0.10);
+  --radius:      8px;
+  --radius-sm:   4px;
+  --radius-pill: 20px;
+}
+
+/* Mount point — ID must match PHP shortcode output and main.js mount target */
+#cnw-social-bridge-app {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dark);
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--teal-dark);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── Utility classes ─────────────────────────────────────────────── */
+
+.cnw-social-worker-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--teal-light);
+  flex-shrink: 0;
+}
+
+.cnw-social-worker-verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--blue);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cnw-social-worker-tag-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cnw-social-worker-tag-teal {
+  background: var(--teal-tag-bg);
+  color: var(--teal-tag-tx);
+}
+.cnw-social-worker-tag-green {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+.cnw-social-worker-tag-orange {
+  background: var(--orange-light);
+  color: #92400e;
+}
+.cnw-social-worker-tag-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-med);
+}
+
+.cnw-social-worker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+.cnw-social-worker-btn-primary {
+  background: var(--teal);
+  color: #fff;
+}
+.cnw-social-worker-btn-primary:hover {
+  background: var(--teal-dark);
+}
+.cnw-social-worker-btn-sm {
+  padding: 5px 14px;
+  font-size: 13px;
+}
+.cnw-social-worker-btn-outline {
+  background: transparent;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+}
+.cnw-social-worker-btn-outline:hover {
+  background: var(--teal-light);
+}
+.cnw-social-worker-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cnw-social-worker-loading,
+.cnw-social-worker-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-light);
+  font-size: 15px;
+}
+
