@@ -59,12 +59,15 @@ export async function getThread(id) {
   return apiFetch(`/threads/${id}`);
 }
 
-export async function createThread({ title, content, tags = [] }) {
+export async function createThread({ title, content, tags = [], category_id, anonymous }) {
   const url = await apiUrl('/threads');
+  const body = { title, content, tags };
+  if (category_id) body.category_id = category_id;
+  if (anonymous) body.anonymous = anonymous;
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ title, content, tags }),
+    body: JSON.stringify(body),
   });
   return res.json();
 }
@@ -85,8 +88,28 @@ export async function createReply({ thread_id, content, parent_id }) {
   return res.json();
 }
 
+export async function getCategories() {
+  return apiFetch('/categories');
+}
+
 export async function getTags() {
   return apiFetch('/tags');
+}
+
+export async function getFollowedTags() {
+  return apiFetch('/tags/followed');
+}
+
+export async function followTag(tagId) {
+  const url = await apiUrl(`/tags/${tagId}/follow`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function unfollowTag(tagId) {
+  const url = await apiUrl(`/tags/${tagId}/unfollow`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
 }
 
 export async function getHotQuestions() {

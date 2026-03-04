@@ -126,6 +126,30 @@ class Cnw_Social_Bridge {
             KEY is_active  (is_active)
         ) $charset_collate;";
 
+        $sql_tags = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_tags (
+            id         bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            name       varchar(100)        NOT NULL,
+            slug       varchar(100)        NOT NULL,
+            created_at datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY slug (slug)
+        ) $charset_collate;";
+
+        $sql_thread_tags = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_thread_tags (
+            thread_id  bigint(20) unsigned NOT NULL,
+            tag_id     bigint(20) unsigned NOT NULL,
+            PRIMARY KEY (thread_id, tag_id),
+            KEY tag_id (tag_id)
+        ) $charset_collate;";
+
+        $sql_user_followed_tags = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_user_followed_tags (
+            user_id    bigint(20) unsigned NOT NULL,
+            tag_id     bigint(20) unsigned NOT NULL,
+            created_at datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, tag_id),
+            KEY tag_id (tag_id)
+        ) $charset_collate;";
+
         $sql_votes = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_votes (
             id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             user_id     bigint(20) unsigned NOT NULL,
@@ -162,6 +186,11 @@ class Cnw_Social_Bridge {
         dbDelta( $sql_replies );
         dbDelta( $sql_messages );
         dbDelta( $sql_categories );
+        dbDelta( $sql_tags );
+        // Junction tables with composite primary keys — use $wpdb->query
+        // as dbDelta can have issues with composite PKs.
+        $wpdb->query( $sql_thread_tags );
+        $wpdb->query( $sql_user_followed_tags );
         dbDelta( $sql_votes );
         dbDelta( $sql_reputation );
 

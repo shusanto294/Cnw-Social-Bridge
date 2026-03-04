@@ -109,15 +109,6 @@
 import ReplyCard from './ReplyCard.vue';
 import { getReplies, createReply } from '@/api/index.js';
 
-const SAMPLE_TAGS = [
-  ['Mental Health Services', 'Therapy Referrals', 'Uninsured Adults'],
-  ['Emergency Housing', 'Shelter Overflow', 'Adult Services'],
-  ['Youth Services', 'McKinney-Vento', 'School Stability', 'Housing Insecurity'],
-  ['Mental Health Services', 'Crisis Intervention'],
-  ['Domestic Violence', 'Substance Use Services'],
-  ['Benefits & Eligibility', 'Legal & Advocacy'],
-];
-
 export default {
   name: 'QuestionCard',
   components: { ReplyCard },
@@ -146,8 +137,7 @@ export default {
       return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
     },
     threadTags() {
-      const idx = (this.thread.id - 1) % SAMPLE_TAGS.length;
-      return SAMPLE_TAGS[idx] || SAMPLE_TAGS[0];
+      return this.thread.tags || [];
     },
     topLevelReplies() {
       return this.replies.filter(r => !r.parent_id || r.parent_id === '0' || r.parent_id === 0);

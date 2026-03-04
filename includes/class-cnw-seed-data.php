@@ -115,6 +115,43 @@ class Cnw_Social_Bridge_Seed_Data {
         self::insert_thread_votes( $votes_table, $thread_ids[0], 14, $user_ids );
         self::insert_thread_votes( $votes_table, $thread_ids[2], 15, $user_ids );
 
+        // ── Seed tags and assign to threads ───────────────────────────────
+        $tags_table        = $wpdb->prefix . 'cnw_social_worker_tags';
+        $thread_tags_table = $wpdb->prefix . 'cnw_social_worker_thread_tags';
+
+        $all_tags = array(
+            'Mental Health Services', 'Therapy Referrals', 'Uninsured Adults',
+            'Emergency Housing', 'Shelter Overflow', 'Adult Services',
+            'Youth Services', 'McKinney-Vento', 'School Stability', 'Housing Insecurity',
+            'Crisis Intervention', 'Domestic Violence', 'Substance Use Services',
+            'Benefits & Eligibility', 'Legal & Advocacy',
+        );
+
+        $tag_ids = array();
+        foreach ( $all_tags as $tag_name ) {
+            $slug = sanitize_title( $tag_name );
+            $wpdb->insert( $tags_table, array( 'name' => $tag_name, 'slug' => $slug ) );
+            $tag_ids[ $tag_name ] = $wpdb->insert_id;
+        }
+
+        // Thread 1 tags
+        $t1_tags = array( 'Mental Health Services', 'Therapy Referrals', 'Uninsured Adults' );
+        foreach ( $t1_tags as $tn ) {
+            $wpdb->insert( $thread_tags_table, array( 'thread_id' => $thread_ids[0], 'tag_id' => $tag_ids[ $tn ] ) );
+        }
+
+        // Thread 2 tags
+        $t2_tags = array( 'Emergency Housing', 'Shelter Overflow', 'Adult Services' );
+        foreach ( $t2_tags as $tn ) {
+            $wpdb->insert( $thread_tags_table, array( 'thread_id' => $thread_ids[1], 'tag_id' => $tag_ids[ $tn ] ) );
+        }
+
+        // Thread 3 tags
+        $t3_tags = array( 'Youth Services', 'McKinney-Vento', 'School Stability', 'Housing Insecurity' );
+        foreach ( $t3_tags as $tn ) {
+            $wpdb->insert( $thread_tags_table, array( 'thread_id' => $thread_ids[2], 'tag_id' => $tag_ids[ $tn ] ) );
+        }
+
         // ── Insert replies for Thread 2 ──────────────────────────────────
         $t2 = $thread_ids[1];
 

@@ -94,6 +94,15 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/tags', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_tags' ), 'permission_callback' => '__return_true',
         ) );
+        register_rest_route( $ns, '/tags/followed', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_followed_tags' ), 'permission_callback' => array( $this, 'can_create_thread' ),
+        ) );
+        register_rest_route( $ns, '/tags/(?P<id>\d+)/follow', array(
+            'methods' => 'POST', 'callback' => array( $this, 'follow_tag' ), 'permission_callback' => array( $this, 'can_create_thread' ),
+        ) );
+        register_rest_route( $ns, '/tags/(?P<id>\d+)/unfollow', array(
+            'methods' => 'POST', 'callback' => array( $this, 'unfollow_tag' ), 'permission_callback' => array( $this, 'can_create_thread' ),
+        ) );
         register_rest_route( $ns, '/hot-questions', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_hot_questions' ), 'permission_callback' => '__return_true',
         ) );
@@ -171,6 +180,16 @@ class Cnw_Social_Bridge_REST_API {
         $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads t $where" );
         // phpcs:enable
 
+        // Attach tags to each thread
+        foreach ( $threads as &$thread ) {
+            $thread->tags = $wpdb->get_col( $wpdb->prepare(
+                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
+                 WHERE tt.thread_id = %d",
+                $thread->id
+            ) );
+        }
+
         return array(
             'threads' => $threads,
             'total'   => $total,
@@ -200,6 +219,14 @@ class Cnw_Social_Bridge_REST_API {
             $id
         ) );
 
+        // Attach tags
+        $thread->tags = $wpdb->get_col( $wpdb->prepare(
+            "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+             JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
+             WHERE tt.thread_id = %d",
+            $id
+        ) );
+
         return $thread;
     }
 
@@ -226,7 +253,36 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create thread', array( 'status' => 500 ) );
         }
 
-        return array( 'success' => true, 'id' => $wpdb->insert_id );
+        $thread_id = $wpdb->insert_id;
+
+        // Save tags
+        if ( ! empty( $params['tags'] ) && is_array( $params['tags'] ) ) {
+            foreach ( $params['tags'] as $tag_name ) {
+                $tag_name = sanitize_text_field( trim( $tag_name ) );
+                if ( empty( $tag_name ) ) continue;
+
+                $slug = sanitize_title( $tag_name );
+                $tag_id = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT id FROM {$wpdb->prefix}cnw_social_worker_tags WHERE slug = %s",
+                    $slug
+                ) );
+
+                if ( ! $tag_id ) {
+                    $wpdb->insert( $wpdb->prefix . 'cnw_social_worker_tags', array(
+                        'name' => $tag_name,
+                        'slug' => $slug,
+                    ) );
+                    $tag_id = $wpdb->insert_id;
+                }
+
+                $wpdb->replace( $wpdb->prefix . 'cnw_social_worker_thread_tags', array(
+                    'thread_id' => $thread_id,
+                    'tag_id'    => $tag_id,
+                ) );
+            }
+        }
+
+        return array( 'success' => true, 'id' => $thread_id );
     }
 
     public function update_thread( WP_REST_Request $request ) {
@@ -860,16 +916,47 @@ class Cnw_Social_Bridge_REST_API {
      * ================================================================== */
 
     public function get_tags() {
-        return array(
-            array( 'id' => 1, 'name' => 'Emergency Housing',      'slug' => 'emergency-housing' ),
-            array( 'id' => 2, 'name' => 'Mental Health Services',  'slug' => 'mental-health' ),
-            array( 'id' => 3, 'name' => 'Youth & Family Support',  'slug' => 'youth-family' ),
-            array( 'id' => 4, 'name' => 'Crisis Intervention',     'slug' => 'crisis-intervention' ),
-            array( 'id' => 5, 'name' => 'Domestic Violence',       'slug' => 'domestic-violence' ),
-            array( 'id' => 6, 'name' => 'Substance Use Services',  'slug' => 'substance-use' ),
-            array( 'id' => 7, 'name' => 'Benefits & Eligibility',  'slug' => 'benefits' ),
-            array( 'id' => 8, 'name' => 'Legal & Advocacy',        'slug' => 'legal' ),
+        global $wpdb;
+        return $wpdb->get_results(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_tags ORDER BY name ASC"
         );
+    }
+
+    public function get_followed_tags() {
+        global $wpdb;
+        $user_id = get_current_user_id();
+        return $wpdb->get_results( $wpdb->prepare(
+            "SELECT t.* FROM {$wpdb->prefix}cnw_social_worker_tags t
+             JOIN {$wpdb->prefix}cnw_social_worker_user_followed_tags uf ON t.id = uf.tag_id
+             WHERE uf.user_id = %d ORDER BY t.name ASC",
+            $user_id
+        ) );
+    }
+
+    public function follow_tag( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id = get_current_user_id();
+        $tag_id  = intval( $request['id'] );
+
+        $wpdb->replace(
+            $wpdb->prefix . 'cnw_social_worker_user_followed_tags',
+            array( 'user_id' => $user_id, 'tag_id' => $tag_id )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function unfollow_tag( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id = get_current_user_id();
+        $tag_id  = intval( $request['id'] );
+
+        $wpdb->delete(
+            $wpdb->prefix . 'cnw_social_worker_user_followed_tags',
+            array( 'user_id' => $user_id, 'tag_id' => $tag_id )
+        );
+
+        return array( 'success' => true );
     }
 
     public function get_hot_questions() {

@@ -41,9 +41,7 @@
         class="search-input"
         @input="onSearch"
       />
-      <button class="search-btn" @click="onSearch">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </div>
 
     <!-- New Question link -->
@@ -234,35 +232,41 @@ export default {
 /* Search */
 .list-search {
   display: flex;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  align-items: center;
+  gap: var(--space-m);
+  max-width: 430px;
+  width: 100%;
+  margin: var(--space-m) auto;
+  background: var(--light, #fff);
+  border: none;
+  border-radius: var(--radius-l);
+  padding: var(--space-4xs) var(--space-s);
+  box-shadow: 0 0 var(--radius-s) 0 var(--dark-20, rgba(0, 0, 0, 0.1));
 }
 .search-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 0;
   border: none;
-  font-size: 14px;
-  font-family: inherit;
-  color: var(--text-dark);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-body);
   background: transparent;
+  line-height: 16px;
+}
+.search-input::placeholder {
+  color: var(--text-body, #999);
+  font-weight: 300;
+  font-size: var(--text-xs);
+  font-family: 'Poppins', sans-serif;
+  opacity: 1;
 }
 .search-input:focus {
   outline: none;
 }
-.search-btn {
-  padding: 10px 14px;
-  background: none;
-  border: none;
-  border-left: 1px solid var(--border);
-  color: var(--text-light);
-  transition: color 0.12s, background 0.12s;
-}
-.search-btn:hover {
-  background: var(--bg);
-  color: var(--teal);
+.search-icon {
+  flex-shrink: 0;
+  color: var(--text-body, #999);
 }
 
 /* New Question */

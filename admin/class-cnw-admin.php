@@ -22,6 +22,8 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_delete_reply',      array( $this, 'handle_delete_reply' ) );
         add_action( 'admin_post_cnw_save_message',      array( $this, 'handle_save_message' ) );
         add_action( 'admin_post_cnw_delete_message',    array( $this, 'handle_delete_message' ) );
+        add_action( 'admin_post_cnw_save_tag',            array( $this, 'handle_save_tag' ) );
+        add_action( 'admin_post_cnw_delete_tag',          array( $this, 'handle_delete_tag' ) );
         add_action( 'admin_post_cnw_save_category',     array( $this, 'handle_save_category' ) );
         add_action( 'admin_post_cnw_delete_category',   array( $this, 'handle_delete_category' ) );
         add_action( 'admin_post_cnw_save_vote',         array( $this, 'handle_save_vote' ) );
@@ -34,6 +36,7 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_bulk_threads',     array( $this, 'handle_bulk_threads' ) );
         add_action( 'admin_post_cnw_bulk_replies',     array( $this, 'handle_bulk_replies' ) );
         add_action( 'admin_post_cnw_bulk_messages',    array( $this, 'handle_bulk_messages' ) );
+        add_action( 'admin_post_cnw_bulk_tags',         array( $this, 'handle_bulk_tags' ) );
         add_action( 'admin_post_cnw_bulk_categories',  array( $this, 'handle_bulk_categories' ) );
         add_action( 'admin_post_cnw_bulk_votes',       array( $this, 'handle_bulk_votes' ) );
         add_action( 'admin_post_cnw_bulk_reputation',  array( $this, 'handle_bulk_reputation' ) );
@@ -59,6 +62,7 @@ class Cnw_Social_Bridge_Admin {
             array( 'cnw-social-bridge', 'Threads',     'cnw-threads',       'page_threads' ),
             array( 'cnw-social-bridge', 'Replies',     'cnw-replies',       'page_replies' ),
             array( 'cnw-social-bridge', 'Messages',    'cnw-messages',      'page_messages' ),
+            array( 'cnw-social-bridge', 'Tags',        'cnw-tags',          'page_tags' ),
             array( 'cnw-social-bridge', 'Categories',  'cnw-categories',    'page_categories' ),
             array( 'cnw-social-bridge', 'Votes',       'cnw-votes',         'page_votes' ),
             array( 'cnw-social-bridge', 'Reputation',  'cnw-reputation',    'page_reputation' ),
@@ -286,6 +290,50 @@ class Cnw_Social_Bridge_Admin {
     }
 
     /* ------------------------------------------------------------------
+     * TAG handlers
+     * ------------------------------------------------------------------ */
+
+    public function handle_save_tag() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_tag' );
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_tags';
+        $id    = intval( $_POST['id'] ?? 0 );
+
+        $name = sanitize_text_field( $_POST['name'] ?? '' );
+        $data = array(
+            'name' => $name,
+            'slug' => sanitize_title( $_POST['slug'] ?? '' ) ?: sanitize_title( $name ),
+        );
+
+        if ( $id ) {
+            $wpdb->update( $table, $data, array( 'id' => $id ) );
+        } else {
+            $wpdb->insert( $table, $data );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-tags', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_delete_tag() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_delete_tag' );
+
+        global $wpdb;
+        $id = intval( $_GET['id'] ?? 0 );
+        if ( $id ) {
+            $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_thread_tags', array( 'tag_id' => $id ) );
+            $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_user_followed_tags', array( 'tag_id' => $id ) );
+            $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_tags', array( 'id' => $id ) );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-tags', 'msg' => 'deleted' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
      * CATEGORY handlers
      * ------------------------------------------------------------------ */
 
@@ -469,6 +517,14 @@ class Cnw_Social_Bridge_Admin {
         $this->bulk_delete( 'cnw_bulk_messages', 'cnw-messages', 'messages' );
     }
 
+    public function handle_bulk_tags() {
+        $this->bulk_delete( 'cnw_bulk_tags', 'cnw-tags', 'tags', function( $wpdb, $ids ) {
+            $ph = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_thread_tags WHERE tag_id IN ($ph)", ...$ids ) );
+            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_user_followed_tags WHERE tag_id IN ($ph)", ...$ids ) );
+        } );
+    }
+
     public function handle_bulk_categories() {
         $this->bulk_delete( 'cnw_bulk_categories', 'cnw-categories', 'categories' );
     }
@@ -504,6 +560,7 @@ class Cnw_Social_Bridge_Admin {
     public function page_threads()     { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-threads.php'; }
     public function page_replies()     { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-replies.php'; }
     public function page_messages()    { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-messages.php'; }
+    public function page_tags()         { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-tags.php'; }
     public function page_categories()  { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-categories.php'; }
     public function page_votes()       { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-votes.php'; }
     public function page_reputation()  { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-reputation.php'; }

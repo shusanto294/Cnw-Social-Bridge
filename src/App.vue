@@ -6,7 +6,7 @@
       <main class="cnw-social-worker-main">
         <router-view />
       </main>
-      <AppRightSidebar />
+      <AppRightSidebar v-if="!hideRightSidebar" />
     </div>
     <AppFooter />
   </div>
@@ -21,6 +21,11 @@ import AppFooter from './components/AppFooter.vue';
 export default {
   name: 'App',
   components: { AppHeader, AppSidebar, AppRightSidebar, AppFooter },
+  computed: {
+    hideRightSidebar() {
+      return this.$route.path === '/ask';
+    },
+  },
 };
 </script>
 
