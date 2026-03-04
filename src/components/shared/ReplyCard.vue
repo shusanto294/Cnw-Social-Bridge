@@ -207,11 +207,13 @@ export default {
   height: 16px;
   background: var(--primary);
   flex-shrink: 0;
+  margin-left: -1px;
 }
 .reply-card:not(.is-nested).is-last > .reply-connector > .connector-horizontal {
   width: 30px;
   height: 1px;
   background: var(--primary);
+  margin-left: -1px;
 }
 
 /* ── Nested (depth > 0): border-left = green/secondary line ──── */
@@ -252,11 +254,13 @@ export default {
   height: 16px;
   background: var(--secondary);
   flex-shrink: 0;
+  margin-left: -1px;
 }
 .reply-card.is-nested.is-last > .reply-connector > .connector-horizontal {
   width: 10px;
   height: 1px;
   background: var(--secondary);
+  margin-left: -1px;
 }
 
 /* ── Reply content bubble ─────────────────────────────────────── */
@@ -412,5 +416,6 @@ export default {
   display: flex;
   flex-direction: column;
   padding-left: 79px;
+  padding-top: var(--space-xs);
 }
 </style>
