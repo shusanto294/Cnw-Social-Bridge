@@ -2,7 +2,22 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__figma-remote-mcp__get_design_context",
+      "mcp__figma-remote-mcp__get_screenshot",
+      "WebFetch(domain:localhost)",
+      "Bash(curl:*)",
+      "mcp__figma-remote-mcp__get_variable_defs",
+      "mcp__figma-remote-mcp__get_metadata",
+      "Bash(npx webpack:*)",
+      "Bash(ls:*)",
+      "Bash(/Applications/MAMP/Library/bin/mysql:*)",
+      "Bash(/Applications/MAMP/Library/bin/mysql80/bin/mysql:*)",
+      "Bash(/Applications/MAMP/Library/bin/wp eval:*)",
+      "Bash($MYSQL:*)",
+      "Bash(__NEW_LINE_cd4c18b09899f3b7__:*)",
+      "Bash(__NEW_LINE_62f6b157f6168d15__:*)",
+      "Bash(python3:*)"
     ]
   }
 }

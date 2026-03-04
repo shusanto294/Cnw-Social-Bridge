@@ -21,6 +21,7 @@ define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // ── Includes ─────────────────────────────────────────────────────────────────
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/class-cnw-admin.php';
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-rest-api.php';
+require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-seed-data.php';
 
 // ── Core plugin class ────────────────────────────────────────────────────────
 
@@ -167,6 +168,8 @@ class Cnw_Social_Bridge {
         $this->create_user_roles();
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );
+
+        Cnw_Social_Bridge_Seed_Data::seed();
     }
 
     private function create_user_roles() {
@@ -252,6 +255,7 @@ class Cnw_Social_Bridge {
         $current_user = wp_get_current_user();
         wp_localize_script( 'cnw-app-script', 'cnwData', array(
             'restUrl'     => esc_url_raw( rest_url( 'cnw-social-bridge/v1' ) ),
+            'siteUrl'     => esc_url_raw( home_url( '/' ) ),
             'nonce'       => wp_create_nonce( 'wp_rest' ),
             'logoUrl'     => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
             'currentUser' => array(

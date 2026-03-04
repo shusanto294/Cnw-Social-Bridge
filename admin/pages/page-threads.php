@@ -1,23 +1,23 @@
 <?php
 /**
- * Admin Threads page.
- *
- * @package Cnw_Social_Bridge
+ * Admin Threads — CRUD list / add / edit with bulk actions.
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 global $wpdb;
+$table  = $wpdb->prefix . 'cnw_social_worker_threads';
+$action = sanitize_text_field( $_GET['action'] ?? 'list' );
+$id     = intval( $_GET['id'] ?? 0 );
+$msg    = sanitize_text_field( $_GET['msg'] ?? '' );
+$count  = intval( $_GET['count'] ?? 0 );
 
-$threads = $wpdb->get_results( "
-    SELECT t.*, u.display_name AS author_name
-    FROM {$wpdb->prefix}cnw_social_worker_threads t
-    LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
-    ORDER BY t.created_at DESC
-    LIMIT 50
-" );
+$item = null;
+if ( $action === 'edit' && $id ) {
+    $item = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", $id ) );
+    if ( ! $item ) { $action = 'list'; }
+}
+
+$users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER BY display_name ASC LIMIT 200" );
 ?>
 
 <div class="wrap cnw-admin-wrap">
@@ -25,36 +25,88 @@ $threads = $wpdb->get_results( "
         <h1 class="cnw-admin-title"><?php esc_html_e( 'Threads', 'cnw-social-bridge' ); ?></h1>
     </div>
 
-    <table class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th style="width:40px"><?php esc_html_e( 'ID', 'cnw-social-bridge' ); ?></th>
-                <th><?php esc_html_e( 'Title', 'cnw-social-bridge' ); ?></th>
-                <th style="width:160px"><?php esc_html_e( 'Author', 'cnw-social-bridge' ); ?></th>
-                <th style="width:90px"><?php esc_html_e( 'Status', 'cnw-social-bridge' ); ?></th>
-                <th style="width:70px"><?php esc_html_e( 'Views', 'cnw-social-bridge' ); ?></th>
-                <th style="width:160px"><?php esc_html_e( 'Created', 'cnw-social-bridge' ); ?></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ( $threads ) : ?>
-                <?php foreach ( $threads as $thread ) : ?>
+    <?php if ( $msg === 'saved' ) : ?><div class="notice notice-success is-dismissible"><p>Thread saved.</p></div><?php endif; ?>
+    <?php if ( $msg === 'deleted' ) : ?><div class="notice notice-warning is-dismissible"><p>Thread deleted.</p></div><?php endif; ?>
+    <?php if ( $msg === 'bulk_deleted' && $count ) : ?><div class="notice notice-warning is-dismissible"><p><?php echo esc_html( $count ); ?> thread(s) deleted.</p></div><?php endif; ?>
+
+<?php if ( $action === 'add' || $action === 'edit' ) : ?>
+    <h2><?php echo $item ? 'Edit Thread #' . esc_html( $item->id ) : 'Add New Thread'; ?></h2>
+    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-crud-form">
+        <?php wp_nonce_field( 'cnw_save_thread' ); ?>
+        <input type="hidden" name="action" value="cnw_save_thread">
+        <?php if ( $item ) : ?><input type="hidden" name="id" value="<?php echo esc_attr( $item->id ); ?>"><?php endif; ?>
+
+        <table class="form-table">
+            <tr><th><label for="title">Title</label></th>
+                <td><input type="text" id="title" name="title" class="regular-text" value="<?php echo esc_attr( $item->title ?? '' ); ?>" required></td></tr>
+            <tr><th><label for="content">Content</label></th>
+                <td><textarea id="content" name="content" rows="6" class="large-text"><?php echo esc_textarea( $item->content ?? '' ); ?></textarea></td></tr>
+            <tr><th><label for="author_id">Author</label></th>
+                <td><select id="author_id" name="author_id">
+                    <?php foreach ( $users as $u ) : ?>
+                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->author_id ?? get_current_user_id(), $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+                    <?php endforeach; ?>
+                </select></td></tr>
+            <tr><th><label for="status">Status</label></th>
+                <td><select id="status" name="status">
+                    <?php foreach ( array( 'published', 'draft', 'closed' ) as $s ) : ?>
+                    <option value="<?php echo esc_attr( $s ); ?>" <?php selected( $item->status ?? 'published', $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
+                    <?php endforeach; ?>
+                </select></td></tr>
+        </table>
+
+        <?php submit_button( $item ? 'Update Thread' : 'Create Thread' ); ?>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads' ) ); ?>" class="button">&larr; Back to list</a>
+    </form>
+
+<?php else : ?>
+    <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads&action=add' ) ); ?>" class="button button-primary">Add New Thread</a></p>
+
+    <?php
+    $rows = $wpdb->get_results(
+        "SELECT t.*, u.display_name AS author_name
+         FROM $table t LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
+         ORDER BY t.created_at DESC LIMIT 100"
+    );
+    ?>
+
+    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
+        <?php wp_nonce_field( 'cnw_bulk_threads' ); ?>
+        <input type="hidden" name="action" value="cnw_bulk_threads">
+
+        <div class="cnw-bulk-bar">
+            <select name="bulk_action">
+                <option value="">Bulk Actions</option>
+                <option value="delete">Delete</option>
+            </select>
+            <button type="submit" class="button">Apply</button>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead><tr>
+                <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
+                <th style="width:40px">ID</th><th>Title</th><th style="width:140px">Author</th><th style="width:90px">Status</th><th style="width:70px">Views</th><th style="width:150px">Created</th><th style="width:130px">Actions</th>
+            </tr></thead>
+            <tbody>
+            <?php if ( $rows ) : foreach ( $rows as $row ) : ?>
                 <tr>
-                    <td><?php echo esc_html( $thread->id ); ?></td>
-                    <td><?php echo esc_html( $thread->title ); ?></td>
-                    <td><?php echo esc_html( $thread->author_name ); ?></td>
+                    <td class="cnw-cb-col"><input type="checkbox" name="bulk_ids[]" value="<?php echo esc_attr( $row->id ); ?>" class="cnw-bulk-cb"></td>
+                    <td><?php echo esc_html( $row->id ); ?></td>
+                    <td><?php echo esc_html( $row->title ); ?></td>
+                    <td><?php echo esc_html( $row->author_name ); ?></td>
+                    <td><span class="cnw-status cnw-status-<?php echo esc_attr( $row->status ); ?>"><?php echo esc_html( ucfirst( $row->status ) ); ?></span></td>
+                    <td><?php echo number_format( intval( $row->views ) ); ?></td>
+                    <td><?php echo esc_html( $row->created_at ); ?></td>
                     <td>
-                        <span class="cnw-status cnw-status-<?php echo esc_attr( $thread->status ); ?>">
-                            <?php echo esc_html( ucfirst( $thread->status ) ); ?>
-                        </span>
+                        <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads&action=edit&id=' . $row->id ) ); ?>">Edit</a> |
+                        <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cnw_delete_thread&id=' . $row->id ), 'cnw_delete_thread' ) ); ?>" class="cnw-delete-link" onclick="return confirm('Delete this thread and all its replies?')">Delete</a>
                     </td>
-                    <td><?php echo number_format( intval( $thread->views ) ); ?></td>
-                    <td><?php echo esc_html( $thread->created_at ); ?></td>
                 </tr>
-                <?php endforeach; ?>
-            <?php else : ?>
-                <tr><td colspan="6"><?php esc_html_e( 'No threads found.', 'cnw-social-bridge' ); ?></td></tr>
+            <?php endforeach; else : ?>
+                <tr><td colspan="8">No threads found.</td></tr>
             <?php endif; ?>
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </form>
+<?php endif; ?>
 </div>

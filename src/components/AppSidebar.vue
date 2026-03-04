@@ -220,7 +220,7 @@ data() {
   background: #fff;
   border-radius: var(--radius);
   position: sticky;
-  top: 80px;
+  top: 20px;
   height: fit-content;
 }
 

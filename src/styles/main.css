@@ -7,10 +7,12 @@
 }
 
 :root {
+  /* ── Colors (from Figma design) ──────────────────────────────── */
   --primary:     #3AA9DA;
   --secondary:   #5FBF91;
   --tertiary:    #414141;
   --text-body:   #414141;
+  --text-title:  #ffffff;
   --bg-body:     #3AA9DA;
   --light:       #fff;
   --dark:        #000;
@@ -35,11 +37,36 @@
   --border:      #e2e4e8;
   --bg:          #F7F7F7;
   --white:       #ffffff;
+
+  /* ── Typography (from Figma design) ──────────────────────────── */
+  --text-xs:     14px;
+  --text-m:      16px;
+
+  /* ── Spacing (from Figma design) ─────────────────────────────── */
+  --space-4xs:   4.95px;
+  --space-3xs:   7px;
+  --space-2xs:   9.9px;
+  --space-xs:    14px;
+  --space-s:     19.8px;
+  --space-m:     28px;
+  --space-l:     39.59px;
+  --space-xl:    55.98px;
+  --space-2xl:   79.16px;
+
+  /* ── Border Radius (from Figma design) ───────────────────────── */
+  --radius-xs:   1px;
+  --radius-s:    2px;
+  --radius-m:    4px;
+  --radius-l:    8px;
+  --radius-pill: 20px;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
   --shadow-sm:   0 1px 3px rgba(0,0,0,0.08);
   --shadow-md:   0 2px 8px rgba(0,0,0,0.10);
-  --radius:      8px;
-  --radius-sm:   4px;
-  --radius-pill: 20px;
+
+  /* ── Legacy aliases ──────────────────────────────────────────── */
+  --radius:      var(--radius-l);
+  --radius-sm:   var(--radius-m);
 }
 
 /* Mount point — ID must match PHP shortcode output and main.js mount target */

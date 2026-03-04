@@ -1,7 +1,8 @@
+/*!**************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppHeader.vue?vue&type=style&index=0&id=bb50a5e4&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-header {
-  position: sticky;
-  top: 0;
   z-index: 200;
 }
 .cnw-social-worker-header-inner {
@@ -41,9 +42,9 @@
   letter-spacing: 1.5px;
   line-height: 1;
 }
-.logo-wave {
-  width: 52px;
-  height: 28px;
+.logo-icon {
+  width: 44px;
+  height: auto;
   flex-shrink: 0;
 }
 
@@ -91,6 +92,9 @@
 }
 }
 
+/*!***************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppSidebar.vue?vue&type=style&index=0&id=4c2e56ab&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-sidebar {
   width: 278px;
@@ -98,7 +102,7 @@
   background: #fff;
   border-radius: var(--radius);
   position: sticky;
-  top: 80px;
+  top: 20px;
   height: fit-content;
 }
 .sidebar-user-card {
@@ -195,6 +199,9 @@
   background: var(--tertiary);
 }
 
+/*!********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppRightSidebar.vue?vue&type=style&index=0&id=51eb403e&lang=css ***!
+  \********************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-right-sidebar {
   width: 291px;
@@ -203,6 +210,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: sticky;
+  top: 20px;
+  height: fit-content;
 }
 .rsidebar-card {
   background: #fff;
@@ -319,6 +329,9 @@
   gap: 3px;
 }
 
+/*!**************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/AppFooter.vue?vue&type=style&index=0&id=fdb56dc8&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-footer {
   background: #1a1a2e;
@@ -337,6 +350,9 @@
   vertical-align: middle;
 }
 
+/*!*********************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/App.vue?vue&type=style&index=0&id=7ba5bd90&lang=css ***!
+  \*********************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-app-wrapper {
   display: flex;
@@ -370,57 +386,365 @@
 }
 }
 
+/*!*********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/shared/ReplyCard.vue?vue&type=style&index=0&id=228dffe0&lang=css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************/
 
+/* ── Reply card layout ────────────────────────────────────────── */
 .reply-card {
-  padding: 14px 0 10px;
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
-.reply-card.is-nested {
-  border-top: none;
-  border-left: 2px solid var(--border);
-  padding-left: 14px;
-  margin-top: 10px;
+
+/* ── Top-level (depth 0): border-left = continuous teal line ──── */
+.reply-card:not(.is-nested):not(.is-last) {
+  border-left: 1px solid var(--primary);
+  padding-bottom: var(--space-xs);
 }
+.reply-card:not(.is-nested).is-last {
+  border-left: 1px solid transparent; /* keep alignment, no visible line */
+}
+
+/* ── Top-level connector ─────────────────────────────────────── */
+/* Non-last: just horizontal arm (border-left provides vertical) */
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector {
+  width: 30px;
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector > .connector-vertical {
+  display: none;
+}
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector > .connector-horizontal {
+  width: 30px;
+  height: 1px;
+  background: var(--primary);
+}
+/* Last: L-shape — vertical down then horizontal right */
+.reply-card:not(.is-nested).is-last > .reply-connector {
+  width: 30px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.reply-card:not(.is-nested).is-last > .reply-connector > .connector-vertical {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+.reply-card:not(.is-nested).is-last > .reply-connector > .connector-horizontal {
+  width: 30px;
+  height: 1px;
+  background: var(--primary);
+}
+
+/* ── Nested (depth > 0): border-left = green/secondary line ──── */
+.reply-card.is-nested:not(.is-last) {
+  border-left: 1px solid var(--secondary);
+  padding-bottom: var(--space-xs);
+}
+.reply-card.is-nested.is-last {
+  border-left: 1px solid transparent;
+}
+
+/* ── Nested connector ────────────────────────────────────────── */
+/* Non-last: just horizontal arm (border-left provides vertical) */
+.reply-card.is-nested:not(.is-last) > .reply-connector {
+  width: 10px;
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+.reply-card.is-nested:not(.is-last) > .reply-connector > .connector-vertical {
+  display: none;
+}
+.reply-card.is-nested:not(.is-last) > .reply-connector > .connector-horizontal {
+  width: 10px;
+  height: 1px;
+  background: var(--secondary);
+}
+/* Last nested: L-shape in secondary/green */
+.reply-card.is-nested.is-last > .reply-connector {
+  width: 10px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.reply-card.is-nested.is-last > .reply-connector > .connector-vertical {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--secondary);
+  flex-shrink: 0;
+}
+.reply-card.is-nested.is-last > .reply-connector > .connector-horizontal {
+  width: 10px;
+  height: 1px;
+  background: var(--secondary);
+}
+
+/* ── Reply content bubble ─────────────────────────────────────── */
+.reply-bubble {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border-radius: var(--radius-l);
+  padding: var(--space-2xs) var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
 .reply-header {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 8px;
+  gap: var(--space-2xs);
+}
+.reply-avatar-wrap {
+  padding: var(--space-4xs);
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .reply-avatar {
-  border: 2px solid var(--border);
+  border-radius: 50%;
 }
 .reply-author {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dark);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  white-space: nowrap;
+  line-height: 16px;
 }
 .reply-date {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-left: 4px;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #999;
+  line-height: 16px;
+  flex: 1;
 }
+
+/* ── Body text ────────────────────────────────────────────────── */
 .reply-body {
-  font-size: 13.5px;
-  color: var(--text-med);
-  line-height: 1.65;
-  margin-bottom: 10px;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  line-height: 16px;
+  padding-left: var(--space-m);
 }
+
+/* ── Helpful stat ─────────────────────────────────────────────── */
+.reply-helpful {
+  padding-left: var(--space-m);
+}
+
+/* ── Footer stats ─────────────────────────────────────────────── */
 .reply-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2xs);
+  padding-left: var(--space-m);
+}
+
+/* Shared stat button for reply card */
+.reply-stat-btn {
+  background: none;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  padding: 0;
+  line-height: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.reply-stat-btn:hover {
+  color: var(--text-dark);
+}
+
+/* Teal vertical divider */
+.reply-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ── Inline reply form (inside the bubble) ────────────────────── */
+.reply-inline-form {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  padding-left: var(--space-m);
+}
+.reply-inline-input-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  background: var(--white);
+  border-radius: var(--radius-m);
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border);
+}
+.reply-inline-input {
+  width: 100%;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  color: #999;
+  background: transparent;
+  resize: none;
+  line-height: 16px;
+}
+.reply-inline-input:focus {
+  outline: none;
+  color: var(--text-body);
+}
+.reply-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.reply-inline-send-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-3xs) var(--space-s);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+.reply-inline-send-btn:hover {
+  background: var(--secondary);
+}
+.reply-inline-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Nested replies — indentation, primary border continues ──── */
+.nested-replies {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: 79px;
+}
+
+/*!************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/shared/QuestionCard.vue?vue&type=style&index=0&id=57814880&lang=css ***!
+  \************************************************************************************************************************************************************************************************************************************************************/
+
+/* ── Card container ──────────────────────────────────────────── */
+.question-card {
+  background: var(--white);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  border: var(--radius-xs) solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ── Header: avatar + name + verified + date ─────────────────── */
+.qcard-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.qcard-meta-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+.qcard-avatar {
+  border-radius: 50%;
+}
+.qcard-author {
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  white-space: nowrap;
+  line-height: 16px;
+}
+.qcard-date {
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #999;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+/* ── Title ────────────────────────────────────────────────────── */
+.qcard-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  line-height: 24.5px;
+  cursor: pointer;
+}
+.qcard-title:hover {
+  color: var(--teal-dark);
+}
+
+/* ── Excerpt ──────────────────────────────────────────────────── */
+.qcard-excerpt {
+  font-size: var(--text-m);
+  font-weight: 300;
+  color: #000;
+  line-height: 1.32;
+}
+
+/* ── Tags — gradient badges ───────────────────────────────────── */
+.qcard-tags {
+  display: flex;
   flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.qcard-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xs) var(--space-2xs);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--white);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+}
+
+/* ── Stats rows ───────────────────────────────────────────────── */
+.qcard-stats-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 .stat-btn {
   background: none;
   border: none;
-  font-size: 12.5px;
-  color: var(--text-light);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4xs);
   padding: 0;
+  padding-bottom: var(--space-4xs);
+  line-height: 16px;
+  white-space: nowrap;
   transition: color 0.12s;
 }
 .stat-btn:hover {
@@ -429,170 +753,121 @@
 .helpful-btn:hover {
   color: var(--red);
 }
-.reply-action-btn {
-  color: var(--teal);
-  font-weight: 500;
-}
-.reply-action-btn:hover {
-  color: var(--teal-dark);
-}
-.stat-sep {
-  color: var(--border);
-}
-.nested-replies {
-  margin-top: 4px;
+
+/* Teal vertical divider */
+.stat-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--primary);
+  flex-shrink: 0;
 }
 
-
-.question-card {
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 20px 22px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.15s;
-}
-.question-card:hover {
-  box-shadow: var(--shadow-md);
-}
-.qcard-meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 12px;
-}
-.qcard-avatar {
-  border: 2px solid var(--border);
-}
-.qcard-author {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-.qcard-date {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-left: 4px;
-}
-.qcard-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-dark);
-  line-height: 1.4;
-  margin-bottom: 10px;
-  cursor: pointer;
-}
-.qcard-title:hover {
-  color: var(--teal-dark);
-}
-.qcard-excerpt {
-  font-size: 13.5px;
-  color: var(--text-med);
-  line-height: 1.65;
-  margin-bottom: 14px;
-}
-.qcard-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 14px;
-}
-.qcard-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.stat-btn {
-  background: none;
-  border: none;
-  font-size: 12.5px;
-  color: var(--text-light);
+/* Views */
+.stat-views {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0;
-  transition: color 0.12s;
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  white-space: nowrap;
 }
-.stat-btn:hover {
-  color: var(--text-dark);
+.stat-views-label {
+  color: #999;
 }
-.helpful-btn:hover { color: var(--red);
+.stat-views-value {
+  color: var(--text-body);
 }
+
+/* Reply link with underline */
 .reply-link {
-  color: var(--teal);
-  font-weight: 500;
+  color: var(--text-body);
+  border-bottom: var(--radius-xs) solid var(--primary);
 }
-.reply-link:hover { color: var(--teal-dark);
-}
-.stat-text {
-  font-size: 12.5px;
-  color: var(--text-light);
-}
-.stat-sep {
-  color: var(--border);
-  font-size: 12px;
-}
-.answered-badge {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-}
-.answered-badge.is-answered {
-  background: var(--green-light);
-  color: var(--green-dark);
-}
-.answered-badge.is-unanswered {
-  background: var(--bg);
-  color: var(--text-light);
+.reply-link:hover {
+  color: var(--teal-dark);
 }
 
-/* Inline replies */
+/* Answered badge — simple dot + text */
+.answered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
+  line-height: 16px;
+  white-space: nowrap;
+  padding-bottom: var(--space-4xs);
+}
+
+/* ── Inline replies ───────────────────────────────────────────── */
 .qcard-replies {
-  margin-top: 16px;
-  border-top: 2px solid var(--border);
-  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--space-m);
+}
+
+/* Write message box — matches Figma */
+.qcard-replies > .inline-reply-form {
+  margin-top: var(--space-xs);
 }
 .inline-reply-form {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  align-items: flex-start;
+  gap: var(--space-2xs);
 }
 .inline-reply-input-wrap {
   flex: 1;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  background: var(--bg);
+  border-radius: var(--radius-m);
+  padding: var(--space-2xs) var(--space-xs);
 }
 .inline-reply-input {
-  flex: 1;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
+  width: 100%;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
   font-family: inherit;
-  color: var(--text-dark);
-  background: var(--bg);
-  transition: border-color 0.12s;
+  color: #999;
+  background: transparent;
+  resize: none;
+  line-height: 16px;
 }
 .inline-reply-input:focus {
   outline: none;
-  border-color: var(--teal);
-  background: #fff;
+  color: var(--text-body);
 }
-.inline-reply-send {
-  flex-shrink: 0;
+.inline-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.inline-reply-send-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-3xs) var(--space-s);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+.inline-reply-send-btn:hover {
+  background: var(--secondary);
+}
+.inline-reply-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
+/*!***************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/QuestionListView.vue?vue&type=style&index=0&id=26b9551a&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************/
 
 .question-list-view {
   display: flex;
@@ -745,6 +1020,9 @@
   cursor: not-allowed;
 }
 
+/*!***************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/ThreadDetailView.vue?vue&type=style&index=0&id=e890191e&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************/
 
 .thread-detail-view {
   display: flex;
@@ -919,6 +1197,9 @@
 .login-prompt a { color: var(--teal);
 }
 
+/*!**************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/AskQuestionView.vue?vue&type=style&index=0&id=2f92dda3&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************/
 
 .ask-view {
   display: flex;
@@ -1075,6 +1356,9 @@
 .login-prompt a { color: var(--teal);
 }
 
+/*!***********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/MessagesView.vue?vue&type=style&index=0&id=626e6542&lang=css ***!
+  \***********************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-messages-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1095,6 +1379,9 @@
   font-size: 15px;
 }
 
+/*!********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/UsersView.vue?vue&type=style&index=0&id=a2c27b28&lang=css ***!
+  \********************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-users-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1115,6 +1402,9 @@
   font-size: 15px;
 }
 
+/*!*******************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/TagsView.vue?vue&type=style&index=0&id=5a8620e2&lang=css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-tags-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1135,6 +1425,9 @@
   font-size: 15px;
 }
 
+/*!***********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/ActivityView.vue?vue&type=style&index=0&id=41e4e405&lang=css ***!
+  \***********************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-activity-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1155,6 +1448,9 @@
   font-size: 15px;
 }
 
+/*!***************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/SavedThreadsView.vue?vue&type=style&index=0&id=5ada7ed0&lang=css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-saved-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1175,6 +1471,9 @@
   font-size: 15px;
 }
 
+/*!*************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/GuidelinesView.vue?vue&type=style&index=0&id=7f44278e&lang=css ***!
+  \*************************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-guidelines-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1195,6 +1494,9 @@
   font-size: 15px;
 }
 
+/*!**************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/vue-loader/dist/stylePostLoader.js!./node_modules/vue-loader/dist/index.js??ruleSet[1].rules[5].use[0]!./src/components/views/ReportIssueView.vue?vue&type=style&index=0&id=73cdea29&lang=css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************/
 
 .cnw-social-worker-report-view { display: flex; flex-direction: column; gap: 16px;
 }
@@ -1215,6 +1517,9 @@
   font-size: 15px;
 }
 
+/*!***********************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./src/styles/main.css ***!
+  \***********************************************************************/
 /* CNW Social Bridge — Global Styles */
 
 *, *::before, *::after {
@@ -1224,10 +1529,12 @@
 }
 
 :root {
+  /* ── Colors (from Figma design) ──────────────────────────────── */
   --primary:     #3AA9DA;
   --secondary:   #5FBF91;
   --tertiary:    #414141;
   --text-body:   #414141;
+  --text-title:  #ffffff;
   --bg-body:     #3AA9DA;
   --light:       #fff;
   --dark:        #000;
@@ -1252,11 +1559,36 @@
   --border:      #e2e4e8;
   --bg:          #F7F7F7;
   --white:       #ffffff;
+
+  /* ── Typography (from Figma design) ──────────────────────────── */
+  --text-xs:     14px;
+  --text-m:      16px;
+
+  /* ── Spacing (from Figma design) ─────────────────────────────── */
+  --space-4xs:   4.95px;
+  --space-3xs:   7px;
+  --space-2xs:   9.9px;
+  --space-xs:    14px;
+  --space-s:     19.8px;
+  --space-m:     28px;
+  --space-l:     39.59px;
+  --space-xl:    55.98px;
+  --space-2xl:   79.16px;
+
+  /* ── Border Radius (from Figma design) ───────────────────────── */
+  --radius-xs:   1px;
+  --radius-s:    2px;
+  --radius-m:    4px;
+  --radius-l:    8px;
+  --radius-pill: 20px;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
   --shadow-sm:   0 1px 3px rgba(0,0,0,0.08);
   --shadow-md:   0 2px 8px rgba(0,0,0,0.10);
-  --radius:      8px;
-  --radius-sm:   4px;
-  --radius-pill: 20px;
+
+  /* ── Legacy aliases ──────────────────────────────────────────── */
+  --radius:      var(--radius-l);
+  --radius-sm:   var(--radius-m);
 }
 
 /* Mount point — ID must match PHP shortcode output and main.js mount target */

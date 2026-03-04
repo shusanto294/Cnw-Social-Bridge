@@ -103,6 +103,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: sticky;
+  top: 20px;
+  height: fit-content;
 }
 
 .rsidebar-card {

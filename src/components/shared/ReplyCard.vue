@@ -1,73 +1,130 @@
 <template>
-  <div class="reply-card" :class="{ 'is-nested': depth > 0 }" :style="nestStyle">
-    <div class="reply-header">
-      <img
-        :src="avatarUrl"
-        :alt="reply.author_name"
-        class="cnw-social-worker-avatar reply-avatar"
-        width="30" height="30"
-      />
-      <span class="reply-author">{{ reply.author_name }}</span>
-      <span class="cnw-social-worker-verified" title="Verified">✓</span>
-      <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+  <div class="reply-card" :class="{ 'is-nested': depth > 0, 'is-last': isLast }">
+    <!-- L-shaped connector line -->
+    <div class="reply-connector">
+      <div class="connector-vertical"></div>
+      <div class="connector-horizontal"></div>
     </div>
 
-    <div class="reply-body" v-html="reply.content"></div>
+    <!-- Reply content bubble -->
+    <div class="reply-bubble">
+      <!-- Header: avatar + name + verified + date -->
+      <div class="reply-header">
+        <div class="reply-avatar-wrap">
+          <img
+            :src="avatarUrl"
+            :alt="reply.author_name"
+            class="cnw-social-worker-avatar reply-avatar"
+            width="22" height="22"
+          />
+        </div>
+        <span class="reply-author">{{ reply.author_name }}</span>
+        <span class="cnw-social-worker-verified" title="Verified">✓</span>
+        <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+      </div>
 
-    <div class="reply-footer">
-      <button class="stat-btn helpful-btn" @click="like">
-        <svg width="13" height="13" viewBox="0 0 24 24" :fill="liked ? 'var(--red)' : 'none'" stroke="var(--red)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        {{ localLikes }} Helpful
-      </button>
-      <span class="stat-sep">|</span>
-      <button class="stat-btn" @click="$emit('reply', reply)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        {{ reply.reply_count || 0 }} Replies
-      </button>
-      <span class="stat-sep">|</span>
-      <button class="stat-btn reply-action-btn" @click="$emit('reply', reply)">Reply</button>
+      <!-- Body text -->
+      <p class="reply-body">{{ reply.content }}</p>
+
+      <!-- Helpful count -->
+      <div class="reply-helpful">
+        <button class="reply-stat-btn" @click="like">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--red)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>{{ localLikes }}</span>
+          <span>Helpful</span>
+        </button>
+      </div>
+
+      <!-- Footer: Replies | Reply -->
+      <div class="reply-footer">
+        <button class="reply-stat-btn" @click="toggleNested">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>{{ nestedReplies.length || reply.reply_count || 0 }}</span>
+          <span>Replies</span>
+        </button>
+        <span class="reply-divider"></span>
+        <button class="reply-stat-btn" @click="showReplyBox = !showReplyBox">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
+          <span>Reply</span>
+        </button>
+      </div>
+
+      <!-- Inline reply box for THIS specific reply -->
+      <div v-if="showReplyBox" class="reply-inline-form">
+        <img
+          :src="currentUserAvatar"
+          class="cnw-social-worker-avatar"
+          width="24" height="24"
+          alt="You"
+        />
+        <div class="reply-inline-input-wrap">
+          <textarea
+            ref="replyInput"
+            v-model="replyDraft"
+            placeholder="Write Message:"
+            class="reply-inline-input"
+            rows="3"
+          ></textarea>
+          <div class="reply-inline-actions">
+            <button
+              class="reply-inline-send-btn"
+              :disabled="!replyDraft.trim() || submitting"
+              @click="submitReply"
+            >Reply</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Nested replies -->
     <div v-if="nestedReplies.length" class="nested-replies">
       <ReplyCard
-        v-for="nr in nestedReplies"
+        v-for="(nr, idx) in nestedReplies"
         :key="nr.id"
         :reply="nr"
         :all-replies="allReplies"
         :depth="depth + 1"
-        @reply="$emit('reply', $event)"
+        :is-last="idx === nestedReplies.length - 1"
+        :thread-id="threadId"
+        @reply-submitted="$emit('reply-submitted')"
       />
     </div>
   </div>
 </template>
 
 <script>
+import { createReply } from '@/api/index.js';
+
 export default {
   name: 'ReplyCard',
   props: {
     reply: { type: Object, required: true },
     allReplies: { type: Array, default: () => [] },
     depth: { type: Number, default: 0 },
+    isLast: { type: Boolean, default: false },
+    threadId: { type: [Number, String], default: 0 },
   },
-  emits: ['reply'],
+  emits: ['reply-submitted'],
   data() {
     return {
       liked: false,
       localLikes: this.reply.likes || 0,
+      showReplyBox: false,
+      replyDraft: '',
+      submitting: false,
     };
   },
   computed: {
     nestedReplies() {
       return this.allReplies.filter(r => String(r.parent_id) === String(this.reply.id));
     },
-    nestStyle() {
-      if (this.depth === 0) return {};
-      return { marginLeft: `${Math.min(this.depth * 28, 80)}px` };
-    },
     avatarUrl() {
       const id = this.reply.author_id || 0;
       return `https://www.gravatar.com/avatar/${id}?d=identicon&s=30`;
+    },
+    currentUserAvatar() {
+      const d = window.cnwData;
+      return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
     },
   },
   methods: {
@@ -75,95 +132,285 @@ export default {
       this.liked = !this.liked;
       this.localLikes += this.liked ? 1 : -1;
     },
+    toggleNested() {
+      // could toggle nested visibility in the future
+    },
+    async submitReply() {
+      if (!this.replyDraft.trim()) return;
+      this.submitting = true;
+      try {
+        await createReply({
+          thread_id: this.threadId || this.reply.thread_id,
+          content: this.replyDraft,
+          parent_id: this.reply.id,
+        });
+        this.replyDraft = '';
+        this.showReplyBox = false;
+        this.$emit('reply-submitted');
+      } catch (e) { /* silent */ } finally {
+        this.submitting = false;
+      }
+    },
     formatDate(d) {
       if (!d) return '';
       const date = new Date(d);
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        + ' · ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        + ' • ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     },
   },
 };
 </script>
 
 <style>
+/* ── Reply card layout ────────────────────────────────────────── */
 .reply-card {
-  padding: 14px 0 10px;
-  border-top: 1px solid var(--border);
-}
-.reply-card.is-nested {
-  border-top: none;
-  border-left: 2px solid var(--border);
-  padding-left: 14px;
-  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
+/* ── Top-level (depth 0): border-left = continuous teal line ──── */
+.reply-card:not(.is-nested):not(.is-last) {
+  border-left: 1px solid var(--primary);
+  padding-bottom: var(--space-xs);
+}
+.reply-card:not(.is-nested).is-last {
+  border-left: 1px solid transparent; /* keep alignment, no visible line */
+}
+
+/* ── Top-level connector ─────────────────────────────────────── */
+/* Non-last: just horizontal arm (border-left provides vertical) */
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector {
+  width: 30px;
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector > .connector-vertical {
+  display: none;
+}
+.reply-card:not(.is-nested):not(.is-last) > .reply-connector > .connector-horizontal {
+  width: 30px;
+  height: 1px;
+  background: var(--primary);
+}
+/* Last: L-shape — vertical down then horizontal right */
+.reply-card:not(.is-nested).is-last > .reply-connector {
+  width: 30px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.reply-card:not(.is-nested).is-last > .reply-connector > .connector-vertical {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+.reply-card:not(.is-nested).is-last > .reply-connector > .connector-horizontal {
+  width: 30px;
+  height: 1px;
+  background: var(--primary);
+}
+
+/* ── Nested (depth > 0): border-left = green/secondary line ──── */
+.reply-card.is-nested:not(.is-last) {
+  border-left: 1px solid var(--secondary);
+  padding-bottom: var(--space-xs);
+}
+.reply-card.is-nested.is-last {
+  border-left: 1px solid transparent;
+}
+
+/* ── Nested connector ────────────────────────────────────────── */
+/* Non-last: just horizontal arm (border-left provides vertical) */
+.reply-card.is-nested:not(.is-last) > .reply-connector {
+  width: 10px;
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+.reply-card.is-nested:not(.is-last) > .reply-connector > .connector-vertical {
+  display: none;
+}
+.reply-card.is-nested:not(.is-last) > .reply-connector > .connector-horizontal {
+  width: 10px;
+  height: 1px;
+  background: var(--secondary);
+}
+/* Last nested: L-shape in secondary/green */
+.reply-card.is-nested.is-last > .reply-connector {
+  width: 10px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.reply-card.is-nested.is-last > .reply-connector > .connector-vertical {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--secondary);
+  flex-shrink: 0;
+}
+.reply-card.is-nested.is-last > .reply-connector > .connector-horizontal {
+  width: 10px;
+  height: 1px;
+  background: var(--secondary);
+}
+
+/* ── Reply content bubble ─────────────────────────────────────── */
+.reply-bubble {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border-radius: var(--radius-l);
+  padding: var(--space-2xs) var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
 .reply-header {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 8px;
+  gap: var(--space-2xs);
 }
-
+.reply-avatar-wrap {
+  padding: var(--space-4xs);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 .reply-avatar {
-  border: 2px solid var(--border);
+  border-radius: 50%;
 }
-
 .reply-author {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dark);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  white-space: nowrap;
+  line-height: 16px;
 }
-
 .reply-date {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-left: 4px;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #999;
+  line-height: 16px;
+  flex: 1;
 }
 
+/* ── Body text ────────────────────────────────────────────────── */
 .reply-body {
-  font-size: 13.5px;
-  color: var(--text-med);
-  line-height: 1.65;
-  margin-bottom: 10px;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  line-height: 16px;
+  padding-left: var(--space-m);
 }
 
+/* ── Helpful stat ─────────────────────────────────────────────── */
+.reply-helpful {
+  padding-left: var(--space-m);
+}
+
+/* ── Footer stats ─────────────────────────────────────────────── */
 .reply-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  padding-left: var(--space-m);
 }
 
-.stat-btn {
+/* Shared stat button for reply card */
+.reply-stat-btn {
   background: none;
   border: none;
-  font-size: 12.5px;
-  color: var(--text-light);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4xs);
   padding: 0;
+  line-height: 16px;
+  white-space: nowrap;
+  cursor: pointer;
   transition: color 0.12s;
 }
-.stat-btn:hover {
+.reply-stat-btn:hover {
   color: var(--text-dark);
 }
-.helpful-btn:hover {
-  color: var(--red);
-}
-.reply-action-btn {
-  color: var(--teal);
-  font-weight: 500;
-}
-.reply-action-btn:hover {
-  color: var(--teal-dark);
+
+/* Teal vertical divider */
+.reply-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--primary);
+  flex-shrink: 0;
 }
 
-.stat-sep {
-  color: var(--border);
+/* ── Inline reply form (inside the bubble) ────────────────────── */
+.reply-inline-form {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  padding-left: var(--space-m);
+}
+.reply-inline-input-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  background: var(--white);
+  border-radius: var(--radius-m);
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border);
+}
+.reply-inline-input {
+  width: 100%;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  color: #999;
+  background: transparent;
+  resize: none;
+  line-height: 16px;
+}
+.reply-inline-input:focus {
+  outline: none;
+  color: var(--text-body);
+}
+.reply-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.reply-inline-send-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-3xs) var(--space-s);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+.reply-inline-send-btn:hover {
+  background: var(--secondary);
+}
+.reply-inline-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
+/* ── Nested replies — indentation, primary border continues ──── */
 .nested-replies {
-  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: 79px;
 }
 </style>

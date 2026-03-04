@@ -2,14 +2,16 @@
   <div class="question-card">
     <!-- Card Header: avatar + meta -->
     <div class="qcard-meta">
-      <img
-        :src="avatarUrl"
-        :alt="thread.author_name"
-        class="cnw-social-worker-avatar qcard-avatar"
-        width="34" height="34"
-      />
-      <span class="qcard-author">{{ thread.author_name }}</span>
-      <span class="cnw-social-worker-verified" title="Verified">✓</span>
+      <div class="qcard-meta-left">
+        <img
+          :src="avatarUrl"
+          :alt="thread.author_name"
+          class="cnw-social-worker-avatar qcard-avatar"
+          width="34" height="34"
+        />
+        <span class="qcard-author">{{ thread.author_name }}</span>
+        <span class="cnw-social-worker-verified" title="Verified">✓</span>
+      </div>
       <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
     </div>
 
@@ -21,28 +23,40 @@
 
     <!-- Tags -->
     <div class="qcard-tags">
-      <TagBadge v-for="tag in threadTags" :key="tag" :label="tag" />
+      <span v-for="tag in threadTags" :key="tag" class="qcard-tag">{{ tag }}</span>
     </div>
 
-    <!-- Stats row -->
-    <div class="qcard-footer">
+    <!-- Stats row 1: Helpful + Views -->
+    <div class="qcard-stats-row">
       <button class="stat-btn helpful-btn" @click.stop="like">
-        <svg width="14" height="14" viewBox="0 0 24 24" :fill="liked ? 'var(--red)' : 'none'" stroke="var(--red)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        {{ localLikes }} Helpful
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--red)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span>{{ localLikes }}</span>
+        <span>Helpful</span>
       </button>
-      <span class="stat-sep">|</span>
-      <span class="stat-text">Views: {{ formatNum(thread.views) }}</span>
-      <span class="stat-sep">|</span>
+      <span class="stat-divider"></span>
+      <span class="stat-views">
+        <span class="stat-views-label">Views</span>
+        <span class="stat-views-value">{{ formatNum(thread.views) }}</span>
+      </span>
+    </div>
+
+    <!-- Stats row 2: Replies + Reply + Answered -->
+    <div class="qcard-stats-row">
       <button class="stat-btn" @click.stop="toggleExpand">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        {{ thread.reply_count || 0 }} Replies
+        <span>{{ thread.reply_count || 0 }}</span>
+        <span>Replies</span>
       </button>
-      <span class="stat-sep">|</span>
-      <button class="stat-btn reply-link" @click.stop="toggleExpand">Reply</button>
+      <span class="stat-divider"></span>
+      <button class="stat-btn reply-link" @click.stop="toggleExpand">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
+        <span>Reply</span>
+      </button>
+      <span class="stat-divider"></span>
       <span class="answered-badge" :class="thread.reply_count > 0 ? 'is-answered' : 'is-unanswered'">
-        <svg v-if="thread.reply_count > 0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
-        {{ thread.reply_count > 0 ? 'answered' : 'unanswered' }}
+        <svg v-if="thread.reply_count > 0" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="7" :fill="'var(--green)'"/></svg>
+        <svg v-else width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="var(--text-light)" stroke-width="2"/></svg>
+        <span>{{ thread.reply_count > 0 ? 'answered' : 'unanswered' }}</span>
       </span>
     </div>
 
@@ -51,35 +65,39 @@
       <div v-if="loadingReplies" class="cnw-social-worker-loading" style="padding:16px">Loading replies…</div>
       <template v-else>
         <ReplyCard
-          v-for="reply in topLevelReplies"
+          v-for="(reply, idx) in topLevelReplies"
           :key="reply.id"
           :reply="reply"
           :all-replies="replies"
           :depth="0"
-          @reply="focusReplyBox"
+          :is-last="idx === topLevelReplies.length - 1"
+          :thread-id="thread.id"
+          @reply-submitted="refreshReplies"
         />
         <!-- Write message box -->
         <div class="inline-reply-form">
           <img
             :src="currentUserAvatar"
             class="cnw-social-worker-avatar"
-            width="30" height="30"
+            width="24" height="24"
             alt="You"
           />
           <div class="inline-reply-input-wrap">
-            <input
+            <textarea
               ref="replyInput"
               v-model="replyDraft"
-              type="text"
-              placeholder="Write Message..."
+              placeholder="Write Message:"
               class="inline-reply-input"
-              @keydown.enter.prevent="submitInlineReply"
-            />
-            <button
-              class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-social-worker-btn-sm inline-reply-send"
-              :disabled="!replyDraft.trim() || submitting"
-              @click="submitInlineReply"
-            >Reply</button>
+              rows="3"
+              @keydown.enter.ctrl.prevent="submitInlineReply"
+            ></textarea>
+            <div class="inline-reply-actions">
+              <button
+                class="inline-reply-send-btn"
+                :disabled="!replyDraft.trim() || submitting"
+                @click="submitInlineReply"
+              >Reply</button>
+            </div>
           </div>
         </div>
       </template>
@@ -88,12 +106,11 @@
 </template>
 
 <script>
-import TagBadge from './TagBadge.vue';
 import ReplyCard from './ReplyCard.vue';
 import { getReplies, createReply } from '@/api/index.js';
 
 const SAMPLE_TAGS = [
-  ['Trauma-Informed Care', 'Therapy Referrals', 'Uninsured Adults'],
+  ['Mental Health Services', 'Therapy Referrals', 'Uninsured Adults'],
   ['Emergency Housing', 'Shelter Overflow', 'Adult Services'],
   ['Youth Services', 'McKinney-Vento', 'School Stability', 'Housing Insecurity'],
   ['Mental Health Services', 'Crisis Intervention'],
@@ -103,7 +120,7 @@ const SAMPLE_TAGS = [
 
 export default {
   name: 'QuestionCard',
-  components: { TagBadge, ReplyCard },
+  components: { ReplyCard },
   props: {
     thread: { type: Object, required: true },
   },
@@ -159,6 +176,12 @@ export default {
     focusReplyBox() {
       this.$nextTick(() => this.$refs.replyInput?.focus());
     },
+    async refreshReplies() {
+      try {
+        const data = await getReplies(this.thread.id);
+        this.replies = data.replies || [];
+      } catch (e) { /* silent */ }
+    },
     async submitInlineReply() {
       if (!this.replyDraft.trim()) return;
       this.submitting = true;
@@ -179,7 +202,7 @@ export default {
       if (!d) return '';
       const date = new Date(d);
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        + ' · ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        + ' • ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     },
     formatNum(n) {
       if (!n) return '0';
@@ -190,159 +213,223 @@ export default {
 </script>
 
 <style>
+/* ── Card container ──────────────────────────────────────────── */
 .question-card {
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 20px 22px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.15s;
-}
-.question-card:hover {
-  box-shadow: var(--shadow-md);
+  background: var(--white);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  border: var(--radius-xs) solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
+/* ── Header: avatar + name + verified + date ─────────────────── */
 .qcard-meta {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 12px;
+  gap: var(--space-xs);
+}
+.qcard-meta-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 .qcard-avatar {
-  border: 2px solid var(--border);
+  border-radius: 50%;
 }
 .qcard-author {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-dark);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  white-space: nowrap;
+  line-height: 16px;
 }
 .qcard-date {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-left: 4px;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #999;
+  white-space: nowrap;
+  line-height: 16px;
 }
 
+/* ── Title ────────────────────────────────────────────────────── */
 .qcard-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-dark);
-  line-height: 1.4;
-  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  line-height: 24.5px;
   cursor: pointer;
 }
 .qcard-title:hover {
   color: var(--teal-dark);
 }
 
+/* ── Excerpt ──────────────────────────────────────────────────── */
 .qcard-excerpt {
-  font-size: 13.5px;
-  color: var(--text-med);
-  line-height: 1.65;
-  margin-bottom: 14px;
+  font-size: var(--text-m);
+  font-weight: 300;
+  color: #000;
+  line-height: 1.32;
 }
 
+/* ── Tags — gradient badges ───────────────────────────────────── */
 .qcard-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 14px;
+  gap: var(--space-2xs);
+}
+.qcard-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xs) var(--space-2xs);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--white);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
 }
 
-.qcard-footer {
+/* ── Stats rows ───────────────────────────────────────────────── */
+.qcard-stats-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  gap: var(--space-2xs);
 }
 
 .stat-btn {
   background: none;
   border: none;
-  font-size: 12.5px;
-  color: var(--text-light);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4xs);
   padding: 0;
+  padding-bottom: var(--space-4xs);
+  line-height: 16px;
+  white-space: nowrap;
   transition: color 0.12s;
 }
 .stat-btn:hover {
   color: var(--text-dark);
 }
-.helpful-btn:hover { color: var(--red); }
-.reply-link {
-  color: var(--teal);
-  font-weight: 500;
-}
-.reply-link:hover { color: var(--teal-dark); }
-
-.stat-text {
-  font-size: 12.5px;
-  color: var(--text-light);
-}
-.stat-sep {
-  color: var(--border);
-  font-size: 12px;
+.helpful-btn:hover {
+  color: var(--red);
 }
 
-.answered-badge {
-  margin-left: auto;
+/* Teal vertical divider */
+.stat-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Views */
+.stat-views {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  white-space: nowrap;
 }
-.answered-badge.is-answered {
-  background: var(--green-light);
-  color: var(--green-dark);
+.stat-views-label {
+  color: #999;
 }
-.answered-badge.is-unanswered {
-  background: var(--bg);
-  color: var(--text-light);
+.stat-views-value {
+  color: var(--text-body);
 }
 
-/* Inline replies */
+/* Reply link with underline */
+.reply-link {
+  color: var(--text-body);
+  border-bottom: var(--radius-xs) solid var(--primary);
+}
+.reply-link:hover {
+  color: var(--teal-dark);
+}
+
+/* Answered badge — simple dot + text */
+.answered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
+  line-height: 16px;
+  white-space: nowrap;
+  padding-bottom: var(--space-4xs);
+}
+
+/* ── Inline replies ───────────────────────────────────────────── */
 .qcard-replies {
-  margin-top: 16px;
-  border-top: 2px solid var(--border);
-  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--space-m);
 }
 
+/* Write message box — matches Figma */
+.qcard-replies > .inline-reply-form {
+  margin-top: var(--space-xs);
+}
 .inline-reply-form {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  align-items: flex-start;
+  gap: var(--space-2xs);
 }
 .inline-reply-input-wrap {
   flex: 1;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  background: var(--bg);
+  border-radius: var(--radius-m);
+  padding: var(--space-2xs) var(--space-xs);
 }
 .inline-reply-input {
-  flex: 1;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
+  width: 100%;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
   font-family: inherit;
-  color: var(--text-dark);
-  background: var(--bg);
-  transition: border-color 0.12s;
+  color: #999;
+  background: transparent;
+  resize: none;
+  line-height: 16px;
 }
 .inline-reply-input:focus {
   outline: none;
-  border-color: var(--teal);
-  background: #fff;
+  color: var(--text-body);
 }
-.inline-reply-send {
-  flex-shrink: 0;
+.inline-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.inline-reply-send-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-3xs) var(--space-s);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+.inline-reply-send-btn:hover {
+  background: var(--secondary);
+}
+.inline-reply-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

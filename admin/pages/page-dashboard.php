@@ -1,111 +1,75 @@
 <?php
 /**
- * Admin Dashboard page — Platform Settings.
- *
- * @package Cnw_Social_Bridge
+ * Admin Dashboard — overview stats for all tables.
  */
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+global $wpdb;
+$p = $wpdb->prefix . 'cnw_social_worker_';
 
-$logo_url   = get_option( 'cnw_social_logo_url', '' );
-$logo_saved = isset( $_GET['logo_saved'] ) && $_GET['logo_saved'] === '1';
+$counts = array(
+    'threads'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}threads" ),
+    'replies'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}replies" ),
+    'messages'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}messages" ),
+    'categories' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}categories" ),
+    'votes'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}votes" ),
+    'reputation' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}reputation" ),
+);
+
+$cards = array(
+    array( 'Threads',    'threads',    'cnw-threads',    'dashicons-format-chat' ),
+    array( 'Replies',    'replies',    'cnw-replies',    'dashicons-admin-comments' ),
+    array( 'Messages',   'messages',   'cnw-messages',   'dashicons-email-alt' ),
+    array( 'Categories', 'categories', 'cnw-categories', 'dashicons-category' ),
+    array( 'Votes',      'votes',      'cnw-votes',      'dashicons-thumbs-up' ),
+    array( 'Reputation', 'reputation', 'cnw-reputation',  'dashicons-awards' ),
+);
 ?>
 
 <div class="wrap cnw-admin-wrap">
-
     <div class="cnw-admin-header">
-        <h1 class="cnw-admin-title">
-            <?php esc_html_e( 'Social Bridge', 'cnw-social-bridge' ); ?>
-        </h1>
-        <p class="cnw-admin-subtitle">
-            <?php esc_html_e( 'Platform Settings', 'cnw-social-bridge' ); ?>
-        </p>
+        <h1 class="cnw-admin-title"><?php esc_html_e( 'Social Bridge Dashboard', 'cnw-social-bridge' ); ?></h1>
+        <p class="cnw-admin-subtitle"><?php esc_html_e( 'Overview of all forum data.', 'cnw-social-bridge' ); ?></p>
     </div>
 
-    <?php if ( $logo_saved ) : ?>
-        <div class="notice notice-success is-dismissible cnw-notice">
-            <p><?php esc_html_e( 'Settings saved successfully.', 'cnw-social-bridge' ); ?></p>
-        </div>
-    <?php endif; ?>
-
-    <!-- ── Branding ──────────────────────────────────────────────── -->
-    <div class="cnw-section">
-
-        <div class="cnw-section-heading">
-            <h2 class="cnw-section-title">
-                <?php esc_html_e( 'Branding', 'cnw-social-bridge' ); ?>
-            </h2>
-            <p class="cnw-section-desc">
-                <?php esc_html_e( 'Customise how your Social Bridge platform looks to members.', 'cnw-social-bridge' ); ?>
-            </p>
-        </div>
-
-        <div class="cnw-settings-card">
-
-            <div class="cnw-settings-card-header">
-                <span class="dashicons dashicons-format-image cnw-card-icon"></span>
-                <div>
-                    <h3 class="cnw-settings-card-title">
-                        <?php esc_html_e( 'Platform Logo', 'cnw-social-bridge' ); ?>
-                    </h3>
-                    <p class="cnw-settings-card-desc">
-                        <?php esc_html_e( 'Displayed in the header of the Social Bridge platform. Recommended size: 200 × 60 px (PNG or SVG with transparent background).', 'cnw-social-bridge' ); ?>
-                    </p>
-                </div>
+    <div class="cnw-dashboard-grid">
+        <?php foreach ( $cards as $c ) : ?>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $c[2] ) ); ?>" class="cnw-dash-card">
+            <span class="dashicons <?php echo esc_attr( $c[3] ); ?> cnw-dash-icon"></span>
+            <div>
+                <span class="cnw-dash-count"><?php echo number_format( $counts[ $c[1] ] ); ?></span>
+                <span class="cnw-dash-label"><?php echo esc_html( $c[0] ); ?></span>
             </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
 
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-logo-form">
-                <?php wp_nonce_field( 'cnw_save_logo' ); ?>
-                <input type="hidden" name="action"       value="cnw_save_logo">
-                <input type="hidden" name="cnw_logo_url" id="cnw-logo-url" value="<?php echo esc_attr( $logo_url ); ?>">
-
-                <!-- Preview -->
-                <div class="cnw-logo-preview-wrap" id="cnw-logo-preview">
-                    <?php if ( $logo_url ) : ?>
-                        <img
-                            src="<?php echo esc_url( $logo_url ); ?>"
-                            alt="<?php esc_attr_e( 'Logo preview', 'cnw-social-bridge' ); ?>"
-                            class="cnw-logo-preview-img"
-                        />
-                    <?php else : ?>
-                        <div class="cnw-logo-empty-state">
-                            <span class="dashicons dashicons-format-image"></span>
-                            <p><?php esc_html_e( 'No logo selected', 'cnw-social-bridge' ); ?></p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Media buttons -->
-                <div class="cnw-logo-actions">
-                    <button type="button" id="cnw-select-logo" class="button button-secondary cnw-btn-select">
-                        <span class="dashicons dashicons-upload"></span>
-                        <?php echo $logo_url
-                            ? esc_html__( 'Change Logo', 'cnw-social-bridge' )
-                            : esc_html__( 'Select Logo', 'cnw-social-bridge' );
-                        ?>
-                    </button>
-
-                    <button
-                        type="button"
-                        id="cnw-remove-logo"
-                        class="button button-link-delete cnw-btn-remove"
-                        <?php echo $logo_url ? '' : 'style="display:none"'; ?>
-                    >
-                        <span class="dashicons dashicons-trash"></span>
-                        <?php esc_html_e( 'Remove', 'cnw-social-bridge' ); ?>
-                    </button>
-                </div>
-
-                <div class="cnw-form-footer">
-                    <?php submit_button( __( 'Save', 'cnw-social-bridge' ), 'primary', 'submit', false ); ?>
-                </div>
-
-            </form>
-
-        </div><!-- .cnw-settings-card -->
-
-    </div><!-- .cnw-section / Branding -->
-
-</div><!-- .wrap -->
+    <div class="cnw-section" style="margin-top:30px">
+        <h2 class="cnw-section-title"><?php esc_html_e( 'Recent Threads', 'cnw-social-bridge' ); ?></h2>
+        <?php
+        $recent = $wpdb->get_results(
+            "SELECT t.*, u.display_name AS author_name
+             FROM {$p}threads t LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
+             ORDER BY t.created_at DESC LIMIT 5"
+        );
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead><tr>
+                <th style="width:40px">ID</th><th>Title</th><th style="width:140px">Author</th><th style="width:90px">Status</th><th style="width:150px">Created</th>
+            </tr></thead>
+            <tbody>
+            <?php if ( $recent ) : foreach ( $recent as $t ) : ?>
+                <tr>
+                    <td><?php echo esc_html( $t->id ); ?></td>
+                    <td><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads&action=edit&id=' . $t->id ) ); ?>"><?php echo esc_html( $t->title ); ?></a></td>
+                    <td><?php echo esc_html( $t->author_name ); ?></td>
+                    <td><span class="cnw-status cnw-status-<?php echo esc_attr( $t->status ); ?>"><?php echo esc_html( ucfirst( $t->status ) ); ?></span></td>
+                    <td><?php echo esc_html( $t->created_at ); ?></td>
+                </tr>
+            <?php endforeach; else : ?>
+                <tr><td colspan="5"><?php esc_html_e( 'No threads yet.', 'cnw-social-bridge' ); ?></td></tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>

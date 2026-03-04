@@ -1,25 +1,67 @@
-const BASE_URL = window.cnwData?.restUrl || '';
+const REST_URL = window.cnwData?.restUrl || '';
+const SITE_URL = window.cnwData?.siteUrl || '';
 const NONCE = window.cnwData?.nonce || '';
+const NS = '/cnw-social-bridge/v1';
 
 const headers = () => ({
   'Content-Type': 'application/json',
   'X-WP-Nonce': NONCE,
 });
 
-export async function getThreads({ page = 1, filter = 'newest', search = '' } = {}) {
-  const params = new URLSearchParams({ page, filter });
-  if (search) params.append('search', search);
-  const res = await fetch(`${BASE_URL}/threads?${params}`, { headers: headers() });
+/**
+ * Build a REST API URL that works with both pretty permalinks and plain query-string fallback.
+ * Tries the pretty /wp-json/ URL first; if it 404s, subsequent calls use ?rest_route= instead.
+ */
+let useFallback = null; // null = untested, true = use ?rest_route=
+
+async function apiUrl(path, params = {}) {
+  const qs = new URLSearchParams(params);
+
+  // If we already know pretty URLs fail, go straight to fallback
+  if (useFallback) {
+    qs.set('rest_route', `${NS}${path}`);
+    return `${SITE_URL}?${qs}`;
+  }
+
+  const pretty = `${REST_URL}${path}${qs.toString() ? '?' + qs : ''}`;
+
+  if (useFallback === null) {
+    // First call — probe the pretty URL
+    try {
+      const probe = await fetch(pretty, { method: 'HEAD', headers: headers() });
+      if (probe.ok || probe.status === 401 || probe.status === 403) {
+        useFallback = false;
+        return pretty;
+      }
+    } catch { /* network error */ }
+    // Pretty URL failed — switch to fallback permanently
+    useFallback = true;
+    qs.set('rest_route', `${NS}${path}`);
+    return `${SITE_URL}?${qs}`;
+  }
+
+  return pretty;
+}
+
+async function apiFetch(path, params = {}, options = {}) {
+  const url = await apiUrl(path, params);
+  const res = await fetch(url, { headers: headers(), ...options });
   return res.json();
+}
+
+export async function getThreads({ page = 1, filter = 'newest', search = '' } = {}) {
+  const params = { page, filter };
+  if (search) params.search = search;
+  return apiFetch('/threads', params);
 }
 
 export async function getThread(id) {
-  const res = await fetch(`${BASE_URL}/threads/${id}`, { headers: headers() });
-  return res.json();
+  return apiFetch(`/threads/${id}`);
 }
 
 export async function createThread({ title, content, tags = [] }) {
-  const res = await fetch(`${BASE_URL}/threads`, {
+  const url = await apiUrl('/threads');
+  const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ title, content, tags }),
@@ -28,25 +70,25 @@ export async function createThread({ title, content, tags = [] }) {
 }
 
 export async function getReplies(threadId) {
-  const res = await fetch(`${BASE_URL}/threads/${threadId}/replies`, { headers: headers() });
-  return res.json();
+  return apiFetch(`/threads/${threadId}/replies`);
 }
 
-export async function createReply({ thread_id, content }) {
-  const res = await fetch(`${BASE_URL}/replies`, {
+export async function createReply({ thread_id, content, parent_id }) {
+  const url = await apiUrl('/replies');
+  const body = { thread_id, content };
+  if (parent_id) body.parent_id = parent_id;
+  const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ thread_id, content }),
+    body: JSON.stringify(body),
   });
   return res.json();
 }
 
 export async function getTags() {
-  const res = await fetch(`${BASE_URL}/tags`, { headers: headers() });
-  return res.json();
+  return apiFetch('/tags');
 }
 
 export async function getHotQuestions() {
-  const res = await fetch(`${BASE_URL}/hot-questions`, { headers: headers() });
-  return res.json();
+  return apiFetch('/hot-questions');
 }
