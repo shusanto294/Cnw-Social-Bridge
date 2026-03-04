@@ -44,6 +44,9 @@ class Cnw_Social_Bridge {
         // Shortcode
         add_shortcode( 'cnw_social_bridge', array( $this, 'render_shortcode' ) );
 
+        // Run any pending DB migrations on every load.
+        add_action( 'init', array( __CLASS__, 'migrate_tags_description_column' ) );
+
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
         new Cnw_Social_Bridge_REST_API();
@@ -117,22 +120,27 @@ class Cnw_Social_Bridge {
             color       varchar(7)          DEFAULT NULL,
             sort_order  int(11)             DEFAULT 0,
             is_active   tinyint(1)          DEFAULT 1,
+            created_by  bigint(20) unsigned DEFAULT NULL,
             created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
             updated_at  datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY slug (slug),
             KEY parent_id  (parent_id),
             KEY sort_order (sort_order),
-            KEY is_active  (is_active)
+            KEY is_active  (is_active),
+            KEY created_by (created_by)
         ) $charset_collate;";
 
         $sql_tags = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_tags (
-            id         bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            name       varchar(100)        NOT NULL,
-            slug       varchar(100)        NOT NULL,
-            created_at datetime            DEFAULT CURRENT_TIMESTAMP,
+            id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            name        varchar(100)        NOT NULL,
+            slug        varchar(100)        NOT NULL,
+            description text                NULL,
+            created_by  bigint(20) unsigned DEFAULT NULL,
+            created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY slug (slug)
+            UNIQUE KEY slug (slug),
+            KEY created_by (created_by)
         ) $charset_collate;";
 
         $sql_thread_tags = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_thread_tags (
@@ -194,6 +202,9 @@ class Cnw_Social_Bridge {
         dbDelta( $sql_votes );
         dbDelta( $sql_reputation );
 
+        // Ensure description column exists for existing installs.
+        self::migrate_tags_description_column();
+
         $this->create_user_roles();
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );
@@ -248,6 +259,45 @@ class Cnw_Social_Bridge {
 
     public function deactivate() {
         // Keep data on deactivation; roles remain until explicitly removed.
+    }
+
+    /* ------------------------------------------------------------------
+     * DB Migrations
+     * ------------------------------------------------------------------ */
+
+    public static function migrate_tags_description_column() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+
+        // 1. Add description column to tags table if missing.
+        $tags_table = $wpdb->prefix . 'cnw_social_worker_tags';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM `$tags_table` LIKE 'description'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE `$tags_table` ADD COLUMN `description` text NULL AFTER `slug`" );
+        }
+
+        // 3. Add created_by column to tags table if missing.
+        $col2 = $wpdb->get_results( "SHOW COLUMNS FROM `$tags_table` LIKE 'created_by'" );
+        if ( empty( $col2 ) ) {
+            $wpdb->query( "ALTER TABLE `$tags_table` ADD COLUMN `created_by` bigint(20) unsigned DEFAULT NULL AFTER `description`" );
+        }
+
+        // 4. Add created_by column to categories table if missing.
+        $cats_table = $wpdb->prefix . 'cnw_social_worker_categories';
+        $col3 = $wpdb->get_results( "SHOW COLUMNS FROM `$cats_table` LIKE 'created_by'" );
+        if ( empty( $col3 ) ) {
+            $wpdb->query( "ALTER TABLE `$cats_table` ADD COLUMN `created_by` bigint(20) unsigned DEFAULT NULL AFTER `is_active`" );
+        }
+
+        // 2. Ensure thread_tags junction table exists (safe re-create).
+        $wpdb->query(
+            "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_thread_tags (
+                thread_id bigint(20) unsigned NOT NULL,
+                tag_id    bigint(20) unsigned NOT NULL,
+                PRIMARY KEY (thread_id, tag_id),
+                KEY tag_id (tag_id)
+            ) $charset_collate"
+        );
     }
 
     /* ------------------------------------------------------------------

@@ -61,7 +61,7 @@ class Cnw_Social_Bridge_REST_API {
         // ── Categories ───────────────────────────────────────────────
         register_rest_route( $ns, '/categories', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_categories' ),  'permission_callback' => '__return_true' ),
-            array( 'methods' => 'POST', 'callback' => array( $this, 'create_category' ), 'permission_callback' => array( $this, 'can_manage' ) ),
+            array( 'methods' => 'POST', 'callback' => array( $this, 'create_category' ), 'permission_callback' => array( $this, 'can_create_thread' ) ),
         ) );
         register_rest_route( $ns, '/categories/(?P<id>\d+)', array(
             array( 'methods' => 'GET',      'callback' => array( $this, 'get_category' ),    'permission_callback' => '__return_true' ),
@@ -90,9 +90,13 @@ class Cnw_Social_Bridge_REST_API {
             array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_reputation' ),    'permission_callback' => array( $this, 'can_manage' ) ),
         ) );
 
-        // ── Utility (kept for frontend) ──────────────────────────────
+        // ── Tags ─────────────────────────────────────────────────────
         register_rest_route( $ns, '/tags', array(
-            'methods' => 'GET', 'callback' => array( $this, 'get_tags' ), 'permission_callback' => '__return_true',
+            array( 'methods' => 'GET',  'callback' => array( $this, 'get_tags' ),  'permission_callback' => '__return_true' ),
+            array( 'methods' => 'POST', 'callback' => array( $this, 'create_tag' ), 'permission_callback' => 'is_user_logged_in' ),
+        ) );
+        register_rest_route( $ns, '/tags/(?P<id>\d+)', array(
+            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_tag' ), 'permission_callback' => 'is_user_logged_in' ),
         ) );
         register_rest_route( $ns, '/tags/followed', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_followed_tags' ), 'permission_callback' => array( $this, 'can_create_thread' ),
@@ -233,7 +237,14 @@ class Cnw_Social_Bridge_REST_API {
     public function create_thread( WP_REST_Request $request ) {
         global $wpdb;
 
+        // get_json_params() can return null if Content-Type parsing fails; guard against it.
         $params = $request->get_json_params();
+        if ( ! is_array( $params ) ) {
+            $params = json_decode( $request->get_body(), true );
+        }
+        if ( ! is_array( $params ) ) {
+            $params = array();
+        }
 
         if ( empty( $params['title'] ) || empty( $params['content'] ) ) {
             return new WP_Error( 'missing_fields', 'Title and content are required', array( 'status' => 400 ) );
@@ -246,38 +257,43 @@ class Cnw_Social_Bridge_REST_API {
                 'title'     => sanitize_text_field( $params['title'] ),
                 'content'   => wp_kses_post( $params['content'] ),
                 'status'    => 'published',
-            )
+            ),
+            array( '%d', '%s', '%s', '%s' )
         );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to create thread', array( 'status' => 500 ) );
         }
 
-        $thread_id = $wpdb->insert_id;
+        $thread_id = (int) $wpdb->insert_id;
 
         // Save tags
-        if ( ! empty( $params['tags'] ) && is_array( $params['tags'] ) ) {
-            foreach ( $params['tags'] as $tag_name ) {
-                $tag_name = sanitize_text_field( trim( $tag_name ) );
-                if ( empty( $tag_name ) ) continue;
+        $tags = isset( $params['tags'] ) && is_array( $params['tags'] ) ? $params['tags'] : array();
+        foreach ( $tags as $tag_name ) {
+            $tag_name = sanitize_text_field( trim( (string) $tag_name ) );
+            if ( '' === $tag_name ) continue;
 
-                $slug = sanitize_title( $tag_name );
-                $tag_id = $wpdb->get_var( $wpdb->prepare(
-                    "SELECT id FROM {$wpdb->prefix}cnw_social_worker_tags WHERE slug = %s",
-                    $slug
-                ) );
+            $slug = sanitize_title( $tag_name );
 
-                if ( ! $tag_id ) {
-                    $wpdb->insert( $wpdb->prefix . 'cnw_social_worker_tags', array(
-                        'name' => $tag_name,
-                        'slug' => $slug,
-                    ) );
-                    $tag_id = $wpdb->insert_id;
-                }
+            $tag_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}cnw_social_worker_tags WHERE slug = %s",
+                $slug
+            ) );
 
-                $wpdb->replace( $wpdb->prefix . 'cnw_social_worker_thread_tags', array(
-                    'thread_id' => $thread_id,
-                    'tag_id'    => $tag_id,
+            if ( ! $tag_id ) {
+                $wpdb->insert(
+                    $wpdb->prefix . 'cnw_social_worker_tags',
+                    array( 'name' => $tag_name, 'slug' => $slug ),
+                    array( '%s', '%s' )
+                );
+                $tag_id = (int) $wpdb->insert_id;
+            }
+
+            if ( $tag_id ) {
+                $wpdb->query( $wpdb->prepare(
+                    "INSERT IGNORE INTO {$wpdb->prefix}cnw_social_worker_thread_tags (thread_id, tag_id) VALUES (%d, %d)",
+                    $thread_id,
+                    $tag_id
                 ) );
             }
         }
@@ -635,6 +651,7 @@ class Cnw_Social_Bridge_REST_API {
                 'color'       => isset( $params['color'] ) ? sanitize_hex_color( $params['color'] ) : null,
                 'sort_order'  => isset( $params['sort_order'] ) ? intval( $params['sort_order'] ) : 0,
                 'is_active'   => isset( $params['is_active'] ) ? intval( $params['is_active'] ) : 1,
+                'created_by'  => get_current_user_id(),
             )
         );
 
@@ -920,6 +937,76 @@ class Cnw_Social_Bridge_REST_API {
         return $wpdb->get_results(
             "SELECT * FROM {$wpdb->prefix}cnw_social_worker_tags ORDER BY name ASC"
         );
+    }
+
+    public function create_tag( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $body = $request->get_json_params();
+        if ( empty( $body['name'] ) ) {
+            return new WP_Error( 'missing_name', 'Tag name is required.', array( 'status' => 400 ) );
+        }
+
+        $name = sanitize_text_field( $body['name'] );
+        $slug = sanitize_title( $name );
+        if ( ! $slug ) {
+            $slug = 'tag-' . time();
+        }
+
+        $table = $wpdb->prefix . 'cnw_social_worker_tags';
+
+        // Return existing tag if slug already exists.
+        $existing_id = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM $table WHERE slug = %s", $slug
+        ) );
+        if ( $existing_id ) {
+            return array( 'success' => true, 'id' => (int) $existing_id, 'existing' => true );
+        }
+
+        $inserted = $wpdb->insert( $table, array( 'name' => $name, 'slug' => $slug, 'created_by' => get_current_user_id() ), array( '%s', '%s', '%d' ) );
+
+        if ( false === $inserted ) {
+            return new WP_Error( 'db_error', $wpdb->last_error ?: 'Insert failed.', array( 'status' => 500 ) );
+        }
+
+        return array( 'success' => true, 'id' => (int) $wpdb->insert_id );
+    }
+
+    public function update_tag( WP_REST_Request $request ) {
+        global $wpdb;
+        $tag_id  = intval( $request['id'] );
+        $user_id = get_current_user_id();
+        $table   = $wpdb->prefix . 'cnw_social_worker_tags';
+
+        $tag = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$table` WHERE id = %d", $tag_id ) );
+        if ( ! $tag ) {
+            return new WP_Error( 'not_found', 'Tag not found.', array( 'status' => 404 ) );
+        }
+        if ( (int) $tag->created_by !== $user_id && ! current_user_can( 'manage_options' ) ) {
+            return new WP_Error( 'forbidden', 'Not allowed.', array( 'status' => 403 ) );
+        }
+
+        $body = $request->get_json_params();
+        $data    = array();
+        $formats = array();
+
+        if ( ! empty( $body['name'] ) ) {
+            $data['name'] = sanitize_text_field( $body['name'] );
+            $data['slug'] = sanitize_title( $body['name'] );
+            $formats[]    = '%s';
+            $formats[]    = '%s';
+        }
+        if ( array_key_exists( 'description', $body ) ) {
+            $data['description'] = sanitize_textarea_field( $body['description'] ) ?: null;
+            $formats[]           = '%s';
+        }
+
+        if ( empty( $data ) ) {
+            return new WP_Error( 'no_data', 'Nothing to update.', array( 'status' => 400 ) );
+        }
+
+        $wpdb->update( $table, $data, array( 'id' => $tag_id ), $formats, array( '%d' ) );
+        return array( 'success' => true );
     }
 
     public function get_followed_tags() {

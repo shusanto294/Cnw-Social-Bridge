@@ -96,6 +96,39 @@ export async function getTags() {
   return apiFetch('/tags');
 }
 
+export async function createTag({ name, description = '' }) {
+  const url = await apiUrl('/tags');
+  const body = { name };
+  if (description) body.description = description;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+export async function updateTag({ id, name, description = '' }) {
+  const url = await apiUrl(`/tags/${id}`);
+  const body = { name, description };
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+export async function createCategory({ name }) {
+  const url = await apiUrl('/categories');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name }),
+  });
+  return res.json();
+}
+
 export async function getFollowedTags() {
   return apiFetch('/tags/followed');
 }

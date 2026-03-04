@@ -55,44 +55,94 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
               Add Tags
             </button>
-            <div class="ask-category-wrap">
-              <button type="button" class="ask-gradient-btn" @click="showCategoryDropdown = !showCategoryDropdown">
+
+            <!-- Category picker -->
+            <div class="ask-category-wrap" ref="categoryWrap">
+              <button type="button" class="ask-gradient-btn" @click="toggleCategoryDropdown">
                 {{ selectedCategory ? selectedCategory.name : 'Category' }}
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div v-if="showCategoryDropdown" class="ask-category-dropdown">
+                <input
+                  v-model="categorySearch"
+                  type="text"
+                  placeholder="Search categories…"
+                  class="ask-dropdown-search"
+                  ref="catSearchInput"
+                  @keydown.escape="closeCategoryDropdown"
+                />
                 <div
-                  v-for="cat in categories"
+                  v-for="cat in filteredCategories"
                   :key="cat.id"
                   class="ask-category-option"
                   :class="{ 'is-selected': selectedCategory && selectedCategory.id === cat.id }"
-                  @click="selectCategory(cat)"
+                  @mousedown.prevent="selectCategory(cat)"
                 >{{ cat.name }}</div>
-                <div v-if="categories.length === 0" class="ask-category-option ask-category-empty">No categories</div>
+
+                <!-- Create new category option -->
+                <div
+                  v-if="categorySearch.trim() && !exactCategoryMatch && !showNewCategoryForm"
+                  class="ask-category-option ask-create-option"
+                  @mousedown.prevent="startNewCategory"
+                >+ Create "{{ categorySearch.trim() }}"</div>
+
+                <div v-if="filteredCategories.length === 0 && !categorySearch.trim() && !showNewCategoryForm" class="ask-category-option ask-category-empty">No categories yet</div>
+
+                <!-- Inline new category form -->
+                <div v-if="showNewCategoryForm" class="ask-new-item-form" @mousedown.prevent>
+                  <p class="ask-new-item-label">New Category</p>
+                  <input v-model="newCategoryName" type="text" placeholder="Category name" class="ask-inline-input" @keydown.enter.prevent="addNewCategory" />
+                  <div class="ask-inline-actions">
+                    <button type="button" class="ask-inline-btn ask-inline-btn--primary" @click="addNewCategory" :disabled="!newCategoryName.trim() || creatingCategory">
+                      {{ creatingCategory ? '…' : 'Create' }}
+                    </button>
+                    <button type="button" class="ask-inline-btn" @click="showNewCategoryForm = false">Cancel</button>
+                  </div>
+                  <p v-if="categoryError" class="ask-inline-error">{{ categoryError }}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Tag input (toggled) -->
-          <div v-if="showTagInput" class="ask-tag-input-area">
-            <div class="ask-selected-tags">
+          <!-- Tag panel (toggled) -->
+          <div v-if="showTagInput" class="ask-tag-panel">
+
+            <!-- Selected tag chips -->
+            <div v-if="selectedTagObjects.length" class="ask-selected-tags">
               <span
-                v-for="tag in selectedTags"
-                :key="tag"
+                v-for="tag in selectedTagObjects"
+                :key="tag.name"
                 class="ask-tag-chip"
               >
-                {{ tag }}
+                {{ tag.name }}
                 <button type="button" class="ask-tag-remove" @click="removeTag(tag)">×</button>
               </span>
             </div>
-            <input
-              v-model="tagInput"
-              type="text"
-              placeholder="Type a tag and press Enter…"
-              class="ask-tag-field"
-              @keydown.enter.prevent="addTag"
-            />
+
+            <!-- Tag input + dropdown -->
+            <div class="ask-tag-search-wrap" ref="tagSearchWrap">
+              <input
+                v-model="tagSearch"
+                type="text"
+                :placeholder="selectedTagObjects.length >= 10 ? 'Max 10 tags reached' : 'Type a tag name…'"
+                class="ask-tag-field"
+                :disabled="selectedTagObjects.length >= 10"
+                @focus="showTagDropdown = true"
+                @blur="onTagSearchBlur"
+                @keydown.enter.prevent="onTagSearchEnter"
+                @keydown.escape="showTagDropdown = false"
+              />
+              <div v-if="showTagDropdown && tagSearch.trim() && filteredTagSuggestions.length > 0 && selectedTagObjects.length < 10" class="ask-tag-dropdown">
+                <div
+                  v-for="tag in filteredTagSuggestions"
+                  :key="tag.id"
+                  class="ask-tag-dropdown-item"
+                  @mousedown.prevent="selectExistingTag(tag)"
+                >{{ tag.name }}</div>
+              </div>
+            </div>
           </div>
+          <p v-if="tagError" class="ask-tag-error">{{ tagError }}</p>
 
           <!-- Post button -->
           <button
@@ -109,7 +159,7 @@
 </template>
 
 <script>
-import { createThread, getCategories } from '@/api/index.js';
+import { createThread, getCategories, getTags, createTag, createCategory } from '@/api/index.js';
 
 export default {
   name: 'AskQuestionView',
@@ -117,16 +167,28 @@ export default {
     return {
       title: '',
       content: '',
-      tagInput: '',
-      selectedTags: [],
-      showTagInput: false,
-      categories: [],
-      selectedCategory: null,
-      showCategoryDropdown: false,
       isAnonymous: false,
       submitting: false,
       error: '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+
+      // Categories
+      categories: [],
+      selectedCategory: null,
+      showCategoryDropdown: false,
+      categorySearch: '',
+      showNewCategoryForm: false,
+      newCategoryName: '',
+      creatingCategory: false,
+      categoryError: '',
+
+      // Tags
+      allTags: [],
+      selectedTagObjects: [],
+      showTagInput: false,
+      tagSearch: '',
+      showTagDropdown: false,
+      tagError: '',
     };
   },
   computed: {
@@ -136,27 +198,146 @@ export default {
     currentUserAvatar() {
       return window.cnwData?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=34';
     },
+    filteredCategories() {
+      const q = this.categorySearch.trim().toLowerCase();
+      if (!q) return this.categories;
+      return this.categories.filter(c => c.name.toLowerCase().includes(q));
+    },
+    exactCategoryMatch() {
+      const q = this.categorySearch.trim().toLowerCase();
+      return q && this.categories.some(c => c.name.toLowerCase() === q);
+    },
+    filteredTagSuggestions() {
+      const selectedNames = new Set(this.selectedTagObjects.map(t => t.name.toLowerCase()));
+      const q = this.tagSearch.trim().toLowerCase();
+      if (!q) return [];
+      return this.allTags.filter(t => {
+        if (selectedNames.has(t.name.toLowerCase())) return false;
+        return t.name.toLowerCase().includes(q);
+      }).slice(0, 10);
+    },
+    exactTagMatch() {
+      const q = this.tagSearch.trim().toLowerCase();
+      return q && this.allTags.some(t => t.name.toLowerCase() === q);
+    },
   },
   async mounted() {
-    try {
-      this.categories = await getCategories() || [];
-    } catch (e) { /* silent */ }
+    [this.categories, this.allTags] = await Promise.all([
+      getCategories().catch(() => []),
+      getTags().catch(() => []),
+    ]);
+
+    // Close category dropdown on outside click
+    this._closeCat = (e) => {
+      if (this.$refs.categoryWrap && !this.$refs.categoryWrap.contains(e.target)) {
+        this.closeCategoryDropdown();
+      }
+    };
+    document.addEventListener('click', this._closeCat);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this._closeCat);
   },
   methods: {
-    addTag() {
-      const tag = this.tagInput.trim();
-      if (tag && !this.selectedTags.includes(tag) && this.selectedTags.length < 10) {
-        this.selectedTags.push(tag);
+    // ── Category ────────────────────────────────────────────────
+    toggleCategoryDropdown() {
+      this.showCategoryDropdown = !this.showCategoryDropdown;
+      if (this.showCategoryDropdown) {
+        this.$nextTick(() => this.$refs.catSearchInput?.focus());
+      } else {
+        this.closeCategoryDropdown();
       }
-      this.tagInput = '';
+    },
+    closeCategoryDropdown() {
+      this.showCategoryDropdown = false;
+      this.categorySearch = '';
+      this.showNewCategoryForm = false;
+      this.categoryError = '';
     },
     selectCategory(cat) {
       this.selectedCategory = cat;
-      this.showCategoryDropdown = false;
+      this.closeCategoryDropdown();
+    },
+    startNewCategory() {
+      this.newCategoryName = this.categorySearch.trim();
+      this.showNewCategoryForm = true;
+      this.categoryError = '';
+    },
+    async addNewCategory() {
+      const name = this.newCategoryName.trim();
+      if (!name) return;
+      this.creatingCategory = true;
+      this.categoryError = '';
+      try {
+        const res = await createCategory({ name });
+        if (res.success && res.id) {
+          const cat = { id: res.id, name };
+          this.categories.push(cat);
+          this.selectCategory(cat);
+        } else {
+          this.categoryError = res.message || 'Failed to create category.';
+        }
+      } catch {
+        this.categoryError = 'Error creating category.';
+      } finally {
+        this.creatingCategory = false;
+      }
+    },
+
+    // ── Tags ────────────────────────────────────────────────────
+    selectExistingTag(tag) {
+      if (this.selectedTagObjects.length < 10) {
+        this.selectedTagObjects.push(tag);
+      }
+      this.tagSearch = '';
     },
     removeTag(tag) {
-      this.selectedTags = this.selectedTags.filter(t => t !== tag);
+      this.selectedTagObjects = this.selectedTagObjects.filter(t => t.name !== tag.name);
     },
+    async createAndAddTag(name) {
+      name = name.trim();
+      if (!name || this.selectedTagObjects.length >= 10) return;
+      if (this.selectedTagObjects.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+        this.tagSearch = '';
+        return;
+      }
+      this.tagError = '';
+      // Add chip immediately
+      const tag = { id: null, name };
+      this.selectedTagObjects.push(tag);
+      this.tagSearch = '';
+      // Save to DB
+      try {
+        const res = await createTag({ name });
+        if (res && res.success && res.id) {
+          tag.id = res.id;
+          if (!res.existing) this.allTags.push({ id: res.id, name });
+        } else {
+          this.tagError = res?.message || 'Could not save tag.';
+        }
+      } catch (e) {
+        this.tagError = 'Network error: ' + (e?.message || 'unknown');
+      }
+    },
+    onTagSearchBlur() {
+      setTimeout(() => { this.showTagDropdown = false; }, 150);
+    },
+    onTagSearchEnter() {
+      const q = this.tagSearch.trim();
+      if (!q) return;
+      if (this.exactTagMatch) {
+        const tag = this.allTags.find(t => t.name.toLowerCase() === q.toLowerCase());
+        if (tag && !this.selectedTagObjects.some(s => s.name.toLowerCase() === tag.name.toLowerCase())) {
+          this.selectExistingTag(tag);
+        } else {
+          this.tagSearch = '';
+        }
+      } else {
+        this.createAndAddTag(q);
+      }
+    },
+
+    // ── Submit ──────────────────────────────────────────────────
     async submit() {
       if (!this.canSubmit) return;
       this.submitting = true;
@@ -165,7 +346,7 @@ export default {
         const data = await createThread({
           title: this.title,
           content: this.content,
-          tags: this.selectedTags,
+          tags: this.selectedTagObjects.map(t => t.name),
           category_id: this.selectedCategory?.id,
           anonymous: this.isAnonymous ? 1 : 0,
         });
@@ -174,7 +355,7 @@ export default {
         } else {
           this.error = data.message || 'Failed to post question. Please try again.';
         }
-      } catch (e) {
+      } catch {
         this.error = 'An error occurred. Please try again.';
       } finally {
         this.submitting = false;
@@ -381,12 +562,28 @@ export default {
   top: 100%;
   left: 0;
   margin-top: 4px;
-  min-width: 180px;
+  min-width: 200px;
   background: #fff;
   border-radius: var(--radius-m);
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  z-index: 10;
+  z-index: 20;
   overflow: hidden;
+}
+
+.ask-dropdown-search {
+  display: block;
+  width: 100%;
+  padding: var(--space-3xs) var(--space-xs);
+  border: none;
+  border-bottom: 1px solid var(--border, #eee);
+  background: transparent;
+  font-size: var(--text-xs);
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  box-sizing: border-box;
+}
+.ask-dropdown-search:focus {
+  outline: none;
 }
 
 .ask-category-option {
@@ -410,8 +607,107 @@ export default {
   cursor: default;
 }
 
-/* Tag input area */
-.ask-tag-input-area {
+/* Create new option */
+.ask-create-option {
+  color: var(--primary) !important;
+  font-weight: 500 !important;
+}
+.ask-create-option:hover {
+  background: var(--bg) !important;
+}
+
+/* Inline new-item form (shared by tag + category) */
+.ask-new-item-form {
+  padding: var(--space-2xs) var(--space-xs);
+  border-top: 1px solid var(--border, #eee);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.ask-new-item-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-light, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.ask-inline-input {
+  width: 100%;
+  padding: var(--space-3xs) var(--space-2xs);
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.ask-inline-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.ask-inline-textarea {
+  width: 100%;
+  padding: var(--space-3xs) var(--space-2xs);
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  background: var(--bg);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.ask-inline-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.ask-inline-actions {
+  display: flex;
+  gap: var(--space-3xs);
+}
+
+.ask-inline-btn {
+  padding: 4px var(--space-xs);
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  font-size: var(--text-xs);
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ask-inline-btn:hover {
+  background: var(--bg);
+}
+.ask-inline-btn--primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.ask-inline-btn--primary:hover {
+  background: var(--secondary);
+  border-color: var(--secondary);
+}
+.ask-inline-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ask-inline-error {
+  font-size: 11px;
+  color: var(--red, #e55);
+  margin: 0;
+}
+
+/* Tag panel */
+.ask-tag-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-3xs);
@@ -451,7 +747,13 @@ export default {
   color: #fff;
 }
 
+/* Tag search */
+.ask-tag-search-wrap {
+  position: relative;
+}
+
 .ask-tag-field {
+  width: 100%;
   border: none;
   background: transparent;
   font-size: var(--text-xs);
@@ -459,9 +761,51 @@ export default {
   font-family: 'Poppins', sans-serif;
   color: var(--text-dark);
   padding: var(--space-4xs) 0;
+  box-sizing: border-box;
 }
 .ask-tag-field:focus {
   outline: none;
+}
+.ask-tag-field:disabled {
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.ask-tag-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border-radius: var(--radius-m);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+  z-index: 20;
+  overflow: hidden;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.ask-tag-dropdown-item {
+  padding: var(--space-3xs) var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ask-tag-dropdown-item:hover {
+  background: var(--bg);
+}
+
+.ask-tag-error {
+  font-size: 12px;
+  color: #c0392b;
+  background: #fdf0ef;
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  margin: 0;
 }
 
 /* Post button — full width teal */

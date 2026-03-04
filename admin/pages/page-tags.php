@@ -39,6 +39,8 @@ if ( $action === 'edit' && $id ) {
                 <td><input type="text" id="name" name="name" class="regular-text" value="<?php echo esc_attr( $item->name ?? '' ); ?>" required></td></tr>
             <tr><th><label for="slug">Slug</label></th>
                 <td><input type="text" id="slug" name="slug" class="regular-text" value="<?php echo esc_attr( $item->slug ?? '' ); ?>"><br><small>Auto-generated from name if empty.</small></td></tr>
+            <tr><th><label for="description">Description</label></th>
+                <td><textarea id="description" name="description" class="large-text" rows="4"><?php echo esc_textarea( $item->description ?? '' ); ?></textarea><br><small>Optional. Brief description of what this tag covers.</small></td></tr>
         </table>
 
         <?php submit_button( $item ? 'Update Tag' : 'Create Tag' ); ?>
@@ -75,7 +77,7 @@ if ( $action === 'edit' && $id ) {
         <table class="wp-list-table widefat fixed striped">
             <thead><tr>
                 <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
-                <th style="width:40px">ID</th><th>Name</th><th style="width:150px">Slug</th><th style="width:80px">Threads</th><th style="width:80px">Followers</th><th style="width:140px">Created</th><th style="width:130px">Actions</th>
+                <th style="width:40px">ID</th><th>Name</th><th style="width:150px">Slug</th><th>Description</th><th style="width:80px">Threads</th><th style="width:80px">Followers</th><th style="width:140px">Created</th><th style="width:130px">Actions</th>
             </tr></thead>
             <tbody>
             <?php if ( $rows ) : foreach ( $rows as $row ) : ?>
@@ -84,6 +86,7 @@ if ( $action === 'edit' && $id ) {
                     <td><?php echo esc_html( $row->id ); ?></td>
                     <td><strong><?php echo esc_html( $row->name ); ?></strong></td>
                     <td><?php echo esc_html( $row->slug ); ?></td>
+                    <td><?php echo esc_html( $row->description ? wp_trim_words( $row->description, 12, '…' ) : '—' ); ?></td>
                     <td><?php echo esc_html( $row->thread_count ); ?></td>
                     <td><?php echo esc_html( $row->follower_count ); ?></td>
                     <td><?php echo esc_html( $row->created_at ? date( 'M j, Y', strtotime( $row->created_at ) ) : '—' ); ?></td>
@@ -93,7 +96,7 @@ if ( $action === 'edit' && $id ) {
                     </td>
                 </tr>
             <?php endforeach; else : ?>
-                <tr><td colspan="8">No tags found.</td></tr>
+                <tr><td colspan="9">No tags found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

@@ -23,7 +23,7 @@ export default {
   components: { AppHeader, AppSidebar, AppRightSidebar, AppFooter },
   computed: {
     hideRightSidebar() {
-      return this.$route.path === '/ask';
+      return this.$route.path !== '/';
     },
   },
 };

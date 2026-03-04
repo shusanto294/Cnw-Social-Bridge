@@ -303,13 +303,15 @@ class Cnw_Social_Bridge_Admin {
 
         $name = sanitize_text_field( $_POST['name'] ?? '' );
         $data = array(
-            'name' => $name,
-            'slug' => sanitize_title( $_POST['slug'] ?? '' ) ?: sanitize_title( $name ),
+            'name'        => $name,
+            'slug'        => sanitize_title( $_POST['slug'] ?? '' ) ?: sanitize_title( $name ),
+            'description' => sanitize_textarea_field( $_POST['description'] ?? '' ) ?: null,
         );
 
         if ( $id ) {
             $wpdb->update( $table, $data, array( 'id' => $id ) );
         } else {
+            $data['created_by'] = get_current_user_id();
             $wpdb->insert( $table, $data );
         }
 
@@ -360,6 +362,7 @@ class Cnw_Social_Bridge_Admin {
         if ( $id ) {
             $wpdb->update( $table, $data, array( 'id' => $id ) );
         } else {
+            $data['created_by'] = get_current_user_id();
             $wpdb->insert( $table, $data );
         }
 
