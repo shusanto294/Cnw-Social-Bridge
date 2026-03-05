@@ -173,6 +173,7 @@ export default {
   padding: 5px 12px;
   border-radius: var(--radius-pill);
   transition: border-color 0.12s, color 0.12s;
+  width: fit-content;
 }
 .tag-item:hover {
   border-color: var(--teal);

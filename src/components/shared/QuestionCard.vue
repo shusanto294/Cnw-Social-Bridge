@@ -53,10 +53,13 @@
         <span>Reply</span>
       </button>
       <span class="stat-divider"></span>
-      <span class="answered-badge" :class="thread.reply_count > 0 ? 'is-answered' : 'is-unanswered'">
-        <svg v-if="thread.reply_count > 0" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="7" :fill="'var(--green)'"/></svg>
+      <span class="answered-badge" :class="isAnswered ? 'is-answered' : 'is-unanswered'">
+        <svg v-if="isAnswered" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="7" fill="#24F95D"/>
+        </svg>
+
         <svg v-else width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="var(--text-light)" stroke-width="2"/></svg>
-        <span>{{ thread.reply_count > 0 ? 'answered' : 'unanswered' }}</span>
+        <span>{{ isAnswered ? 'answered' : 'unanswered' }}</span>
       </span>
     </div>
 
@@ -138,6 +141,9 @@ export default {
     },
     threadTags() {
       return this.thread.tags || [];
+    },
+    isAnswered() {
+      return this.replies.length > 0 || this.thread.reply_count > 0;
     },
     topLevelReplies() {
       return this.replies.filter(r => !r.parent_id || r.parent_id === '0' || r.parent_id === 0);
