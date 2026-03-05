@@ -9,6 +9,7 @@
         v-for="thread in threads"
         :key="thread.id"
         :thread="thread"
+        @deleted="onThreadDeleted"
       />
     </template>
 
@@ -31,6 +32,11 @@ export default {
       threads: [],
       loading: true,
     };
+  },
+  methods: {
+    onThreadDeleted(id) {
+      this.threads = this.threads.filter(t => t.id !== id);
+    },
   },
   async mounted() {
     try {

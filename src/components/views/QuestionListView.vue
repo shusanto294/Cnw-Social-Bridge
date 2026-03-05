@@ -72,6 +72,7 @@
         v-for="thread in threads"
         :key="thread.id"
         :thread="thread"
+        @deleted="onThreadDeleted"
       />
     </div>
 
@@ -150,6 +151,9 @@ export default {
     document.removeEventListener('click', this._closeMore);
   },
   methods: {
+    onThreadDeleted(id) {
+      this.threads = this.threads.filter(t => t.id !== id);
+    },
     async fetchThreads() {
       this.loading = true;
       try {

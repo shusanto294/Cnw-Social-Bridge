@@ -29,8 +29,8 @@ class Cnw_Social_Bridge_REST_API {
         ) );
         register_rest_route( $ns, '/threads/(?P<id>\d+)', array(
             array( 'methods' => 'GET',      'callback' => array( $this, 'get_thread' ),    'permission_callback' => '__return_true' ),
-            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_thread' ), 'permission_callback' => array( $this, 'can_manage' ) ),
-            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_thread' ), 'permission_callback' => array( $this, 'can_manage' ) ),
+            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_thread' ), 'permission_callback' => array( $this, 'can_manage_thread' ) ),
+            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_thread' ), 'permission_callback' => array( $this, 'can_manage_thread' ) ),
         ) );
         register_rest_route( $ns, '/threads/(?P<id>\d+)/replies', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_thread_replies' ), 'permission_callback' => '__return_true',
@@ -97,6 +97,7 @@ class Cnw_Social_Bridge_REST_API {
         ) );
         register_rest_route( $ns, '/tags/(?P<id>\d+)', array(
             array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_tag' ), 'permission_callback' => 'is_user_logged_in' ),
+            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_tag' ), 'permission_callback' => array( $this, 'can_manage_tag' ) ),
         ) );
         register_rest_route( $ns, '/tags/followed', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_followed_tags' ), 'permission_callback' => array( $this, 'can_create_thread' ),
@@ -144,6 +145,32 @@ class Cnw_Social_Bridge_REST_API {
 
     public function can_manage() {
         return current_user_can( 'manage_options' );
+    }
+
+    public function can_manage_tag( WP_REST_Request $request ) {
+        if ( current_user_can( 'manage_options' ) ) {
+            return true;
+        }
+        global $wpdb;
+        $tag_id = intval( $request['id'] );
+        $created_by = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT created_by FROM {$wpdb->prefix}cnw_social_worker_tags WHERE id = %d",
+            $tag_id
+        ) );
+        return $created_by && $created_by === get_current_user_id();
+    }
+
+    public function can_manage_thread( WP_REST_Request $request ) {
+        if ( current_user_can( 'manage_options' ) ) {
+            return true;
+        }
+        global $wpdb;
+        $thread_id = intval( $request['id'] );
+        $author_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d",
+            $thread_id
+        ) );
+        return $author_id && $author_id === get_current_user_id();
     }
 
     /* ==================================================================
@@ -1065,6 +1092,23 @@ class Cnw_Social_Bridge_REST_API {
 
         $wpdb->update( $table, $data, array( 'id' => $tag_id ), $formats, array( '%d' ) );
         return array( 'success' => true );
+    }
+
+    public function delete_tag( WP_REST_Request $request ) {
+        global $wpdb;
+        $tag_id = intval( $request['id'] );
+
+        // Remove from junction tables first
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_thread_tags', array( 'tag_id' => $tag_id ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_user_followed_tags', array( 'tag_id' => $tag_id ) );
+
+        $result = $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_tags', array( 'id' => $tag_id ) );
+
+        if ( false === $result ) {
+            return new WP_Error( 'db_error', 'Failed to delete tag', array( 'status' => 500 ) );
+        }
+
+        return array( 'success' => true, 'deleted' => $tag_id );
     }
 
     public function get_followed_tags() {

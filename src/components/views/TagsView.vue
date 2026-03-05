@@ -42,17 +42,10 @@
         :class="{ 'is-followed': followedIds.has(Number(tag.id)) }"
       >
 
-        <div class="tag-card-header">
-          <div class="tag-card-name-row">
-            <!-- Tag icon -->
-            <svg class="tag-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span class="tag-card-name">{{ tag.name }}</span>
-          </div>
+        <div class="tag-card-top">
+          <!-- Tag icon -->
+          <svg class="tag-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           <div class="tag-card-actions">
-            <!-- Edit (pencil icon) -->
-            <button v-if="canEdit(tag)" class="tag-icon-btn tag-edit-btn" data-tooltip="Edit" @click="openEditModal(tag)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
             <!-- Follow / Unfollow (+ or tick icon) -->
             <button
               v-if="isLoggedIn"
@@ -67,8 +60,17 @@
               <!-- Plus when not following -->
               <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
+            <!-- Edit (pencil icon) -->
+            <button v-if="canEdit(tag)" class="tag-icon-btn tag-edit-btn" data-tooltip="Edit" @click="openEditModal(tag)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <!-- Delete (trash icon) -->
+            <button v-if="canEdit(tag)" class="tag-icon-btn tag-delete-btn" data-tooltip="Delete" @click="openDeleteConfirm(tag)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
           </div>
         </div>
+        <span class="tag-card-name">{{ tag.name }}</span>
         <p v-if="tag.description" class="tag-card-desc">{{ tag.description }}</p>
 
       </div>
@@ -121,11 +123,32 @@
       </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteConfirm" class="tags-modal-overlay" @click.self="showDeleteConfirm = false">
+      <div class="tags-modal">
+        <div class="tags-modal-header">
+          <h3 class="tags-modal-title">Delete Tag</h3>
+          <button class="tags-modal-close" @click="showDeleteConfirm = false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="tags-modal-body">
+          <p class="tags-delete-msg">Are you sure you want to delete the tag <strong>"{{ deleteTargetTag?.name }}"</strong>? This will remove it from all threads and cannot be undone.</p>
+        </div>
+        <div class="tags-modal-footer">
+          <button class="tags-modal-delete-btn" :disabled="deleteLoading" @click="confirmDeleteTag">
+            {{ deleteLoading ? 'Deleting…' : 'Delete' }}
+          </button>
+          <button class="tags-modal-cancel-btn" @click="showDeleteConfirm = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script>
-import { getTags, getFollowedTags, followTag, unfollowTag, updateTag, createTag } from '@/api/index.js';
+import { getTags, getFollowedTags, followTag, unfollowTag, updateTag, createTag, deleteTag } from '@/api/index.js';
 
 export default {
   name: 'TagsView',
@@ -150,6 +173,11 @@ export default {
       modalDescription: '',
       modalSaving: false,
       modalError: '',
+
+      // Delete confirmation
+      showDeleteConfirm: false,
+      deleteTargetTag: null,
+      deleteLoading: false,
     };
   },
   computed: {
@@ -260,6 +288,27 @@ export default {
 
     canEdit(tag) {
       return this.currentUserId && Number(tag.created_by) === this.currentUserId;
+    },
+
+    openDeleteConfirm(tag) {
+      this.deleteTargetTag = tag;
+      this.showDeleteConfirm = true;
+    },
+
+    async confirmDeleteTag() {
+      if (!this.deleteTargetTag) return;
+      this.deleteLoading = true;
+      try {
+        const res = await deleteTag(this.deleteTargetTag.id);
+        if (res && res.success) {
+          this.tags = this.tags.filter(t => t.id !== this.deleteTargetTag.id);
+          this.followedIds.delete(Number(this.deleteTargetTag.id));
+          this.followedIds = new Set(this.followedIds);
+          this.showDeleteConfirm = false;
+          this.deleteTargetTag = null;
+        }
+      } catch { /* silent */ }
+      finally { this.deleteLoading = false; }
     },
 
     async toggleFollow(tag) {
@@ -442,22 +491,14 @@ export default {
   border-color: var(--primary);
 }
 
-/* Card header row */
-.tag-card-header {
+/* Card top row: icon left, actions right */
+.tag-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2xs);
 }
 
-.tag-card-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* Tag icon next to name */
+/* Tag icon */
 .tag-card-icon {
   flex-shrink: 0;
   color: var(--primary);
@@ -467,9 +508,9 @@ export default {
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--text-dark);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tag-card-desc {
@@ -513,6 +554,13 @@ export default {
   background: var(--bg);
   color: var(--primary);
   border-color: var(--primary);
+}
+
+/* Delete (trash) button */
+.tag-delete-btn:hover {
+  background: #fdecea;
+  color: #e74c3c;
+  border-color: #e74c3c;
 }
 
 /* Follow icon button */
@@ -695,6 +743,33 @@ export default {
   transition: background 0.1s;
 }
 .tags-modal-cancel-btn:hover { background: var(--bg); }
+
+/* Delete confirmation */
+.tags-delete-msg {
+  font-size: var(--text-xs, 14px);
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0;
+}
+.tags-delete-msg strong {
+  color: var(--text-dark);
+}
+.tags-modal-delete-btn {
+  flex: 1;
+  padding: var(--space-3xs) 0;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.tags-modal-delete-btn:hover { background: #c0392b; }
+.tags-modal-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Stylish tooltip */
 .tag-icon-btn {

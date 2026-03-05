@@ -1167,6 +1167,183 @@ to   { opacity: 1; transform: translateY(0);
   color: var(--primary);
 }
 
+/* ── Meta right: date + owner actions ────────────────────────── */
+.qcard-meta-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-left: auto;
+}
+.td-owner-actions {
+  display: flex;
+  gap: var(--space-3xs);
+}
+.td-action-btn {
+  background: none;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs);
+  padding: var(--space-3xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-body);
+  transition: all 0.15s;
+}
+.td-edit-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.td-delete-btn:hover {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.td-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.td-modal {
+  background: var(--white, #fff);
+  border-radius: var(--radius-m, 8px);
+  width: 520px;
+  max-width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+}
+.td-modal-sm {
+  width: 400px;
+}
+.td-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-s) var(--space-m);
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.td-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+}
+.td-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-light, #999);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+}
+.td-modal-close:hover {
+  color: var(--text-dark);
+}
+.td-modal-body {
+  padding: var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.td-modal-label {
+  font-size: var(--text-xs, 14px);
+  font-weight: 500;
+  color: var(--text-dark);
+}
+.td-modal-input {
+  width: 100%;
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  box-sizing: border-box;
+}
+.td-modal-input:focus, .td-modal-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.td-modal-textarea {
+  width: 100%;
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.td-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2xs);
+  padding: var(--space-s) var(--space-m);
+  border-top: 1px solid var(--border, #e0e0e0);
+}
+.td-modal-cancel {
+  background: none;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  cursor: pointer;
+}
+.td-modal-cancel:hover {
+  background: var(--bg, #f5f5f5);
+}
+.td-modal-save {
+  background: var(--primary);
+  color: var(--white, #fff);
+  border: none;
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  cursor: pointer;
+}
+.td-modal-save:hover {
+  background: var(--secondary);
+}
+.td-modal-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.td-modal-delete {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  cursor: pointer;
+}
+.td-modal-delete:hover {
+  background: #c0392b;
+}
+.td-modal-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.td-delete-msg {
+  font-size: var(--text-xs, 14px);
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0;
+}
+
 
 .ask-view {
   display: flex;
@@ -1806,21 +1983,14 @@ to   { opacity: 1; transform: translateY(0);
   border-color: var(--primary);
 }
 
-/* Card header row */
-.tag-card-header {
+/* Card top row: icon left, actions right */
+.tag-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2xs);
-}
-.tag-card-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
 }
 
-/* Tag icon next to name */
+/* Tag icon */
 .tag-card-icon {
   flex-shrink: 0;
   color: var(--primary);
@@ -1829,9 +1999,9 @@ to   { opacity: 1; transform: translateY(0);
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--text-dark);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tag-card-desc {
   font-size: 11px;
@@ -1874,6 +2044,13 @@ to   { opacity: 1; transform: translateY(0);
   background: var(--bg);
   color: var(--primary);
   border-color: var(--primary);
+}
+
+/* Delete (trash) button */
+.tag-delete-btn:hover {
+  background: #fdecea;
+  color: #e74c3c;
+  border-color: #e74c3c;
 }
 
 /* Follow icon button */
@@ -2049,6 +2226,35 @@ to   { opacity: 1; transform: translateY(0);
   transition: background 0.1s;
 }
 .tags-modal-cancel-btn:hover { background: var(--bg);
+}
+
+/* Delete confirmation */
+.tags-delete-msg {
+  font-size: var(--text-xs, 14px);
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0;
+}
+.tags-delete-msg strong {
+  color: var(--text-dark);
+}
+.tags-modal-delete-btn {
+  flex: 1;
+  padding: var(--space-3xs) 0;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.tags-modal-delete-btn:hover { background: #c0392b;
+}
+.tags-modal-delete-btn:disabled { opacity: 0.5; cursor: not-allowed;
 }
 
 /* Stylish tooltip */

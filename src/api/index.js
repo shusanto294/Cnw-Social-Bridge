@@ -72,6 +72,25 @@ export async function createThread({ title, content, tags = [], category_id, ano
   return res.json();
 }
 
+export async function updateThread(id, { title, content }) {
+  const url = await apiUrl(`/threads/${id}`);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ title, content }),
+  });
+  return res.json();
+}
+
+export async function deleteThread(id) {
+  const url = await apiUrl(`/threads/${id}`);
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  return res.json();
+}
+
 export async function getReplies(threadId) {
   return apiFetch(`/threads/${threadId}/replies`);
 }
@@ -126,6 +145,12 @@ export async function createCategory({ name }) {
     headers: headers(),
     body: JSON.stringify({ name }),
   });
+  return res.json();
+}
+
+export async function deleteTag(id) {
+  const url = await apiUrl(`/tags/${id}`);
+  const res = await fetch(url, { method: 'DELETE', headers: headers() });
   return res.json();
 }
 

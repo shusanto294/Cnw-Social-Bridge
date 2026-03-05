@@ -11,7 +11,7 @@
     <template v-else>
       <!-- Thread post — matches QuestionCard design -->
       <div class="question-card">
-        <!-- Header: avatar + name + verified + date -->
+        <!-- Header: avatar + name + verified + date + owner actions -->
         <div class="qcard-meta">
           <div class="qcard-meta-left">
             <img
@@ -23,7 +23,17 @@
             <span class="qcard-author">{{ thread.author_name }}</span>
             <span class="cnw-social-worker-verified" title="Verified">✓</span>
           </div>
-          <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
+          <div class="qcard-meta-right">
+            <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
+            <div v-if="isOwner" class="td-owner-actions">
+              <button class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Title -->
@@ -131,12 +141,57 @@
         </div>
       </div>
     </template>
+
+    <!-- Edit Modal -->
+    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Edit Thread</h3>
+          <button class="td-modal-close" @click="closeEditModal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <label class="td-modal-label">Title</label>
+          <input v-model="editTitle" class="td-modal-input" type="text" />
+          <label class="td-modal-label">Content</label>
+          <textarea v-model="editContent" class="td-modal-textarea" rows="6"></textarea>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="closeEditModal">Cancel</button>
+          <button class="td-modal-save" :disabled="!editTitle.trim() || !editContent.trim() || saving" @click="submitEdit">
+            {{ saving ? 'Saving…' : 'Save Changes' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation -->
+    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false">
+      <div class="td-modal td-modal-sm">
+        <div class="td-modal-header">
+          <h3>Delete Thread</h3>
+          <button class="td-modal-close" @click="showDeleteConfirm = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <p class="td-delete-msg">Are you sure you want to delete this thread? This action cannot be undone.</p>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="showDeleteConfirm = false">Cancel</button>
+          <button class="td-modal-delete" :disabled="deleting" @click="confirmDelete">
+            {{ deleting ? 'Deleting…' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import ReplyCard from '@/components/shared/ReplyCard.vue';
-import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread } from '@/api/index.js';
+import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread } from '@/api/index.js';
 
 export default {
   name: 'ThreadDetailView',
@@ -155,6 +210,12 @@ export default {
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       isSaved: false,
       localSavesCount: 0,
+      showEditModal: false,
+      editTitle: '',
+      editContent: '',
+      saving: false,
+      showDeleteConfirm: false,
+      deleting: false,
     };
   },
   computed: {
@@ -170,6 +231,10 @@ export default {
     },
     threadTags() {
       return this.thread?.tags || [];
+    },
+    isOwner() {
+      const uid = window.cnwData?.currentUser?.id;
+      return uid && this.thread && String(this.thread.author_id) === String(uid);
     },
   },
   async mounted() {
@@ -263,6 +328,40 @@ export default {
         this.submitting = false;
       }
     },
+    openEditModal() {
+      this.editTitle = this.thread.title;
+      this.editContent = this.thread.content;
+      this.showEditModal = true;
+    },
+    closeEditModal() {
+      this.showEditModal = false;
+    },
+    async submitEdit() {
+      if (!this.editTitle.trim() || !this.editContent.trim()) return;
+      this.saving = true;
+      try {
+        await updateThread(this.thread.id, { title: this.editTitle, content: this.editContent });
+        this.thread.title = this.editTitle;
+        this.thread.content = this.editContent;
+        this.showEditModal = false;
+      } catch (e) {
+        console.error(e);
+      } finally {
+        this.saving = false;
+      }
+    },
+    async confirmDelete() {
+      this.deleting = true;
+      try {
+        await deleteThread(this.thread.id);
+        this.showDeleteConfirm = false;
+        this.$router.push('/');
+      } catch (e) {
+        console.error(e);
+      } finally {
+        this.deleting = false;
+      }
+    },
     formatDate(d) {
       if (!d) return '';
       const date = new Date(d);
@@ -312,5 +411,182 @@ export default {
 }
 .td-login-prompt a {
   color: var(--primary);
+}
+
+/* ── Meta right: date + owner actions ────────────────────────── */
+.qcard-meta-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-left: auto;
+}
+.td-owner-actions {
+  display: flex;
+  gap: var(--space-3xs);
+}
+.td-action-btn {
+  background: none;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs);
+  padding: var(--space-3xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-body);
+  transition: all 0.15s;
+}
+.td-edit-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.td-delete-btn:hover {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.td-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.td-modal {
+  background: var(--white, #fff);
+  border-radius: var(--radius-m, 8px);
+  width: 520px;
+  max-width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+}
+.td-modal-sm {
+  width: 400px;
+}
+.td-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-s) var(--space-m);
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.td-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+}
+.td-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-light, #999);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+}
+.td-modal-close:hover {
+  color: var(--text-dark);
+}
+.td-modal-body {
+  padding: var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.td-modal-label {
+  font-size: var(--text-xs, 14px);
+  font-weight: 500;
+  color: var(--text-dark);
+}
+.td-modal-input {
+  width: 100%;
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  box-sizing: border-box;
+}
+.td-modal-input:focus, .td-modal-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.td-modal-textarea {
+  width: 100%;
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.td-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2xs);
+  padding: var(--space-s) var(--space-m);
+  border-top: 1px solid var(--border, #e0e0e0);
+}
+.td-modal-cancel {
+  background: none;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  color: var(--text-body);
+  cursor: pointer;
+}
+.td-modal-cancel:hover {
+  background: var(--bg, #f5f5f5);
+}
+.td-modal-save {
+  background: var(--primary);
+  color: var(--white, #fff);
+  border: none;
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  cursor: pointer;
+}
+.td-modal-save:hover {
+  background: var(--secondary);
+}
+.td-modal-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.td-modal-delete {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-3xs) var(--space-s);
+  font-size: var(--text-xs, 14px);
+  font-family: inherit;
+  cursor: pointer;
+}
+.td-modal-delete:hover {
+  background: #c0392b;
+}
+.td-modal-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.td-delete-msg {
+  font-size: var(--text-xs, 14px);
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0;
 }
 </style>
