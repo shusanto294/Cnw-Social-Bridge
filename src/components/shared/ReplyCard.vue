@@ -33,6 +33,7 @@
           <span>{{ localUpvotes }}</span>
           <span>Upvote</span>
         </button>
+        <span class="reply-divider"></span>
         <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
           <span>{{ localDownvotes }}</span>
@@ -126,8 +127,7 @@ export default {
       return this.allReplies.filter(r => String(r.parent_id) === String(this.reply.id));
     },
     avatarUrl() {
-      const id = this.reply.author_id || 0;
-      return `https://www.gravatar.com/avatar/${id}?d=identicon&s=30`;
+      return this.reply.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=30`;
     },
     currentUserAvatar() {
       const d = window.cnwData;
@@ -345,6 +345,9 @@ export default {
 
 /* ── Helpful stat ─────────────────────────────────────────────── */
 .reply-helpful {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
   padding-left: var(--space-m);
 }
 

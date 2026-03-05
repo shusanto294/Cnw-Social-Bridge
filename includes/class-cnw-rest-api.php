@@ -119,6 +119,20 @@ class Cnw_Social_Bridge_REST_API {
             'methods' => 'GET', 'callback' => array( $this, 'get_saved_threads' ), 'permission_callback' => 'is_user_logged_in',
         ) );
 
+        // ── Notifications ────────────────────────────────────────────
+        register_rest_route( $ns, '/notifications', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_notifications' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/notifications/unread-count', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_unread_notification_count' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/notifications/(?P<id>\d+)/read', array(
+            'methods' => 'POST', 'callback' => array( $this, 'mark_notification_read' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/notifications/read-all', array(
+            'methods' => 'POST', 'callback' => array( $this, 'mark_all_notifications_read' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+
         register_rest_route( $ns, '/hot-questions', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_hot_questions' ), 'permission_callback' => '__return_true',
         ) );
@@ -468,6 +482,10 @@ class Cnw_Social_Bridge_REST_API {
             $thread_id
         ) );
 
+        foreach ( $replies as &$reply ) {
+            $reply->author_avatar = get_avatar_url( (int) $reply->author_id, array( 'size' => 40 ) );
+        }
+
         return array( 'replies' => $replies );
     }
 
@@ -538,7 +556,32 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create reply', array( 'status' => 500 ) );
         }
 
-        return array( 'success' => true, 'id' => $wpdb->insert_id );
+        $reply_id  = $wpdb->insert_id;
+        $actor_id  = get_current_user_id();
+        $thread_id = intval( $params['thread_id'] );
+        $actor_name = wp_get_current_user()->display_name;
+
+        // Notify thread author
+        $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $thread_id
+        ) );
+        if ( $thread_author ) {
+            $this->insert_notification( $thread_author, $actor_id, 'reply', 'thread', $thread_id,
+                "{$actor_name} replied to your thread." );
+        }
+
+        // If replying to a reply, notify parent reply author
+        if ( ! empty( $params['parent_id'] ) ) {
+            $parent_author = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", intval( $params['parent_id'] )
+            ) );
+            if ( $parent_author && $parent_author !== $thread_author ) {
+                $this->insert_notification( $parent_author, $actor_id, 'reply', 'thread', $thread_id,
+                    "{$actor_name} replied to your comment." );
+            }
+        }
+
+        return array( 'success' => true, 'id' => $reply_id );
     }
 
     public function update_reply( WP_REST_Request $request ) {
@@ -901,6 +944,28 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create vote', array( 'status' => 500 ) );
         }
 
+        // Notify on upvote only
+        if ( $vote_type === 1 ) {
+            $actor_name = wp_get_current_user()->display_name;
+            if ( $target_type === 'thread' ) {
+                $owner = (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
+                ) );
+                if ( $owner ) {
+                    $this->insert_notification( $owner, $user_id, 'vote', 'thread', $target_id,
+                        "{$actor_name} upvoted your thread." );
+                }
+            } elseif ( $target_type === 'reply' ) {
+                $row = $wpdb->get_row( $wpdb->prepare(
+                    "SELECT author_id, thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
+                ) );
+                if ( $row ) {
+                    $this->insert_notification( (int) $row->author_id, $user_id, 'vote', 'thread', (int) $row->thread_id,
+                        "{$actor_name} upvoted your reply." );
+                }
+            }
+        }
+
         return array( 'success' => true, 'action' => 'created', 'id' => $wpdb->insert_id );
     }
 
@@ -1178,6 +1243,16 @@ class Cnw_Social_Bridge_REST_API {
             array( 'user_id' => $user_id, 'thread_id' => $thread_id )
         );
 
+        // Notify thread author
+        $owner = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $thread_id
+        ) );
+        if ( $owner ) {
+            $actor_name = wp_get_current_user()->display_name;
+            $this->insert_notification( $owner, $user_id, 'save', 'thread', $thread_id,
+                "{$actor_name} marked your thread as helpful." );
+        }
+
         return array( 'success' => true );
     }
 
@@ -1286,5 +1361,104 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         return $user;
+    }
+
+    /* ==================================================================
+     * NOTIFICATIONS
+     * ================================================================== */
+
+    public function get_notifications( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $user_id  = get_current_user_id();
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = intval( $request->get_param( 'per_page' ) ?: 20 );
+        $offset   = ( $page - 1 ) * $per_page;
+
+        $notifications = $wpdb->get_results( $wpdb->prepare(
+            "SELECT n.*, u.display_name AS actor_name
+             FROM {$wpdb->prefix}cnw_social_worker_notifications n
+             LEFT JOIN {$wpdb->users} u ON n.actor_id = u.ID
+             WHERE n.user_id = %d
+             ORDER BY n.created_at DESC
+             LIMIT %d OFFSET %d",
+            $user_id, $per_page, $offset
+        ) );
+
+        foreach ( $notifications as &$n ) {
+            $n->actor_avatar = $n->actor_id
+                ? get_avatar_url( (int) $n->actor_id, array( 'size' => 40 ) )
+                : get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
+        }
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_notifications WHERE user_id = %d",
+            $user_id
+        ) );
+
+        return array( 'notifications' => $notifications, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
+    public function get_unread_notification_count() {
+        global $wpdb;
+        $user_id = get_current_user_id();
+
+        $count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_notifications WHERE user_id = %d AND is_read = 0",
+            $user_id
+        ) );
+
+        return array( 'count' => $count );
+    }
+
+    public function mark_notification_read( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id = get_current_user_id();
+        $id      = intval( $request['id'] );
+
+        $wpdb->update(
+            $wpdb->prefix . 'cnw_social_worker_notifications',
+            array( 'is_read' => 1 ),
+            array( 'id' => $id, 'user_id' => $user_id )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function mark_all_notifications_read() {
+        global $wpdb;
+        $user_id = get_current_user_id();
+
+        $wpdb->update(
+            $wpdb->prefix . 'cnw_social_worker_notifications',
+            array( 'is_read' => 1 ),
+            array( 'user_id' => $user_id, 'is_read' => 0 )
+        );
+
+        return array( 'success' => true );
+    }
+
+    /**
+     * Insert a notification row.
+     */
+    private function insert_notification( $user_id, $actor_id, $type, $ref_type, $ref_id, $message ) {
+        global $wpdb;
+
+        // Don't notify yourself.
+        if ( (int) $user_id === (int) $actor_id ) {
+            return;
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_notifications',
+            array(
+                'user_id'        => (int) $user_id,
+                'actor_id'       => (int) $actor_id,
+                'type'           => $type,
+                'reference_type' => $ref_type,
+                'reference_id'   => (int) $ref_id,
+                'message'        => $message,
+            )
+        );
     }
 }

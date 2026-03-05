@@ -40,18 +40,20 @@
       <span v-for="tag in threadTags" :key="tag" class="qcard-tag">{{ tag }}</span>
     </div>
 
-    <!-- Stats row 1: Upvote/Downvote + Views -->
+    <!-- Stats row 1: Upvote/Downvote + Helpful + Views -->
     <div class="qcard-stats-row">
       <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click.stop="vote(1)" :disabled="!isLoggedIn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
         <span>{{ localUpvotes }}</span>
         <span>Upvote</span>
       </button>
+      <span class="stat-divider"></span>
       <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click.stop="vote(-1)" :disabled="!isLoggedIn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
         <span>{{ localDownvotes }}</span>
         <span>Downvote</span>
       </button>
+      <span class="stat-divider"></span>
       <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click.stop="toggleSave" :disabled="!isLoggedIn">
         <svg width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         <span>{{ localSavesCount }}</span>

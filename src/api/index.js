@@ -199,3 +199,23 @@ export async function getSavedThreads() {
 export async function getHotQuestions() {
   return apiFetch('/hot-questions');
 }
+
+export async function getNotifications({ page = 1 } = {}) {
+  return apiFetch('/notifications', { page });
+}
+
+export async function getUnreadNotificationCount() {
+  return apiFetch('/notifications/unread-count');
+}
+
+export async function markNotificationRead(id) {
+  const url = await apiUrl(`/notifications/${id}/read`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function markAllNotificationsRead() {
+  const url = await apiUrl('/notifications/read-all');
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}

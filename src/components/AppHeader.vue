@@ -29,29 +29,128 @@
       <button class="cnw-social-worker-btn cnw-social-worker-btn-primary ask-btn" @click="$router.push('/ask')">
         + Ask a Question
       </button>
-      <button class="notif-btn" title="Notifications">
-        <svg xmlns="http://www.w3.org/2000/svg" width="25" height="28" viewBox="0 0 25 28" fill="none">
-          <path d="M17.5 22.5C17.5 25.262 15.261 27.5 12.5 27.5C9.738 27.5 7.5 25.262 7.5 22.5C7.5 19.739 9.738 17.5 12.5 17.5C15.261 17.5 17.5 19.739 17.5 22.5Z" fill="#5FBF91"/>
-          <path d="M22.2629 16.23H22.2749C22.7059 17.023 23.2579 17.754 23.9319 18.382C23.2539 17.751 22.6929 17.024 22.2629 16.23Z" fill="#3AA9DA"/>
-          <path d="M1.06806 18.382C1.74206 17.754 2.29406 17.023 2.72506 16.23H2.73706C2.30706 17.024 1.74606 17.751 1.06806 18.382Z" fill="#3AA9DA"/>
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 22.5C7.5 19.739 9.738 17.5 12.5 17.5C15.261 17.5 17.5 19.739 17.5 22.5H7.5Z" fill="#3AA9DA"/>
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 22.5H2.188C0.981 22.5 0 21.519 0 20.312C0 19.675 0.276 19.071 0.765 18.651L0.778 18.64C0.877 18.556 0.974 18.47 1.069 18.382C1.746 17.751 2.307 17.024 2.738 16.23C3.396 15.017 3.75 13.649 3.75 12.235V8.75C3.75 3.925 7.675 0 12.5 0C17.325 0 21.25 3.925 21.25 8.75V12.235C21.25 13.649 21.604 15.017 22.263 16.23C22.693 17.024 23.254 17.751 23.932 18.382C24.026 18.47 24.123 18.556 24.222 18.64L24.235 18.651C24.724 19.071 25 19.675 25 20.312C25 21.519 24.019 22.5 22.813 22.5H17.5C17.5 19.739 15.261 17.5 12.5 17.5C9.738 17.5 7.5 19.739 7.5 22.5Z" fill="#3AA9DA"/>
-        </svg>
-        <span v-if="notifications > 0" class="notif-badge">{{ notifications }}</span>
-      </button>
+      <div class="notif-wrapper" v-if="isLoggedIn">
+        <button class="notif-btn" title="Notifications" @click="toggleDropdown">
+          <svg xmlns="http://www.w3.org/2000/svg" width="25" height="28" viewBox="0 0 25 28" fill="none">
+            <path d="M17.5 22.5C17.5 25.262 15.261 27.5 12.5 27.5C9.738 27.5 7.5 25.262 7.5 22.5C7.5 19.739 9.738 17.5 12.5 17.5C15.261 17.5 17.5 19.739 17.5 22.5Z" fill="#5FBF91"/>
+            <path d="M22.2629 16.23H22.2749C22.7059 17.023 23.2579 17.754 23.9319 18.382C23.2539 17.751 22.6929 17.024 22.2629 16.23Z" fill="#3AA9DA"/>
+            <path d="M1.06806 18.382C1.74206 17.754 2.29406 17.023 2.72506 16.23H2.73706C2.30706 17.024 1.74606 17.751 1.06806 18.382Z" fill="#3AA9DA"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 22.5C7.5 19.739 9.738 17.5 12.5 17.5C15.261 17.5 17.5 19.739 17.5 22.5H7.5Z" fill="#3AA9DA"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 22.5H2.188C0.981 22.5 0 21.519 0 20.312C0 19.675 0.276 19.071 0.765 18.651L0.778 18.64C0.877 18.556 0.974 18.47 1.069 18.382C1.746 17.751 2.307 17.024 2.738 16.23C3.396 15.017 3.75 13.649 3.75 12.235V8.75C3.75 3.925 7.675 0 12.5 0C17.325 0 21.25 3.925 21.25 8.75V12.235C21.25 13.649 21.604 15.017 22.263 16.23C22.693 17.024 23.254 17.751 23.932 18.382C24.026 18.47 24.123 18.556 24.222 18.64L24.235 18.651C24.724 19.071 25 19.675 25 20.312C25 21.519 24.019 22.5 22.813 22.5H17.5C17.5 19.739 15.261 17.5 12.5 17.5C9.738 17.5 7.5 19.739 7.5 22.5Z" fill="#3AA9DA"/>
+          </svg>
+          <span v-if="unreadCount > 0" class="notif-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+        </button>
+
+        <!-- Dropdown -->
+        <div v-if="showDropdown" class="notif-dropdown">
+          <div class="notif-dropdown-header">
+            <span class="notif-dropdown-title">Notifications</span>
+            <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllRead">Mark all read</button>
+          </div>
+          <div v-if="loading" class="notif-dropdown-loading">Loading...</div>
+          <div v-else-if="notifications.length === 0" class="notif-dropdown-empty">No notifications yet.</div>
+          <div v-else class="notif-dropdown-list">
+            <div
+              v-for="n in notifications"
+              :key="n.id"
+              class="notif-item"
+              :class="{ 'notif-unread': !parseInt(n.is_read) }"
+              @click="handleNotifClick(n)"
+            >
+              <img :src="n.actor_avatar" class="notif-item-avatar" width="32" height="32" />
+              <div class="notif-item-body">
+                <p class="notif-item-msg">{{ n.message }}</p>
+                <span class="notif-item-time">{{ timeAgo(n.created_at) }}</span>
+              </div>
+              <span v-if="!parseInt(n.is_read)" class="notif-item-dot"></span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     </div><!-- /.cnw-social-worker-header-inner -->
   </header>
 </template>
 
 <script>
+import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead } from '@/api/index.js';
+
 export default {
   name: 'AppHeader',
   data() {
     return {
-      notifications: 1,
+      unreadCount: 0,
+      notifications: [],
+      showDropdown: false,
+      loading: false,
       logoUrl: window.cnwData?.logoUrl || '',
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+      pollTimer: null,
     };
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchUnreadCount();
+      // Poll every 30 seconds
+      this.pollTimer = setInterval(() => this.fetchUnreadCount(), 30000);
+    }
+    document.addEventListener('click', this.onOutsideClick);
+  },
+  beforeUnmount() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    document.removeEventListener('click', this.onOutsideClick);
+  },
+  methods: {
+    async fetchUnreadCount() {
+      try {
+        const data = await getUnreadNotificationCount();
+        this.unreadCount = data.count || 0;
+      } catch { /* silent */ }
+    },
+    async toggleDropdown() {
+      this.showDropdown = !this.showDropdown;
+      if (this.showDropdown && this.notifications.length === 0) {
+        this.loading = true;
+        try {
+          const data = await getNotifications();
+          this.notifications = data.notifications || [];
+        } catch { /* silent */ }
+        finally { this.loading = false; }
+      }
+    },
+    onOutsideClick(e) {
+      if (this.showDropdown && !e.target.closest('.notif-wrapper')) {
+        this.showDropdown = false;
+      }
+    },
+    async handleNotifClick(n) {
+      if (!parseInt(n.is_read)) {
+        n.is_read = '1';
+        this.unreadCount = Math.max(0, this.unreadCount - 1);
+        try { await markNotificationRead(n.id); } catch { /* silent */ }
+      }
+      // Navigate to the thread if reference_type is thread
+      if (n.reference_type === 'thread' && n.reference_id) {
+        this.showDropdown = false;
+        this.$router.push('/thread/' + n.reference_id);
+      }
+    },
+    async markAllRead() {
+      this.notifications.forEach(n => n.is_read = '1');
+      this.unreadCount = 0;
+      try { await markAllNotificationsRead(); } catch { /* silent */ }
+    },
+    timeAgo(dateStr) {
+      if (!dateStr) return '';
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diff = Math.floor((now - date) / 1000);
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    },
   },
 };
 </script>
@@ -120,6 +219,11 @@ export default {
   border-radius: var(--radius-sm);
 }
 
+/* Notification wrapper */
+.notif-wrapper {
+  position: relative;
+}
+
 .notif-btn {
   position: relative;
   border-radius: var(--radius-sm);
@@ -139,17 +243,115 @@ export default {
   color: #fff;
   font-size: 10px;
   font-weight: 700;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--light);
+  padding: 0 3px;
+}
+
+/* Dropdown */
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  max-height: 440px;
+  background: var(--white, #fff);
+  border-radius: var(--radius-m, 8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  border: 1px solid var(--border, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.notif-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.notif-dropdown-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.notif-mark-all {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+.notif-mark-all:hover {
+  text-decoration: underline;
+}
+
+.notif-dropdown-loading,
+.notif-dropdown-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-light, #999);
+  font-size: 13px;
+}
+
+.notif-dropdown-list {
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.notif-item:hover {
+  background: var(--bg, #f5f5f5);
+}
+.notif-unread {
+  background: rgba(58, 169, 218, 0.06);
+}
+.notif-item-avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.notif-item-body {
+  flex: 1;
+  min-width: 0;
+}
+.notif-item-msg {
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.4;
+  margin: 0;
+}
+.notif-item-time {
+  font-size: 11px;
+  color: var(--text-light, #999);
+}
+.notif-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary, #3aa9da);
+  flex-shrink: 0;
+  margin-top: 6px;
 }
 
 @media (max-width: 480px) {
   .cnw-social-worker-header-inner { padding: 8px 12px; }
   .ask-btn { padding: 8px 12px; font-size: 13px; }
+  .notif-dropdown { width: 300px; right: -40px; }
 }
 </style>

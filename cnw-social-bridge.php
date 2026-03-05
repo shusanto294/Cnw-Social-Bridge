@@ -46,6 +46,7 @@ class Cnw_Social_Bridge {
         // Run any pending DB migrations on every load.
         add_action( 'init', array( __CLASS__, 'migrate_tags_description_column' ) );
         add_action( 'init', array( __CLASS__, 'migrate_saved_threads_table' ) );
+        add_action( 'init', array( __CLASS__, 'migrate_notifications_table' ) );
 
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
@@ -213,6 +214,23 @@ class Cnw_Social_Bridge {
             ) $charset_collate"
         );
 
+        $sql_notifications = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_notifications (
+            id            bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id       bigint(20) unsigned NOT NULL,
+            actor_id      bigint(20) unsigned DEFAULT NULL,
+            type          varchar(50)         NOT NULL COMMENT 'reply, vote, save, follow, mention',
+            reference_type varchar(20)        DEFAULT NULL COMMENT 'thread, reply, tag',
+            reference_id  bigint(20) unsigned DEFAULT NULL,
+            message       varchar(500)        NOT NULL,
+            is_read       tinyint(1)          DEFAULT 0,
+            created_at    datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id    (user_id),
+            KEY is_read    (is_read),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+        dbDelta( $sql_notifications );
+
         // Ensure description column exists for existing installs.
         self::migrate_tags_description_column();
 
@@ -331,6 +349,31 @@ class Cnw_Social_Bridge {
         $col = $wpdb->get_results( "SHOW COLUMNS FROM `$threads_table` LIKE 'is_anonymous'" );
         if ( empty( $col ) ) {
             $wpdb->query( "ALTER TABLE `$threads_table` ADD COLUMN `is_anonymous` tinyint(1) DEFAULT 0 AFTER `status`" );
+        }
+    }
+
+    public static function migrate_notifications_table() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_notifications';
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '$table'" ) !== $table ) {
+            $charset_collate = $wpdb->get_charset_collate();
+            $wpdb->query(
+                "CREATE TABLE IF NOT EXISTS $table (
+                    id            bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                    user_id       bigint(20) unsigned NOT NULL,
+                    actor_id      bigint(20) unsigned DEFAULT NULL,
+                    type          varchar(50)         NOT NULL,
+                    reference_type varchar(20)        DEFAULT NULL,
+                    reference_id  bigint(20) unsigned DEFAULT NULL,
+                    message       varchar(500)        NOT NULL,
+                    is_read       tinyint(1)          DEFAULT 0,
+                    created_at    datetime            DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY user_id    (user_id),
+                    KEY is_read    (is_read),
+                    KEY created_at (created_at)
+                ) $charset_collate"
+            );
         }
     }
 
