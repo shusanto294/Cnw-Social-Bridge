@@ -256,7 +256,7 @@ class Cnw_Social_Bridge_REST_API {
         $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads t $where" );
         // phpcs:enable
 
-        // Attach tags to each thread
+        // Attach tags + avatar, handle anonymous
         foreach ( $threads as &$thread ) {
             $thread->tags = $wpdb->get_col( $wpdb->prepare(
                 "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
@@ -264,6 +264,12 @@ class Cnw_Social_Bridge_REST_API {
                  WHERE tt.thread_id = %d",
                 $thread->id
             ) );
+            if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_name   = 'Anonymous';
+                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            } else {
+                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+            }
         }
 
         return array(
@@ -304,13 +310,20 @@ class Cnw_Social_Bridge_REST_API {
             $id
         ) );
 
-        // Attach tags
+        // Attach tags + avatar, handle anonymous
         $thread->tags = $wpdb->get_col( $wpdb->prepare(
             "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
              JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
              WHERE tt.thread_id = %d",
             $id
         ) );
+
+        if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+            $thread->author_name   = 'Anonymous';
+            $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+        } else {
+            $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+        }
 
         return $thread;
     }
@@ -331,15 +344,18 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'Title and content are required', array( 'status' => 400 ) );
         }
 
+        $is_anonymous = ! empty( $params['anonymous'] ) ? 1 : 0;
+
         $result = $wpdb->insert(
             $wpdb->prefix . 'cnw_social_worker_threads',
             array(
-                'author_id' => get_current_user_id(),
-                'title'     => sanitize_text_field( $params['title'] ),
-                'content'   => wp_kses_post( $params['content'] ),
-                'status'    => 'published',
+                'author_id'    => get_current_user_id(),
+                'title'        => sanitize_text_field( $params['title'] ),
+                'content'      => wp_kses_post( $params['content'] ),
+                'status'       => 'published',
+                'is_anonymous' => $is_anonymous,
             ),
-            array( '%d', '%s', '%s', '%s' )
+            array( '%d', '%s', '%s', '%s', '%d' )
         );
 
         if ( false === $result ) {
@@ -1200,7 +1216,7 @@ class Cnw_Social_Bridge_REST_API {
             $current_user_id
         ) );
 
-        // Attach tags to each thread
+        // Attach tags + avatar, handle anonymous
         foreach ( $threads as &$thread ) {
             $thread->tags = $wpdb->get_col( $wpdb->prepare(
                 "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
@@ -1208,6 +1224,12 @@ class Cnw_Social_Bridge_REST_API {
                  WHERE tt.thread_id = %d",
                 $thread->id
             ) );
+            if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_name   = 'Anonymous';
+                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            } else {
+                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+            }
         }
 
         return array( 'threads' => $threads );
@@ -1218,7 +1240,7 @@ class Cnw_Social_Bridge_REST_API {
 
         $current_user_id = get_current_user_id();
 
-        return $wpdb->get_results( $wpdb->prepare(
+        $threads = $wpdb->get_results( $wpdb->prepare(
             "SELECT t.*, u.display_name AS author_name,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') AS reply_count,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
@@ -1234,6 +1256,17 @@ class Cnw_Social_Bridge_REST_API {
             $current_user_id,
             $current_user_id
         ) );
+
+        foreach ( $threads as &$thread ) {
+            if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_name   = 'Anonymous';
+                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            } else {
+                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+            }
+        }
+
+        return $threads;
     }
 
     public function get_user( WP_REST_Request $request ) {

@@ -21,7 +21,6 @@ define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // ── Includes ─────────────────────────────────────────────────────────────────
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/class-cnw-admin.php';
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-rest-api.php';
-require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-seed-data.php';
 
 // ── Core plugin class ────────────────────────────────────────────────────────
 
@@ -68,6 +67,7 @@ class Cnw_Social_Bridge {
             title      varchar(255)        NOT NULL,
             content    longtext            NOT NULL,
             status     varchar(20)         DEFAULT 'published',
+            is_anonymous tinyint(1)         DEFAULT 0,
             views      int(11)             DEFAULT 0,
             created_at datetime            DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -220,7 +220,6 @@ class Cnw_Social_Bridge {
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );
 
-        Cnw_Social_Bridge_Seed_Data::seed();
     }
 
     private function create_user_roles() {
@@ -325,6 +324,13 @@ class Cnw_Social_Bridge {
                     KEY thread_id (thread_id)
                 ) $charset_collate"
             );
+        }
+
+        // Add is_anonymous column to threads table if missing.
+        $threads_table = $wpdb->prefix . 'cnw_social_worker_threads';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM `$threads_table` LIKE 'is_anonymous'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE `$threads_table` ADD COLUMN `is_anonymous` tinyint(1) DEFAULT 0 AFTER `status`" );
         }
     }
 

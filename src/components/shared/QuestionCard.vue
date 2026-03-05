@@ -3,14 +3,18 @@
     <!-- Card Header: avatar + meta + owner actions -->
     <div class="qcard-meta">
       <div class="qcard-meta-left">
+        <span v-if="isAnonymous" class="qcard-anon-avatar" title="Anonymous">
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+        </span>
         <img
+          v-else
           :src="avatarUrl"
           :alt="thread.author_name"
           class="cnw-social-worker-avatar qcard-avatar"
           width="34" height="34"
         />
         <span class="qcard-author">{{ thread.author_name }}</span>
-        <span class="cnw-social-worker-verified" title="Verified">✓</span>
+        <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
       </div>
       <div class="qcard-meta-right">
         <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
@@ -63,7 +67,17 @@
     <!-- Stats row 2: Replies + Reply + Answered -->
     <div class="qcard-stats-row">
       <button class="stat-btn" @click.stop="toggleExpand">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <g clip-path="url(#clip0_20026_7995)">
+          <path d="M9.06276 6.21553L9.05248 1.2279C9.05108 0.55084 8.49909 0 7.82201 0H1.23047C0.551988 0 0 0.551988 0 1.23044V6.20687C0 6.88532 0.551988 7.43731 1.23047 7.43731H2.07813V8.25759C2.07813 8.59482 2.4643 8.78825 2.73438 8.58572L4.26508 7.43772L7.82857 7.44849C8.52048 7.44849 9.06415 6.89106 9.06276 6.21553ZM4.51172 5.76939C4.2852 5.76939 4.10156 5.58575 4.10156 5.35924C4.10156 5.13272 4.2852 4.94908 4.51172 4.94908C4.73823 4.94908 4.92188 5.13272 4.92188 5.35924C4.92188 5.58575 4.73823 5.76939 4.51172 5.76939ZM4.94922 4.05844V4.10145C4.94922 4.32797 4.76558 4.51161 4.53906 4.51161C4.31255 4.51161 4.12891 4.32797 4.12891 4.10145V3.84554C4.12891 3.57465 4.33024 3.34203 4.59722 3.30444C4.7979 3.27619 4.94922 3.10163 4.94922 2.89833C4.94922 2.59943 4.61984 2.34314 4.24298 2.58429C4.05212 2.70635 3.79851 2.65059 3.67645 2.45982C3.55439 2.26901 3.61011 2.01537 3.80092 1.89328C4.22393 1.62269 4.72049 1.59477 5.12933 1.81852C5.5242 2.03473 5.76953 2.44847 5.76953 2.89836C5.76953 3.42497 5.43028 3.88746 4.94922 4.05844Z" fill="#3AA9DA"/>
+          <path d="M12.7695 5.76929H9.88214L9.88307 6.21373C9.88515 7.22644 9.15988 8.04822 8.23058 8.23017H11.9219C12.1484 8.23017 12.332 8.41381 12.332 8.64033C12.332 8.86684 12.1484 9.05048 11.9219 9.05048H7C6.77348 9.05048 6.58984 8.86684 6.58984 8.64033C6.58984 8.47312 6.69006 8.32954 6.83356 8.26569L4.94922 8.25997V11.9488C4.94922 12.6273 5.50121 13.1793 6.17969 13.1793H8.95396L10.508 13.9563C10.7799 14.0922 11.1016 13.8942 11.1016 13.5894V13.1793H12.7695C13.448 13.1793 14 12.6273 14 11.9488V6.99973C14 6.32125 13.448 5.76929 12.7695 5.76929ZM11.9219 10.691H7C6.77348 10.691 6.58984 10.5074 6.58984 10.2809C6.58984 10.0544 6.77348 9.87071 7 9.87071H11.9219C12.1484 9.87071 12.332 10.0544 12.332 10.2809C12.332 10.5074 12.1484 10.691 11.9219 10.691Z" fill="#3AA9DA"/>
+        </g>
+        <defs>
+          <clipPath id="clip0_20026_7995">
+            <rect width="14" height="14" fill="white"/>
+          </clipPath>
+        </defs>
+      </svg>
         <span>{{ thread.reply_count || 0 }}</span>
         <span>Replies</span>
       </button>
@@ -207,8 +221,7 @@ export default {
   },
   computed: {
     avatarUrl() {
-      const id = this.thread.author_id || 0;
-      return `https://www.gravatar.com/avatar/${id}?d=identicon&s=34`;
+      return this.thread.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=34`;
     },
     currentUserAvatar() {
       const d = window.cnwData;
@@ -222,6 +235,9 @@ export default {
     },
     topLevelReplies() {
       return this.replies.filter(r => !r.parent_id || r.parent_id === '0' || r.parent_id === 0);
+    },
+    isAnonymous() {
+      return !!(this.thread.is_anonymous && parseInt(this.thread.is_anonymous));
     },
     isOwner() {
       const uid = window.cnwData?.currentUser?.id;
@@ -381,6 +397,16 @@ export default {
 }
 .qcard-avatar {
   border-radius: 50%;
+}
+.qcard-anon-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary, #3aa9da);
+  flex-shrink: 0;
 }
 .qcard-author {
   font-size: var(--text-xs);
