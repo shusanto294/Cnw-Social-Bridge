@@ -309,13 +309,12 @@ export default {
       try {
         const data = await register({ username: this.regUsername, email: this.regEmail, password: this.regPassword, first_name: this.regFirstName, last_name: this.regLastName });
         if (data.success) {
-          this.registerSuccess = 'Account created successfully! You can now login.';
-          this.regFirstName = '';
-          this.regLastName = '';
-          this.regUsername = '';
-          this.regEmail = '';
-          this.regPassword = '';
-          this.regPasswordConfirm = '';
+          // Auto-login with the same credentials
+          const loginData = await login({ username: this.regUsername, password: this.regPassword });
+          window.cnwData.nonce = loginData.nonce;
+          window.cnwData.currentUser = loginData.currentUser;
+          this.showLoginModal = false;
+          window.location.reload();
         } else {
           this.loginError = data.message || 'Registration failed.';
         }
