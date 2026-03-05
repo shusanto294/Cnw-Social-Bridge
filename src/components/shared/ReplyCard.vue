@@ -8,23 +8,33 @@
 
     <!-- Reply content bubble -->
     <div class="reply-bubble">
-      <!-- Header: avatar + name + verified + date -->
+      <!-- Header: avatar + name + verified + date + owner actions -->
       <div class="reply-header">
-        <div class="reply-avatar-wrap">
-          <img
-            :src="avatarUrl"
-            :alt="reply.author_name"
-            class="cnw-social-worker-avatar reply-avatar"
-            width="22" height="22"
-          />
+        <div class="reply-header-left">
+          <div class="reply-avatar-wrap">
+            <img
+              :src="avatarUrl"
+              :alt="reply.author_name"
+              class="cnw-social-worker-avatar reply-avatar"
+              width="22" height="22"
+            />
+          </div>
+          <span class="reply-author">{{ reply.author_name }}</span>
+          <span class="cnw-social-worker-verified" title="Verified">✓</span>
+          <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
         </div>
-        <span class="reply-author">{{ reply.author_name }}</span>
-        <span class="cnw-social-worker-verified" title="Verified">✓</span>
-        <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+        <div v-if="isOwner" class="reply-owner-actions">
+          <button class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Body text -->
-      <p class="reply-body">{{ reply.content }}</p>
+      <p class="reply-body">{{ localContent }}</p>
 
       <!-- Vote buttons -->
       <div class="reply-helpful">
@@ -82,6 +92,49 @@
       </div>
     </div>
 
+    <!-- Edit Reply Modal -->
+    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Edit Reply</h3>
+          <button class="td-modal-close" @click="closeEditModal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <label class="td-modal-label">Content</label>
+          <textarea v-model="editContent" class="td-modal-textarea" rows="6"></textarea>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="closeEditModal">Cancel</button>
+          <button class="td-modal-save" :disabled="!editContent.trim() || saving" @click="submitEdit">
+            {{ saving ? 'Saving…' : 'Save Changes' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Reply Confirmation -->
+    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false">
+      <div class="td-modal td-modal-sm">
+        <div class="td-modal-header">
+          <h3>Delete Reply</h3>
+          <button class="td-modal-close" @click="showDeleteConfirm = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <p class="td-delete-msg">Are you sure you want to delete this reply? This action cannot be undone.</p>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="showDeleteConfirm = false">Cancel</button>
+          <button class="td-modal-delete" :disabled="deleting" @click="confirmDelete">
+            {{ deleting ? 'Deleting…' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Nested replies -->
     <div v-if="nestedReplies.length" class="nested-replies">
       <ReplyCard
@@ -99,7 +152,7 @@
 </template>
 
 <script>
-import { createReply, createVote } from '@/api/index.js';
+import { createReply, createVote, updateReply, deleteReply } from '@/api/index.js';
 
 export default {
   name: 'ReplyCard',
@@ -120,6 +173,12 @@ export default {
       showReplyBox: false,
       replyDraft: '',
       submitting: false,
+      localContent: this.reply.content,
+      showEditModal: false,
+      editContent: '',
+      saving: false,
+      showDeleteConfirm: false,
+      deleting: false,
     };
   },
   computed: {
@@ -132,6 +191,10 @@ export default {
     currentUserAvatar() {
       const d = window.cnwData;
       return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
+    },
+    isOwner() {
+      const uid = window.cnwData?.currentUser?.id;
+      return uid && String(this.reply.author_id) === String(uid);
     },
   },
   methods: {
@@ -180,6 +243,33 @@ export default {
       } catch (e) { /* silent */ } finally {
         this.submitting = false;
       }
+    },
+    openEditModal() {
+      this.editContent = this.localContent;
+      this.showEditModal = true;
+    },
+    closeEditModal() {
+      this.showEditModal = false;
+    },
+    async submitEdit() {
+      if (!this.editContent.trim()) return;
+      this.saving = true;
+      try {
+        await updateReply(this.reply.id, { content: this.editContent });
+        this.localContent = this.editContent;
+        this.reply.content = this.editContent;
+        this.showEditModal = false;
+      } catch { /* silent */ }
+      finally { this.saving = false; }
+    },
+    async confirmDelete() {
+      this.deleting = true;
+      try {
+        await deleteReply(this.reply.id);
+        this.showDeleteConfirm = false;
+        this.$emit('reply-submitted');
+      } catch { /* silent */ }
+      finally { this.deleting = false; }
     },
     formatDate(d) {
       if (!d) return '';
@@ -309,7 +399,19 @@ export default {
 .reply-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2xs);
+}
+.reply-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+.reply-owner-actions {
+  display: flex;
+  gap: var(--space-3xs);
+  flex-shrink: 0;
 }
 .reply-avatar-wrap {
   padding: var(--space-4xs);
@@ -450,5 +552,61 @@ export default {
   flex-direction: column;
   padding-left: 79px;
   padding-top: var(--space-xs);
+}
+
+@media (max-width: 760px) {
+  .nested-replies {
+    padding-left: 30px;
+  }
+  .reply-bubble {
+    padding: var(--space-2xs) var(--space-xs);
+  }
+  .reply-header {
+    align-items: flex-start;
+  }
+  .reply-header-left {
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .reply-date {
+    width: 100%;
+    flex: none;
+    margin-top: 2px;
+  }
+  .reply-body {
+    padding-left: var(--space-xs);
+  }
+  .reply-helpful,
+  .reply-footer,
+  .reply-inline-form {
+    padding-left: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .nested-replies {
+    padding-left: 16px;
+  }
+  .reply-bubble {
+    padding: var(--space-3xs) var(--space-2xs);
+    gap: var(--space-3xs);
+  }
+  .reply-header {
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+  }
+  .reply-date {
+    font-size: 11px;
+  }
+  .reply-body,
+  .reply-helpful,
+  .reply-footer,
+  .reply-inline-form {
+    padding-left: var(--space-2xs);
+  }
+  .reply-stat-btn span:last-child {
+    display: none;
+  }
 }
 </style>

@@ -413,7 +413,8 @@ class Cnw_Social_Bridge {
             'restUrl'     => esc_url_raw( rest_url( 'cnw-social-bridge/v1' ) ),
             'siteUrl'     => esc_url_raw( home_url( '/' ) ),
             'nonce'       => wp_create_nonce( 'wp_rest' ),
-            'logoUrl'     => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
+            'logoUrl'       => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
+            'mobileLogoUrl' => esc_url( get_option( 'cnw_social_mobile_logo_url', '' ) ),
             'currentUser' => array(
                 'id'         => get_current_user_id(),
                 'name'       => $current_user->display_name,

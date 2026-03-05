@@ -43,8 +43,8 @@ class Cnw_Social_Bridge_REST_API {
         ) );
         register_rest_route( $ns, '/replies/(?P<id>\d+)', array(
             array( 'methods' => 'GET',      'callback' => array( $this, 'get_reply' ),    'permission_callback' => '__return_true' ),
-            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_reply' ), 'permission_callback' => array( $this, 'can_manage' ) ),
-            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_reply' ), 'permission_callback' => array( $this, 'can_manage' ) ),
+            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_reply' ), 'permission_callback' => array( $this, 'can_manage_reply' ) ),
+            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_reply' ), 'permission_callback' => array( $this, 'can_manage_reply' ) ),
         ) );
 
         // ── Messages ─────────────────────────────────────────────────
@@ -210,6 +210,19 @@ class Cnw_Social_Bridge_REST_API {
         return $author_id && $author_id === get_current_user_id();
     }
 
+    public function can_manage_reply( WP_REST_Request $request ) {
+        if ( current_user_can( 'manage_options' ) ) {
+            return true;
+        }
+        global $wpdb;
+        $reply_id  = intval( $request['id'] );
+        $author_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d",
+            $reply_id
+        ) );
+        return $author_id && $author_id === get_current_user_id();
+    }
+
     /* ==================================================================
      * THREADS
      * ================================================================== */
@@ -219,11 +232,12 @@ class Cnw_Social_Bridge_REST_API {
 
         $filter   = $request->get_param( 'filter' ) ?: 'newest';
         $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
-        $per_page = intval( $request->get_param( 'per_page' ) ?: 20 );
+        $per_page = intval( $request->get_param( 'per_page' ) ?: 10 );
         $search   = sanitize_text_field( $request->get_param( 'search' ) ?: '' );
         $offset   = ( $page - 1 ) * $per_page;
 
         $where = "WHERE t.status = 'published'";
+        $join  = '';
         $order = 'ORDER BY t.created_at DESC';
 
         if ( $search ) {
@@ -271,9 +285,26 @@ class Cnw_Social_Bridge_REST_API {
 
         $current_user_id = get_current_user_id();
 
+        // For logged-in users on general filters, show only threads from followed tags (if they follow any)
+        $personal_filters = array( 'my_questions', 'my_answered', 'my_unanswered' );
+        if ( $current_user_id && ! in_array( $filter, $personal_filters, true ) ) {
+            $followed_tag_ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT tag_id FROM {$wpdb->prefix}cnw_social_worker_user_followed_tags WHERE user_id = %d",
+                $current_user_id
+            ) );
+            if ( ! empty( $followed_tag_ids ) ) {
+                $tag_placeholders = implode( ',', array_fill( 0, count( $followed_tag_ids ), '%d' ) );
+                $join  = "INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags ftj ON ftj.thread_id = t.id";
+                $where .= $wpdb->prepare(
+                    " AND ftj.tag_id IN ($tag_placeholders)",
+                    ...$followed_tag_ids
+                );
+            }
+        }
+
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $threads = $wpdb->get_results( $wpdb->prepare(
-            "SELECT t.*, u.display_name AS author_name, u.ID AS author_id,
+            "SELECT DISTINCT t.*, u.display_name AS author_name, u.ID AS author_id,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') AS reply_count,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1) AS dislikes,
@@ -281,6 +312,7 @@ class Cnw_Social_Bridge_REST_API {
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st WHERE st.thread_id = t.id AND st.user_id = %d) AS is_saved,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
              FROM {$wpdb->prefix}cnw_social_worker_threads t
+             $join
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              $where $order
              LIMIT %d OFFSET %d",
@@ -290,7 +322,7 @@ class Cnw_Social_Bridge_REST_API {
             $offset
         ) );
 
-        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads t $where" );
+        $total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT t.id) FROM {$wpdb->prefix}cnw_social_worker_threads t $join $where" );
         // phpcs:enable
 
         // Attach tags + avatar, handle anonymous
@@ -1250,8 +1282,15 @@ class Cnw_Social_Bridge_REST_API {
 
     public function get_tags() {
         global $wpdb;
+        $tags_table   = $wpdb->prefix . 'cnw_social_worker_tags';
+        $tt_table     = $wpdb->prefix . 'cnw_social_worker_thread_tags';
         return $wpdb->get_results(
-            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_tags ORDER BY name ASC"
+            "SELECT t.*, COALESCE(tc.cnt, 0) AS question_count
+             FROM $tags_table t
+             LEFT JOIN (
+                 SELECT tag_id, COUNT(*) AS cnt FROM $tt_table GROUP BY tag_id
+             ) tc ON tc.tag_id = t.id
+             ORDER BY t.name ASC"
         );
     }
 
@@ -1477,7 +1516,7 @@ class Cnw_Social_Bridge_REST_API {
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              WHERE t.status = 'published'
              ORDER BY t.views DESC, t.created_at DESC
-             LIMIT 5",
+             LIMIT 3",
             $current_user_id,
             $current_user_id
         ) );

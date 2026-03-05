@@ -15,9 +15,9 @@
         />
         <span class="qcard-author">{{ thread.author_name }}</span>
         <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
+        <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
       </div>
       <div class="qcard-meta-right">
-        <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
         <div v-if="isOwner" class="td-owner-actions">
           <button class="td-action-btn td-edit-btn" @click.stop="openEditModal" title="Edit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -633,5 +633,86 @@ export default {
 .inline-reply-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .question-card {
+    padding: var(--space-xs);
+  }
+  .qcard-meta {
+    align-items: flex-start;
+  }
+  .qcard-meta-left {
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .qcard-date {
+    width: 100%;
+    margin-top: 2px;
+    white-space: normal;
+  }
+  .qcard-tag {
+    padding: 3px 8px;
+    font-size: 11px;
+    line-height: 14px;
+  }
+  .qcard-tags {
+    gap: var(--space-3xs);
+  }
+  .qcard-stats-row {
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+  }
+  .qcard-title {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .qcard-replies {
+    padding-left: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .question-card {
+    padding: var(--space-2xs);
+    gap: var(--space-3xs);
+  }
+  .qcard-meta-left {
+    gap: var(--space-3xs);
+  }
+  .qcard-meta-right {
+    gap: var(--space-3xs);
+  }
+  .qcard-date {
+    font-size: 11px;
+  }
+  .qcard-title {
+    font-size: 15px;
+    line-height: 20px;
+  }
+  .qcard-excerpt {
+    font-size: 13px;
+  }
+  .stat-btn span:last-child {
+    display: none;
+  }
+  .stat-views-label {
+    display: none;
+  }
+  .answered-badge span {
+    font-size: 11px;
+  }
+  .qcard-replies {
+    padding-left: var(--space-2xs);
+  }
+  .td-modal {
+    width: auto;
+    max-width: 95vw;
+    margin: 0 8px;
+  }
+  .td-modal-sm {
+    width: auto;
+  }
 }
 </style>

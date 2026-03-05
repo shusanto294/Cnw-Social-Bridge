@@ -107,6 +107,25 @@ export async function createReply({ thread_id, content, parent_id }) {
   return res.json();
 }
 
+export async function updateReply(id, { content }) {
+  const url = await apiUrl(`/replies/${id}`);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ content }),
+  });
+  return res.json();
+}
+
+export async function deleteReply(id) {
+  const url = await apiUrl(`/replies/${id}`);
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  return res.json();
+}
+
 export async function getCategories() {
   return apiFetch('/categories');
 }

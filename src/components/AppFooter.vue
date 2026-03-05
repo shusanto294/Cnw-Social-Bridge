@@ -78,4 +78,31 @@ export default {
 .footer-brand {
   font-weight: 600;
 }
+
+@media (max-width: 760px) {
+  .cnw-social-worker-footer {
+    padding: var(--space-s) var(--space-m);
+  }
+}
+
+@media (max-width: 480px) {
+  .cnw-social-worker-footer {
+    padding: var(--space-xs) var(--space-s);
+  }
+  .footer-copy {
+    font-size: 12px;
+    white-space: normal;
+    text-align: center;
+  }
+  .footer-credit {
+    white-space: normal;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 12px;
+  }
+  .footer-credit svg {
+    width: 110px;
+    height: auto;
+  }
+}
 </style>

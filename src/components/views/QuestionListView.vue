@@ -395,4 +395,38 @@ export default {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+@media (max-width: 760px) {
+  .list-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .filter-tabs {
+    flex-wrap: wrap;
+  }
+  .list-search {
+    max-width: 100%;
+    margin: var(--space-xs) 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .list-heading {
+    font-size: 15px;
+  }
+  .filter-tab {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .filter-dots-btn {
+    padding: 5px 8px;
+  }
+  .questions-list {
+    gap: 8px;
+  }
+  .page-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
 </style>

@@ -4,8 +4,9 @@
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$logo_url = get_option( 'cnw_social_logo_url', '' );
-$msg      = sanitize_text_field( $_GET['msg'] ?? '' );
+$logo_url        = get_option( 'cnw_social_logo_url', '' );
+$mobile_logo_url = get_option( 'cnw_social_mobile_logo_url', '' );
+$msg             = sanitize_text_field( $_GET['msg'] ?? '' );
 ?>
 
 <div class="wrap cnw-admin-wrap">
@@ -37,6 +38,7 @@ $msg      = sanitize_text_field( $_GET['msg'] ?? '' );
                 <?php wp_nonce_field( 'cnw_save_logo' ); ?>
                 <input type="hidden" name="action" value="cnw_save_logo">
                 <input type="hidden" name="cnw_logo_url" id="cnw-logo-url" value="<?php echo esc_attr( $logo_url ); ?>">
+                <input type="hidden" name="cnw_mobile_logo_url" id="cnw-mobile-logo-url" value="<?php echo esc_attr( $mobile_logo_url ); ?>">
 
                 <div class="cnw-logo-preview-wrap" id="cnw-logo-preview">
                     <?php if ( $logo_url ) : ?>
@@ -55,6 +57,37 @@ $msg      = sanitize_text_field( $_GET['msg'] ?? '' );
                         <?php echo $logo_url ? esc_html__( 'Change Logo', 'cnw-social-bridge' ) : esc_html__( 'Select Logo', 'cnw-social-bridge' ); ?>
                     </button>
                     <button type="button" id="cnw-remove-logo" class="button button-link-delete cnw-btn-remove" <?php echo $logo_url ? '' : 'style="display:none"'; ?>>
+                        <span class="dashicons dashicons-trash"></span> <?php esc_html_e( 'Remove', 'cnw-social-bridge' ); ?>
+                    </button>
+                </div>
+
+                <hr style="margin: 24px 0; border: none; border-top: 1px solid #e0e0e0;" />
+
+                <div class="cnw-settings-card-header" style="margin-bottom: 16px;">
+                    <span class="dashicons dashicons-smartphone cnw-card-icon"></span>
+                    <div>
+                        <h3 class="cnw-settings-card-title"><?php esc_html_e( 'Mobile Logo', 'cnw-social-bridge' ); ?></h3>
+                        <p class="cnw-settings-card-desc"><?php esc_html_e( 'Displayed on mobile devices. If not set, the default wave icon is used. Recommended: square, 60x60 px (PNG or SVG).', 'cnw-social-bridge' ); ?></p>
+                    </div>
+                </div>
+
+                <div class="cnw-logo-preview-wrap" id="cnw-mobile-logo-preview">
+                    <?php if ( $mobile_logo_url ) : ?>
+                        <img src="<?php echo esc_url( $mobile_logo_url ); ?>" alt="Mobile logo preview" class="cnw-logo-preview-img" />
+                    <?php else : ?>
+                        <div class="cnw-logo-empty-state">
+                            <span class="dashicons dashicons-smartphone"></span>
+                            <p><?php esc_html_e( 'No mobile logo selected', 'cnw-social-bridge' ); ?></p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="cnw-logo-actions">
+                    <button type="button" id="cnw-select-mobile-logo" class="button button-secondary cnw-btn-select">
+                        <span class="dashicons dashicons-upload"></span>
+                        <?php echo $mobile_logo_url ? esc_html__( 'Change Mobile Logo', 'cnw-social-bridge' ) : esc_html__( 'Select Mobile Logo', 'cnw-social-bridge' ); ?>
+                    </button>
+                    <button type="button" id="cnw-remove-mobile-logo" class="button button-link-delete cnw-btn-remove" <?php echo $mobile_logo_url ? '' : 'style="display:none"'; ?>>
                         <span class="dashicons dashicons-trash"></span> <?php esc_html_e( 'Remove', 'cnw-social-bridge' ); ?>
                     </button>
                 </div>

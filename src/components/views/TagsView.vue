@@ -71,6 +71,7 @@
           </div>
         </div>
         <span class="tag-card-name">{{ tag.name }}</span>
+        <span class="tag-card-count">{{ tag.question_count || 0 }} {{ (tag.question_count == 1) ? 'question' : 'questions' }}</span>
         <p v-if="tag.description" class="tag-card-desc">{{ tag.description }}</p>
 
       </div>
@@ -513,6 +514,13 @@ export default {
   white-space: nowrap;
 }
 
+.tag-card-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-body, #888);
+  line-height: 1;
+}
+
 .tag-card-desc {
   font-size: 11px;
   font-weight: 300;
@@ -809,5 +817,50 @@ export default {
 .tag-icon-btn:hover::before {
   opacity: 1;
   transform: translateX(-50%) scale(1);
+}
+
+@media (max-width: 760px) {
+  .tags-view-top {
+    flex-wrap: wrap;
+  }
+  .tags-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tags-search-wrap {
+    max-width: 100%;
+    margin: var(--space-xs) 0;
+  }
+  .tags-create-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tags-grid {
+    grid-template-columns: 1fr;
+  }
+  .tags-view-top {
+    gap: var(--space-xs);
+  }
+  .tags-view-heading {
+    font-size: 16px;
+  }
+  .tags-filter-tab {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .tags-create-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .tags-page-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .tags-modal {
+    max-width: 95vw;
+    margin: 8px;
+  }
 }
 </style>

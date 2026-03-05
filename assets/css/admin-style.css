@@ -458,3 +458,32 @@
     border-radius: 4px;
     padding: 4px 8px;
 }
+
+/* ------------------------------------------------------------------
+   Export / Import cards
+   ------------------------------------------------------------------ */
+.cnw-export-import-card {
+    flex: 1;
+    min-width: 280px;
+    max-width: 480px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 8px;
+    padding: 20px 24px;
+}
+
+.cnw-export-import-card h3 {
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2327;
+    margin: 0 0 8px;
+}
+
+.cnw-export-import-card p {
+    font-size: 13px;
+    color: #646970;
+    margin: 0 0 14px;
+    line-height: 1.5;
+}

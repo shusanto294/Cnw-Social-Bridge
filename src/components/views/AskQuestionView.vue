@@ -836,4 +836,32 @@ export default {
 .ask-view .login-prompt a {
   color: var(--primary);
 }
+
+@media (max-width: 760px) {
+  .ask-card {
+    padding: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .ask-card {
+    padding: var(--space-2xs);
+    gap: var(--space-xs);
+  }
+  .ask-heading {
+    font-size: 16px;
+  }
+  .ask-subtitle {
+    font-size: 13px;
+  }
+  .ask-actions-row {
+    flex-wrap: wrap;
+  }
+  .ask-category-dropdown {
+    min-width: 160px;
+  }
+  .ask-view .login-prompt {
+    padding: 24px;
+  }
+}
 </style>
