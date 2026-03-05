@@ -11,10 +11,21 @@
           :class="{ 'is-active': activeFilter === tab.id }"
           @click="setFilter(tab.id)"
         >{{ tab.label }}</button>
-        <button class="filter-tab more-btn">
-          More
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
+        <div class="more-dropdown-wrap">
+          <button class="filter-tab more-btn" :class="{ 'is-active': moreFilters.some(f => f.id === activeFilter) }" @click.stop="moreOpen = !moreOpen">
+            {{ moreLabel }}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div v-if="moreOpen" class="more-dropdown">
+            <button
+              v-for="opt in moreFilters"
+              :key="opt.id"
+              class="more-dropdown-item"
+              :class="{ 'is-active': activeFilter === opt.id }"
+              @click="setFilter(opt.id); moreOpen = false"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
         <button class="filter-dots-btn">
           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
             <g clip-path="url(#clip0_20234_601)">
@@ -102,6 +113,12 @@ export default {
         { id: 'unanswered', label: 'Unanswered' },
         { id: 'recommended', label: 'Recommended' },
       ],
+      moreFilters: [
+        { id: 'my_questions', label: 'Mine' },
+        { id: 'my_answered', label: 'Mine AW' },
+        { id: 'my_unanswered', label: 'Mine UW' },
+      ],
+      moreOpen: false,
       activeFilter: 'newest',
       searchQuery: '',
       threads: [],
@@ -112,6 +129,10 @@ export default {
     };
   },
   computed: {
+    moreLabel() {
+      const active = this.moreFilters.find(f => f.id === this.activeFilter);
+      return active ? active.label : 'More';
+    },
     visiblePages() {
       const pages = [];
       const start = Math.max(1, this.currentPage - 2);
@@ -122,6 +143,11 @@ export default {
   },
   mounted() {
     this.fetchThreads();
+    this._closeMore = () => { this.moreOpen = false; };
+    document.addEventListener('click', this._closeMore);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this._closeMore);
   },
   methods: {
     async fetchThreads() {
@@ -186,7 +212,6 @@ export default {
 .filter-tabs {
   display: flex;
   gap: 5px;
-  overflow: hidden;
   background: #fff;
 }
 
@@ -211,8 +236,50 @@ export default {
   border: none;
 }
 
+/* More dropdown */
+.more-dropdown-wrap {
+  position: relative;
+}
 .more-btn {
   padding: 7px 10px;
+}
+.more-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 170px;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  animation: dropFade 0.15s ease;
+}
+@keyframes dropFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.more-dropdown-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-body);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.more-dropdown-item:hover {
+  background: var(--bg);
+  color: var(--primary);
+}
+.more-dropdown-item.is-active {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  color: #fff;
 }
 
 .filter-dots-btn {

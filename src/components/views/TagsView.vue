@@ -44,23 +44,32 @@
 
         <div class="tag-card-header">
           <div class="tag-card-name-row">
-            <span v-if="followedIds.has(Number(tag.id))" class="tag-followed-tick" title="Following">
-              <svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="9" fill="#22a55b"/><path d="M4.5 9.5l3 3 6-6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
+            <!-- Tag icon -->
+            <svg class="tag-card-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
             <span class="tag-card-name">{{ tag.name }}</span>
           </div>
-          <button v-if="canEdit(tag)" class="tag-edit-btn" @click="openEditModal(tag)">Edit</button>
+          <div class="tag-card-actions">
+            <!-- Edit (pencil icon) -->
+            <button v-if="canEdit(tag)" class="tag-icon-btn tag-edit-btn" data-tooltip="Edit" @click="openEditModal(tag)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <!-- Follow / Unfollow (+ or tick icon) -->
+            <button
+              v-if="isLoggedIn"
+              class="tag-icon-btn tag-follow-icon-btn"
+              :class="{ 'is-following': followedIds.has(Number(tag.id)) }"
+              :data-tooltip="followedIds.has(Number(tag.id)) ? 'Unfollow' : 'Follow'"
+              :disabled="togglingId === Number(tag.id)"
+              @click="toggleFollow(tag)"
+            >
+              <!-- Tick when following -->
+              <svg v-if="followedIds.has(Number(tag.id))" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <!-- Plus when not following -->
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
         </div>
         <p v-if="tag.description" class="tag-card-desc">{{ tag.description }}</p>
-        <div class="tag-card-footer">
-          <button
-            v-if="isLoggedIn"
-            class="tag-follow-btn"
-            :class="{ 'is-following': followedIds.has(Number(tag.id)) }"
-            :disabled="togglingId === Number(tag.id)"
-            @click="toggleFollow(tag)"
-          >{{ followedIds.has(Number(tag.id)) ? 'Following' : 'Follow' }}</button>
-        </div>
 
       </div>
     </div>
@@ -129,7 +138,7 @@ export default {
       filter: 'all',
       search: '',
       currentPage: 1,
-      pageSize: 20,
+      pageSize: 21,
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       currentUserId: Number(window.cnwData?.currentUser?.id || 0),
 
@@ -411,10 +420,10 @@ export default {
 }
 .tags-search-clear:hover { color: var(--text-dark); }
 
-/* Grid */
+/* Grid — 3 columns */
 .tags-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-xs);
 }
 
@@ -448,17 +457,10 @@ export default {
   min-width: 0;
 }
 
-/* Tick mark */
-.tag-followed-tick {
+/* Tag icon next to name */
+.tag-card-icon {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-}
-.tag-followed-tick svg {
-  width: 16px;
-  height: 16px;
+  color: var(--primary);
 }
 
 .tag-card-name {
@@ -482,57 +484,52 @@ export default {
   overflow: hidden;
 }
 
-/* Card footer */
-.tag-card-footer {
-  margin-top: auto;
-  padding-top: var(--space-3xs);
+/* Action icons row */
+.tag-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-/* Edit button */
-.tag-edit-btn {
-  flex-shrink: 0;
-  background: none;
+/* Shared icon button base */
+.tag-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: 1px solid var(--border, #ddd);
-  border-radius: var(--radius-xs);
-  padding: 2px var(--space-2xs);
-  font-size: 11px;
-  font-weight: 400;
-  font-family: 'Poppins', sans-serif;
+  background: #fff;
   color: var(--text-body, #666);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  padding: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
+
+/* Edit (pencil) button */
 .tag-edit-btn:hover {
   background: var(--bg);
   color: var(--primary);
   border-color: var(--primary);
 }
 
-/* Follow button */
-.tag-follow-btn {
-  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-xs);
-  padding: var(--space-4xs) var(--space-xs);
-  font-size: 12px;
-  font-weight: 400;
-  font-family: 'Poppins', sans-serif;
-  line-height: 16px;
-  cursor: pointer;
-  transition: opacity 0.12s;
-  width: 100%;
-  text-align: center;
-}
-.tag-follow-btn:hover {
-  opacity: 0.9;
-}
-.tag-follow-btn.is-following {
-  background: none;
+/* Follow icon button */
+.tag-follow-icon-btn:hover {
+  background: var(--bg);
   color: var(--primary);
-  border: 1px solid var(--primary);
+  border-color: var(--primary);
 }
-.tag-follow-btn:disabled {
+.tag-follow-icon-btn.is-following {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.tag-follow-icon-btn.is-following:hover {
+  opacity: 0.85;
+}
+.tag-follow-icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -698,4 +695,44 @@ export default {
   transition: background 0.1s;
 }
 .tags-modal-cancel-btn:hover { background: var(--bg); }
+
+/* Stylish tooltip */
+.tag-icon-btn {
+  position: relative;
+}
+.tag-icon-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.tag-icon-btn::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  border: 5px solid transparent;
+  border-top-color: var(--primary);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.tag-icon-btn:hover::after,
+.tag-icon-btn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
 </style>

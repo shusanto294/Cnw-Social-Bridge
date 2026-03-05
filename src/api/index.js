@@ -145,6 +145,32 @@ export async function unfollowTag(tagId) {
   return res.json();
 }
 
+export async function createVote({ target_type, target_id, vote_type }) {
+  const url = await apiUrl('/votes');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ target_type, target_id, vote_type }),
+  });
+  return res.json();
+}
+
+export async function saveThread(threadId) {
+  const url = await apiUrl(`/threads/${threadId}/save`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function unsaveThread(threadId) {
+  const url = await apiUrl(`/threads/${threadId}/unsave`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function getSavedThreads() {
+  return apiFetch('/saved-threads');
+}
+
 export async function getHotQuestions() {
   return apiFetch('/hot-questions');
 }

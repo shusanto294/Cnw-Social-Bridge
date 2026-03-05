@@ -1,7 +1,18 @@
 <template>
   <div class="cnw-social-worker-saved-view">
     <h1 class="cnw-social-worker-view-heading">Saved Threads</h1>
-    <div class="cnw-social-worker-placeholder-card">
+
+    <div v-if="loading" class="cnw-social-worker-loading">Loading…</div>
+
+    <template v-else-if="threads.length">
+      <QuestionCard
+        v-for="thread in threads"
+        :key="thread.id"
+        :thread="thread"
+      />
+    </template>
+
+    <div v-else class="cnw-social-worker-placeholder-card">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <p>Your saved threads will appear here!</p>
     </div>
@@ -9,7 +20,29 @@
 </template>
 
 <script>
-export default { name: 'SavedThreadsView' };
+import QuestionCard from '@/components/shared/QuestionCard.vue';
+import { getSavedThreads } from '@/api/index.js';
+
+export default {
+  name: 'SavedThreadsView',
+  components: { QuestionCard },
+  data() {
+    return {
+      threads: [],
+      loading: true,
+    };
+  },
+  async mounted() {
+    try {
+      const data = await getSavedThreads();
+      this.threads = data.threads || [];
+    } catch (e) {
+      /* silent */
+    } finally {
+      this.loading = false;
+    }
+  },
+};
 </script>
 
 <style>

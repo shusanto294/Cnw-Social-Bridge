@@ -20,7 +20,7 @@
           Edit
         </button>
       </div>
-      <div class="tags-grid">
+      <div class="tags-list">
         <span
           v-for="tag in tags"
           :key="tag.id"
@@ -158,7 +158,7 @@ export default {
   border-radius: var(--radius-sm);
 }
 
-.tags-grid {
+.tags-list {
     display: flex;
     flex-direction: row;
     gap: 8px;

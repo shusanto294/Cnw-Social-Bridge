@@ -107,6 +107,17 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/tags/(?P<id>\d+)/unfollow', array(
             'methods' => 'POST', 'callback' => array( $this, 'unfollow_tag' ), 'permission_callback' => array( $this, 'can_create_thread' ),
         ) );
+        // ── Saved Threads ──────────────────────────────────────────
+        register_rest_route( $ns, '/threads/(?P<id>\d+)/save', array(
+            'methods' => 'POST', 'callback' => array( $this, 'save_thread' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/threads/(?P<id>\d+)/unsave', array(
+            'methods' => 'POST', 'callback' => array( $this, 'unsave_thread' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/saved-threads', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_saved_threads' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+
         register_rest_route( $ns, '/hot-questions', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_hot_questions' ), 'permission_callback' => '__return_true',
         ) );
@@ -166,17 +177,51 @@ class Cnw_Social_Bridge_REST_API {
                     WHERE r.thread_id = t.id AND r.status = 'approved'
                 )";
                 break;
+            case 'my_questions':
+                $uid = get_current_user_id();
+                if ( $uid ) {
+                    $where .= $wpdb->prepare( ' AND t.author_id = %d', $uid );
+                }
+                break;
+            case 'my_answered':
+                $uid = get_current_user_id();
+                if ( $uid ) {
+                    $where .= $wpdb->prepare( ' AND t.author_id = %d', $uid );
+                    $where .= " AND EXISTS (
+                        SELECT 1 FROM {$wpdb->prefix}cnw_social_worker_replies r
+                        WHERE r.thread_id = t.id AND r.status = 'approved'
+                    )";
+                }
+                break;
+            case 'my_unanswered':
+                $uid = get_current_user_id();
+                if ( $uid ) {
+                    $where .= $wpdb->prepare( ' AND t.author_id = %d', $uid );
+                    $where .= " AND NOT EXISTS (
+                        SELECT 1 FROM {$wpdb->prefix}cnw_social_worker_replies r
+                        WHERE r.thread_id = t.id AND r.status = 'approved'
+                    )";
+                }
+                break;
         }
+
+        $current_user_id = get_current_user_id();
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $threads = $wpdb->get_results( $wpdb->prepare(
             "SELECT t.*, u.display_name AS author_name, u.ID AS author_id,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') AS reply_count,
-                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1) AS dislikes,
+                (SELECT v.vote_type FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.user_id = %d LIMIT 1) AS user_vote,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st WHERE st.thread_id = t.id AND st.user_id = %d) AS is_saved,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
              FROM {$wpdb->prefix}cnw_social_worker_threads t
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              $where $order
              LIMIT %d OFFSET %d",
+            $current_user_id,
+            $current_user_id,
             $per_page,
             $offset
         ) );
@@ -206,11 +251,20 @@ class Cnw_Social_Bridge_REST_API {
 
         $id = intval( $request['id'] );
 
+        $current_user_id = get_current_user_id();
+
         $thread = $wpdb->get_row( $wpdb->prepare(
-            "SELECT t.*, u.display_name AS author_name, u.ID AS author_id
+            "SELECT t.*, u.display_name AS author_name, u.ID AS author_id,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1) AS dislikes,
+                (SELECT v.vote_type FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.user_id = %d LIMIT 1) AS user_vote,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st WHERE st.thread_id = t.id AND st.user_id = %d) AS is_saved,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
              FROM {$wpdb->prefix}cnw_social_worker_threads t
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              WHERE t.id = %d",
+            $current_user_id,
+            $current_user_id,
             $id
         ) );
 
@@ -354,16 +408,20 @@ class Cnw_Social_Bridge_REST_API {
     public function get_thread_replies( WP_REST_Request $request ) {
         global $wpdb;
 
-        $thread_id = intval( $request['id'] );
+        $thread_id       = intval( $request['id'] );
+        $current_user_id = get_current_user_id();
 
         $replies = $wpdb->get_results( $wpdb->prepare(
             "SELECT r.*, u.display_name AS author_name, u.ID AS author_id,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'reply' AND v.target_id = r.id AND v.vote_type = 1) AS likes,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'reply' AND v.target_id = r.id AND v.vote_type = -1) AS dislikes,
+                (SELECT v.vote_type FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'reply' AND v.target_id = r.id AND v.user_id = %d LIMIT 1) AS user_vote,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r2 WHERE r2.parent_id = r.id AND r2.status = 'approved') AS reply_count
              FROM {$wpdb->prefix}cnw_social_worker_replies r
              LEFT JOIN {$wpdb->users} u ON r.author_id = u.ID
              WHERE r.thread_id = %d AND r.status = 'approved'
              ORDER BY r.created_at ASC",
+            $current_user_id,
             $thread_id
         ) );
 
@@ -1046,19 +1104,92 @@ class Cnw_Social_Bridge_REST_API {
         return array( 'success' => true );
     }
 
+    /* ==================================================================
+     * SAVED THREADS
+     * ================================================================== */
+
+    public function save_thread( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id   = get_current_user_id();
+        $thread_id = intval( $request['id'] );
+
+        $wpdb->replace(
+            $wpdb->prefix . 'cnw_social_worker_saved_threads',
+            array( 'user_id' => $user_id, 'thread_id' => $thread_id )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function unsave_thread( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id   = get_current_user_id();
+        $thread_id = intval( $request['id'] );
+
+        $wpdb->delete(
+            $wpdb->prefix . 'cnw_social_worker_saved_threads',
+            array( 'user_id' => $user_id, 'thread_id' => $thread_id )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function get_saved_threads( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $current_user_id = get_current_user_id();
+
+        $threads = $wpdb->get_results( $wpdb->prepare(
+            "SELECT t.*, u.display_name AS author_name, u.ID AS author_id,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') AS reply_count,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1) AS dislikes,
+                (SELECT v.vote_type FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.user_id = %d LIMIT 1) AS user_vote,
+                1 AS is_saved,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
+             FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
+             JOIN {$wpdb->prefix}cnw_social_worker_threads t ON st.thread_id = t.id
+             LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
+             WHERE st.user_id = %d AND t.status = 'published'
+             ORDER BY st.created_at DESC",
+            $current_user_id,
+            $current_user_id
+        ) );
+
+        // Attach tags to each thread
+        foreach ( $threads as &$thread ) {
+            $thread->tags = $wpdb->get_col( $wpdb->prepare(
+                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
+                 WHERE tt.thread_id = %d",
+                $thread->id
+            ) );
+        }
+
+        return array( 'threads' => $threads );
+    }
+
     public function get_hot_questions() {
         global $wpdb;
 
-        return $wpdb->get_results(
+        $current_user_id = get_current_user_id();
+
+        return $wpdb->get_results( $wpdb->prepare(
             "SELECT t.*, u.display_name AS author_name,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') AS reply_count,
-                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1) AS likes,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1) AS dislikes,
+                (SELECT v.vote_type FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.user_id = %d LIMIT 1) AS user_vote,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st WHERE st.thread_id = t.id AND st.user_id = %d) AS is_saved,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
              FROM {$wpdb->prefix}cnw_social_worker_threads t
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              WHERE t.status = 'published'
              ORDER BY t.views DESC, t.created_at DESC
-             LIMIT 5"
-        );
+             LIMIT 5",
+            $current_user_id,
+            $current_user_id
+        ) );
     }
 
     public function get_user( WP_REST_Request $request ) {

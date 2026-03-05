@@ -46,6 +46,7 @@ class Cnw_Social_Bridge {
 
         // Run any pending DB migrations on every load.
         add_action( 'init', array( __CLASS__, 'migrate_tags_description_column' ) );
+        add_action( 'init', array( __CLASS__, 'migrate_saved_threads_table' ) );
 
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
@@ -202,6 +203,16 @@ class Cnw_Social_Bridge {
         dbDelta( $sql_votes );
         dbDelta( $sql_reputation );
 
+        $wpdb->query(
+            "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_saved_threads (
+                user_id    bigint(20) unsigned NOT NULL,
+                thread_id  bigint(20) unsigned NOT NULL,
+                created_at datetime            DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, thread_id),
+                KEY thread_id (thread_id)
+            ) $charset_collate"
+        );
+
         // Ensure description column exists for existing installs.
         self::migrate_tags_description_column();
 
@@ -298,6 +309,23 @@ class Cnw_Social_Bridge {
                 KEY tag_id (tag_id)
             ) $charset_collate"
         );
+    }
+
+    public static function migrate_saved_threads_table() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_saved_threads';
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '$table'" ) !== $table ) {
+            $charset_collate = $wpdb->get_charset_collate();
+            $wpdb->query(
+                "CREATE TABLE IF NOT EXISTS $table (
+                    user_id    bigint(20) unsigned NOT NULL,
+                    thread_id  bigint(20) unsigned NOT NULL,
+                    created_at datetime            DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, thread_id),
+                    KEY thread_id (thread_id)
+                ) $charset_collate"
+            );
+        }
     }
 
     /* ------------------------------------------------------------------

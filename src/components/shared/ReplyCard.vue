@@ -26,12 +26,17 @@
       <!-- Body text -->
       <p class="reply-body">{{ reply.content }}</p>
 
-      <!-- Helpful count -->
+      <!-- Vote buttons -->
       <div class="reply-helpful">
-        <button class="reply-stat-btn" @click="like">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--red)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span>{{ localLikes }}</span>
-          <span>Helpful</span>
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+          <span>{{ localUpvotes }}</span>
+          <span>Upvote</span>
+        </button>
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+          <span>{{ localDownvotes }}</span>
+          <span>Downvote</span>
         </button>
       </div>
 
@@ -93,7 +98,7 @@
 </template>
 
 <script>
-import { createReply } from '@/api/index.js';
+import { createReply, createVote } from '@/api/index.js';
 
 export default {
   name: 'ReplyCard',
@@ -107,8 +112,10 @@ export default {
   emits: ['reply-submitted'],
   data() {
     return {
-      liked: false,
-      localLikes: this.reply.likes || 0,
+      userVote: this.reply.user_vote ? parseInt(this.reply.user_vote) : 0,
+      localUpvotes: parseInt(this.reply.likes) || 0,
+      localDownvotes: parseInt(this.reply.dislikes) || 0,
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       showReplyBox: false,
       replyDraft: '',
       submitting: false,
@@ -128,9 +135,32 @@ export default {
     },
   },
   methods: {
-    like() {
-      this.liked = !this.liked;
-      this.localLikes += this.liked ? 1 : -1;
+    async vote(type) {
+      if (!this.isLoggedIn) return;
+      const prev = this.userVote;
+      const prevUp = this.localUpvotes;
+      const prevDown = this.localDownvotes;
+      if (prev === type) {
+        this.userVote = 0;
+        if (type === 1) this.localUpvotes--;
+        else this.localDownvotes--;
+      } else {
+        this.userVote = type;
+        if (type === 1) {
+          this.localUpvotes++;
+          if (prev === -1) this.localDownvotes--;
+        } else {
+          this.localDownvotes++;
+          if (prev === 1) this.localUpvotes--;
+        }
+      }
+      try {
+        await createVote({ target_type: 'reply', target_id: this.reply.id, vote_type: type });
+      } catch {
+        this.userVote = prev;
+        this.localUpvotes = prevUp;
+        this.localDownvotes = prevDown;
+      }
     },
     toggleNested() {
       // could toggle nested visibility in the future

@@ -37,11 +37,21 @@
           <span v-for="tag in threadTags" :key="tag" class="qcard-tag">{{ tag }}</span>
         </div>
 
-        <!-- Stats row 1: Helpful + Views -->
+        <!-- Stats row 1: Upvote/Downvote + Views -->
         <div class="qcard-stats-row">
-          <button class="stat-btn helpful-btn" @click="like">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--red)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span>{{ localLikes }}</span>
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            <span>{{ localUpvotes }}</span>
+            <span>Upvote</span>
+          </button>
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+            <span>{{ localDownvotes }}</span>
+            <span>Downvote</span>
+          </button>
+          <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click="toggleSave" :disabled="!isLoggedIn">
+            <svg width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span>{{ localSavesCount }}</span>
             <span>Helpful</span>
           </button>
           <span class="stat-divider"></span>
@@ -126,7 +136,7 @@
 
 <script>
 import ReplyCard from '@/components/shared/ReplyCard.vue';
-import { getThread, getReplies, createReply } from '@/api/index.js';
+import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread } from '@/api/index.js';
 
 export default {
   name: 'ThreadDetailView',
@@ -137,11 +147,14 @@ export default {
       replies: [],
       loading: true,
       loadingReplies: false,
-      liked: false,
-      localLikes: 0,
+      userVote: 0,
+      localUpvotes: 0,
+      localDownvotes: 0,
       replyContent: '',
       submitting: false,
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+      isSaved: false,
+      localSavesCount: 0,
     };
   },
   computed: {
@@ -163,7 +176,11 @@ export default {
     const id = this.$route.params.id;
     try {
       this.thread = await getThread(id);
-      this.localLikes = this.thread.likes || 0;
+      this.localUpvotes = parseInt(this.thread.likes) || 0;
+      this.localDownvotes = parseInt(this.thread.dislikes) || 0;
+      this.userVote = this.thread.user_vote ? parseInt(this.thread.user_vote) : 0;
+      this.isSaved = !!(this.thread.is_saved && parseInt(this.thread.is_saved));
+      this.localSavesCount = parseInt(this.thread.saves_count) || 0;
     } catch (e) {
       console.error(e);
     } finally {
@@ -179,9 +196,49 @@ export default {
     }
   },
   methods: {
-    like() {
-      this.liked = !this.liked;
-      this.localLikes += this.liked ? 1 : -1;
+    async vote(type) {
+      if (!this.isLoggedIn) return;
+      const prev = this.userVote;
+      const prevUp = this.localUpvotes;
+      const prevDown = this.localDownvotes;
+      if (prev === type) {
+        this.userVote = 0;
+        if (type === 1) this.localUpvotes--;
+        else this.localDownvotes--;
+      } else {
+        this.userVote = type;
+        if (type === 1) {
+          this.localUpvotes++;
+          if (prev === -1) this.localDownvotes--;
+        } else {
+          this.localDownvotes++;
+          if (prev === 1) this.localUpvotes--;
+        }
+      }
+      try {
+        await createVote({ target_type: 'thread', target_id: this.thread.id, vote_type: type });
+      } catch {
+        this.userVote = prev;
+        this.localUpvotes = prevUp;
+        this.localDownvotes = prevDown;
+      }
+    },
+    async toggleSave() {
+      if (!this.isLoggedIn) return;
+      const prev = this.isSaved;
+      const prevCount = this.localSavesCount;
+      this.isSaved = !prev;
+      this.localSavesCount += this.isSaved ? 1 : -1;
+      try {
+        if (this.isSaved) {
+          await saveThread(this.thread.id);
+        } else {
+          await unsaveThread(this.thread.id);
+        }
+      } catch {
+        this.isSaved = prev;
+        this.localSavesCount = prevCount;
+      }
     },
     focusReplyBox() {
       this.$nextTick(() => this.$refs.replyBox?.focus());
