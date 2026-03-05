@@ -26,9 +26,19 @@
 
     <!-- Actions -->
     <div class="cnw-social-worker-header-actions">
-      <button class="cnw-social-worker-btn cnw-social-worker-btn-primary ask-btn" @click="$router.push('/ask')">
+      <button v-if="isLoggedIn" class="cnw-social-worker-btn cnw-social-worker-btn-primary ask-btn" @click="$router.push('/ask')">
         + Ask a Question
       </button>
+      <template v-else>
+        <button class="cnw-social-worker-btn cnw-social-worker-btn-primary ask-btn login-header-btn" @click="openModal('login')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Login
+        </button>
+        <button class="cnw-social-worker-btn ask-btn login-header-btn cnw-register-header-btn" @click="openModal('register')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Register
+        </button>
+      </template>
       <div class="notif-wrapper" v-if="isLoggedIn">
         <button class="notif-btn" title="Notifications" @click="toggleDropdown">
           <svg xmlns="http://www.w3.org/2000/svg" width="25" height="28" viewBox="0 0 25 28" fill="none">
@@ -69,11 +79,103 @@
       </div>
     </div>
     </div><!-- /.cnw-social-worker-header-inner -->
+
+    <!-- Login Modal -->
+    <div v-if="showLoginModal" class="cnw-login-overlay" @click.self="closeLoginModal">
+      <div class="cnw-login-modal">
+        <button class="cnw-login-close" @click="closeLoginModal">&times;</button>
+
+        <!-- Login View -->
+        <template v-if="modalView === 'login'">
+          <h2 class="cnw-login-title">Login</h2>
+          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
+          <form @submit.prevent="handleLogin" class="cnw-login-form">
+            <label class="cnw-login-label">
+              Username or Email
+              <input v-model="loginUsername" type="text" class="cnw-login-input" required autocomplete="username" />
+            </label>
+            <label class="cnw-login-label">
+              Password
+              <input v-model="loginPassword" type="password" class="cnw-login-input" required autocomplete="current-password" />
+            </label>
+            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
+              {{ loginLoading ? 'Logging in...' : 'Login' }}
+            </button>
+          </form>
+          <p class="cnw-login-forgot">
+            <a href="#" @click.prevent="switchView('forgot')">Forgot your password?</a>
+          </p>
+          <p class="cnw-login-forgot">
+            Don't have an account? <a href="#" @click.prevent="switchView('register')">Register</a>
+          </p>
+        </template>
+
+        <!-- Register View -->
+        <template v-else-if="modalView === 'register'">
+          <h2 class="cnw-login-title">Create Account</h2>
+          <p v-if="registerSuccess" class="cnw-login-success">{{ registerSuccess }}</p>
+          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
+          <form v-if="!registerSuccess" @submit.prevent="handleRegister" class="cnw-login-form">
+            <div class="cnw-login-row">
+              <label class="cnw-login-label">
+                First Name
+                <input v-model="regFirstName" type="text" class="cnw-login-input" required autocomplete="given-name" />
+              </label>
+              <label class="cnw-login-label">
+                Last Name
+                <input v-model="regLastName" type="text" class="cnw-login-input" required autocomplete="family-name" />
+              </label>
+            </div>
+            <label class="cnw-login-label">
+              Username
+              <input v-model="regUsername" type="text" class="cnw-login-input" required autocomplete="username" />
+            </label>
+            <label class="cnw-login-label">
+              Email
+              <input v-model="regEmail" type="email" class="cnw-login-input" required autocomplete="email" />
+            </label>
+            <label class="cnw-login-label">
+              Password
+              <input v-model="regPassword" type="password" class="cnw-login-input" required autocomplete="new-password" />
+            </label>
+            <label class="cnw-login-label">
+              Confirm Password
+              <input v-model="regPasswordConfirm" type="password" class="cnw-login-input" required autocomplete="new-password" />
+            </label>
+            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
+              {{ loginLoading ? 'Creating...' : 'Register' }}
+            </button>
+          </form>
+          <p class="cnw-login-forgot">
+            Already have an account? <a href="#" @click.prevent="switchView('login')">Login</a>
+          </p>
+        </template>
+
+        <!-- Forgot Password View -->
+        <template v-else>
+          <h2 class="cnw-login-title">Reset Password</h2>
+          <p v-if="resetSuccess" class="cnw-login-success">{{ resetSuccess }}</p>
+          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
+          <form v-if="!resetSuccess" @submit.prevent="handleForgotPassword" class="cnw-login-form">
+            <label class="cnw-login-label">
+              Username or Email
+              <input v-model="resetEmail" type="text" class="cnw-login-input" required autocomplete="username" />
+            </label>
+            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
+              {{ loginLoading ? 'Sending...' : 'Send Reset Link' }}
+            </button>
+          </form>
+          <p class="cnw-login-forgot">
+            <a href="#" @click.prevent="switchView('login')">Back to Login</a>
+          </p>
+        </template>
+      </div>
+    </div>
   </header>
 </template>
 
 <script>
-import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead } from '@/api/index.js';
+import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead, login, forgotPassword, register } from '@/api/index.js';
 
 export default {
   name: 'AppHeader',
@@ -86,6 +188,21 @@ export default {
       logoUrl: window.cnwData?.logoUrl || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       pollTimer: null,
+      showLoginModal: false,
+      modalView: 'login',
+      loginUsername: '',
+      loginPassword: '',
+      loginError: '',
+      loginLoading: false,
+      resetEmail: '',
+      resetSuccess: '',
+      regFirstName: '',
+      regLastName: '',
+      regUsername: '',
+      regEmail: '',
+      regPassword: '',
+      regPasswordConfirm: '',
+      registerSuccess: '',
     };
   },
   mounted() {
@@ -139,6 +256,87 @@ export default {
       this.notifications.forEach(n => n.is_read = '1');
       this.unreadCount = 0;
       try { await markAllNotificationsRead(); } catch { /* silent */ }
+    },
+    openModal(view) {
+      this.modalView = view;
+      this.loginError = '';
+      this.resetSuccess = '';
+      this.registerSuccess = '';
+      this.showLoginModal = true;
+    },
+    switchView(view) {
+      this.modalView = view;
+      this.loginError = '';
+      this.resetSuccess = '';
+      this.registerSuccess = '';
+    },
+    closeLoginModal() {
+      this.showLoginModal = false;
+      this.modalView = 'login';
+      this.loginError = '';
+      this.resetSuccess = '';
+      this.registerSuccess = '';
+    },
+    async handleLogin() {
+      this.loginError = '';
+      this.loginLoading = true;
+      try {
+        const data = await login({ username: this.loginUsername, password: this.loginPassword });
+        // Update global cnwData with fresh nonce and user info
+        window.cnwData.nonce = data.nonce;
+        window.cnwData.currentUser = data.currentUser;
+        this.showLoginModal = false;
+        // Reload the page so all components pick up the new auth state
+        window.location.reload();
+      } catch (e) {
+        this.loginError = e.message || 'Invalid username or password.';
+      } finally {
+        this.loginLoading = false;
+      }
+    },
+    async handleRegister() {
+      this.loginError = '';
+      this.registerSuccess = '';
+      if (this.regPassword !== this.regPasswordConfirm) {
+        this.loginError = 'Passwords do not match.';
+        return;
+      }
+      if (this.regPassword.length < 6) {
+        this.loginError = 'Password must be at least 6 characters.';
+        return;
+      }
+      this.loginLoading = true;
+      try {
+        const data = await register({ username: this.regUsername, email: this.regEmail, password: this.regPassword, first_name: this.regFirstName, last_name: this.regLastName });
+        if (data.success) {
+          this.registerSuccess = 'Account created successfully! You can now login.';
+          this.regFirstName = '';
+          this.regLastName = '';
+          this.regUsername = '';
+          this.regEmail = '';
+          this.regPassword = '';
+          this.regPasswordConfirm = '';
+        } else {
+          this.loginError = data.message || 'Registration failed.';
+        }
+      } catch (e) {
+        this.loginError = e.message || 'Registration failed.';
+      } finally {
+        this.loginLoading = false;
+      }
+    },
+    async handleForgotPassword() {
+      this.loginError = '';
+      this.resetSuccess = '';
+      this.loginLoading = true;
+      try {
+        const data = await forgotPassword({ user_login: this.resetEmail });
+        this.resetSuccess = data.message || 'If an account exists with that username or email, a password reset link has been sent.';
+      } catch {
+        this.resetSuccess = 'If an account exists with that username or email, a password reset link has been sent.';
+      } finally {
+        this.loginLoading = false;
+      }
     },
     timeAgo(dateStr) {
       if (!dateStr) return '';
@@ -353,5 +551,131 @@ export default {
   .cnw-social-worker-header-inner { padding: 8px 12px; }
   .ask-btn { padding: 8px 12px; font-size: 13px; }
   .notif-dropdown { width: 300px; right: -40px; }
+}
+
+/* Login Modal */
+.cnw-login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnw-login-modal {
+  background: #fff;
+  border-radius: var(--radius-m, 8px);
+  padding: 32px;
+  width: 380px;
+  max-width: 90vw;
+  position: relative;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.cnw-login-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  line-height: 1;
+}
+.cnw-login-close:hover { color: #333; }
+.cnw-login-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  color: var(--text-dark, #222);
+}
+.cnw-login-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.cnw-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cnw-login-row {
+  display: flex;
+  gap: 12px;
+}
+.cnw-login-row .cnw-login-label {
+  flex: 1;
+}
+.cnw-login-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark, #333);
+}
+.cnw-login-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cnw-login-input:focus {
+  border-color: var(--primary, #3aa9da);
+  box-shadow: 0 0 0 3px rgba(58,169,218,0.15);
+}
+.cnw-login-submit {
+  width: 100%;
+  padding: 9px;
+  font-size: 15px;
+  margin-top: 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnw-login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.cnw-login-forgot {
+  text-align: center;
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+.cnw-login-forgot a {
+  color: var(--primary, #3aa9da);
+  text-decoration: none;
+  font-weight: 500;
+}
+.cnw-login-forgot a:hover {
+  text-decoration: underline;
+}
+.cnw-login-success {
+  background: #f0fdf4;
+  color: #16a34a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.login-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cnw-register-header-btn {
+  background: var(--secondary, #22a55b);
+  border: none;
+  color: #fff;
+}
+.cnw-register-header-btn:hover {
+  opacity: 0.9;
 }
 </style>

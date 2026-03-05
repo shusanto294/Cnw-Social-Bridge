@@ -11,7 +11,7 @@
           :class="{ 'is-active': activeFilter === tab.id }"
           @click="setFilter(tab.id)"
         >{{ tab.label }}</button>
-        <div class="more-dropdown-wrap">
+        <div v-if="isLoggedIn" class="more-dropdown-wrap">
           <button class="filter-tab more-btn" :class="{ 'is-active': moreFilters.some(f => f.id === activeFilter) }" @click.stop="moreOpen = !moreOpen">
             {{ moreLabel }}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -119,6 +119,7 @@ export default {
         { id: 'my_answered', label: 'Mine AW' },
         { id: 'my_unanswered', label: 'Mine UW' },
       ],
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       moreOpen: false,
       activeFilter: 'newest',
       searchQuery: '',

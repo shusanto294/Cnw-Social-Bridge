@@ -136,6 +136,26 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/hot-questions', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_hot_questions' ), 'permission_callback' => '__return_true',
         ) );
+
+        // ── Login ───────────────────────────────────────────────────────
+        register_rest_route( $ns, '/login', array(
+            'methods' => 'POST', 'callback' => array( $this, 'handle_login' ), 'permission_callback' => '__return_true',
+        ) );
+
+        // ── Forgot Password ─────────────────────────────────────────────
+        register_rest_route( $ns, '/forgot-password', array(
+            'methods' => 'POST', 'callback' => array( $this, 'handle_forgot_password' ), 'permission_callback' => '__return_true',
+        ) );
+
+        // ── Logout ──────────────────────────────────────────────────────
+        register_rest_route( $ns, '/logout', array(
+            'methods' => 'POST', 'callback' => array( $this, 'handle_logout' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+
+        // ── Register ────────────────────────────────────────────────────
+        register_rest_route( $ns, '/register', array(
+            'methods' => 'POST', 'callback' => array( $this, 'handle_register' ), 'permission_callback' => '__return_true',
+        ) );
         register_rest_route( $ns, '/users/(?P<id>\d+)', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_user' ), 'permission_callback' => '__return_true',
         ) );
@@ -1459,6 +1479,107 @@ class Cnw_Social_Bridge_REST_API {
                 'reference_id'   => (int) $ref_id,
                 'message'        => $message,
             )
+        );
+    }
+
+    /* ==================================================================
+     * LOGIN
+     * ================================================================== */
+
+    public function handle_register( WP_REST_Request $request ) {
+        $first_name = sanitize_text_field( $request->get_param( 'first_name' ) );
+        $last_name  = sanitize_text_field( $request->get_param( 'last_name' ) );
+        $username   = sanitize_user( $request->get_param( 'username' ) );
+        $email      = sanitize_email( $request->get_param( 'email' ) );
+        $password   = $request->get_param( 'password' );
+
+        if ( empty( $first_name ) || empty( $last_name ) || empty( $username ) || empty( $email ) || empty( $password ) ) {
+            return new WP_Error( 'missing_fields', 'All fields are required.', array( 'status' => 400 ) );
+        }
+
+        if ( strlen( $password ) < 6 ) {
+            return new WP_Error( 'weak_password', 'Password must be at least 6 characters.', array( 'status' => 400 ) );
+        }
+
+        if ( ! is_email( $email ) ) {
+            return new WP_Error( 'invalid_email', 'Please enter a valid email address.', array( 'status' => 400 ) );
+        }
+
+        if ( username_exists( $username ) ) {
+            return new WP_Error( 'username_taken', 'This username is already taken.', array( 'status' => 400 ) );
+        }
+
+        if ( email_exists( $email ) ) {
+            return new WP_Error( 'email_taken', 'An account with this email already exists.', array( 'status' => 400 ) );
+        }
+
+        $user_id = wp_insert_user( array(
+            'user_login'  => $username,
+            'user_email'  => $email,
+            'user_pass'   => $password,
+            'first_name'  => $first_name,
+            'last_name'   => $last_name,
+            'display_name' => trim( $first_name . ' ' . $last_name ),
+            'role'        => 'cnw_forum_member',
+        ) );
+
+        if ( is_wp_error( $user_id ) ) {
+            return new WP_Error( 'registration_failed', $user_id->get_error_message(), array( 'status' => 400 ) );
+        }
+
+        return array( 'success' => true, 'message' => 'Account created successfully.' );
+    }
+
+    public function handle_logout() {
+        wp_logout();
+        return array( 'success' => true );
+    }
+
+    public function handle_forgot_password( WP_REST_Request $request ) {
+        $user_login = sanitize_text_field( $request->get_param( 'user_login' ) );
+
+        if ( empty( $user_login ) ) {
+            return new WP_Error( 'missing_field', 'Please enter your username or email.', array( 'status' => 400 ) );
+        }
+
+        // Always return success to avoid user enumeration.
+        $result = retrieve_password( $user_login );
+
+        // Even if it fails, we respond with the same message.
+        return array( 'success' => true, 'message' => 'If an account exists with that username or email, a password reset link has been sent.' );
+    }
+
+    public function handle_login( WP_REST_Request $request ) {
+        $username = sanitize_text_field( $request->get_param( 'username' ) );
+        $password = $request->get_param( 'password' );
+
+        if ( empty( $username ) || empty( $password ) ) {
+            return new WP_Error( 'missing_fields', 'Username and password are required.', array( 'status' => 400 ) );
+        }
+
+        $user = wp_signon( array(
+            'user_login'    => $username,
+            'user_password' => $password,
+            'remember'      => true,
+        ), is_ssl() );
+
+        if ( is_wp_error( $user ) ) {
+            return new WP_Error( 'login_failed', 'Invalid username or password.', array( 'status' => 401 ) );
+        }
+
+        // Set the current user so we can generate a fresh nonce.
+        wp_set_current_user( $user->ID );
+
+        return array(
+            'success'     => true,
+            'nonce'       => wp_create_nonce( 'wp_rest' ),
+            'currentUser' => array(
+                'id'         => $user->ID,
+                'name'       => $user->display_name,
+                'first_name' => get_user_meta( $user->ID, 'first_name', true ),
+                'last_name'  => get_user_meta( $user->ID, 'last_name', true ),
+                'avatar'     => get_avatar_url( $user->ID, array( 'size' => 80 ) ),
+            ),
         );
     }
 }

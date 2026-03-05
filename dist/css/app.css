@@ -189,6 +189,133 @@
 }
 }
 
+/* Login Modal */
+.cnw-login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnw-login-modal {
+  background: #fff;
+  border-radius: var(--radius-m, 8px);
+  padding: 32px;
+  width: 380px;
+  max-width: 90vw;
+  position: relative;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.cnw-login-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  line-height: 1;
+}
+.cnw-login-close:hover { color: #333;
+}
+.cnw-login-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  color: var(--text-dark, #222);
+}
+.cnw-login-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.cnw-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cnw-login-row {
+  display: flex;
+  gap: 12px;
+}
+.cnw-login-row .cnw-login-label {
+  flex: 1;
+}
+.cnw-login-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark, #333);
+}
+.cnw-login-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cnw-login-input:focus {
+  border-color: var(--primary, #3aa9da);
+  box-shadow: 0 0 0 3px rgba(58,169,218,0.15);
+}
+.cnw-login-submit {
+  width: 100%;
+  padding: 9px;
+  font-size: 15px;
+  margin-top: 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cnw-login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.cnw-login-forgot {
+  text-align: center;
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+.cnw-login-forgot a {
+  color: var(--primary, #3aa9da);
+  text-decoration: none;
+  font-weight: 500;
+}
+.cnw-login-forgot a:hover {
+  text-decoration: underline;
+}
+.cnw-login-success {
+  background: #f0fdf4;
+  color: #16a34a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.login-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cnw-register-header-btn {
+  background: var(--secondary, #22a55b);
+  border: none;
+  color: #fff;
+}
+.cnw-register-header-btn:hover {
+  opacity: 0.9;
+}
+
 
 .cnw-social-worker-sidebar {
   width: 278px;

@@ -1,7 +1,7 @@
 <template>
   <aside class="cnw-social-worker-right-sidebar">
     <!-- Following Tags -->
-    <div class="rsidebar-card">
+    <div v-if="isLoggedIn" class="rsidebar-card">
       <div class="rsidebar-card-header">
         <h3>Following Tags</h3>
         <button class="edit-tags-btn" @click="$router.push('/tags')">
@@ -98,6 +98,7 @@ export default {
     return {
       tags: [],
       hotQuestions: [],
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
   },
   async mounted() {

@@ -219,3 +219,43 @@ export async function markAllNotificationsRead() {
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
+
+export async function logout() {
+  const url = await apiUrl('/logout');
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function forgotPassword({ user_login }) {
+  const url = await apiUrl('/forgot-password');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ user_login }),
+  });
+  return res.json();
+}
+
+export async function register({ username, email, password, first_name, last_name }) {
+  const url = await apiUrl('/register');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ username, email, password, first_name, last_name }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Registration failed');
+  return data;
+}
+
+export async function login({ username, password }) {
+  const url = await apiUrl('/login');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Login failed');
+  return data;
+}

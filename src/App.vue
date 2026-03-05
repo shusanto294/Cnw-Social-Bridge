@@ -2,7 +2,7 @@
   <div class="cnw-social-worker-app-wrapper">
     <AppHeader />
     <div class="cnw-social-worker-layout">
-      <AppSidebar />
+      <AppSidebar v-if="isLoggedIn" />
       <main class="cnw-social-worker-main">
         <router-view />
       </main>
@@ -21,6 +21,11 @@ import AppFooter from './components/AppFooter.vue';
 export default {
   name: 'App',
   components: { AppHeader, AppSidebar, AppRightSidebar, AppFooter },
+  data() {
+    return {
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+    };
+  },
   computed: {
     hideRightSidebar() {
       return this.$route.path !== '/';

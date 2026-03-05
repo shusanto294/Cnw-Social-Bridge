@@ -38,4 +38,8 @@ module.exports = {
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  performance: {
+    hints: false,
+  },
+  stats: 'errors-only',
 };

@@ -173,7 +173,7 @@
           <span>Report an Issue</span>
         </router-link>
 
-        <a href="/wp-login.php?action=logout" class="sidebar-nav-item">
+        <a v-if="isLoggedIn" href="#" class="sidebar-nav-item" @click.prevent="handleLogout">
           <span class="nav-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <g clip-path="url(#clip0_20253_86)">
@@ -194,12 +194,15 @@
 </template>
 
 <script>
+import { logout } from '@/api/index.js';
+
 export default {
   name: 'AppSidebar',
 data() {
     return {
       currentUser: window.cnwData?.currentUser || { name: '', first_name: '', last_name: '', avatar: '' },
       defaultAvatar: 'https://www.gravatar.com/avatar/?d=mp&s=72',
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
   },
   computed: {
@@ -209,7 +212,15 @@ data() {
       const full = (fn + ' ' + ln).trim();
       return full || this.currentUser.name || 'Guest';
     },
-},
+  },
+  methods: {
+    async handleLogout() {
+      try { await logout(); } catch { /* silent */ }
+      window.cnwData.currentUser = { id: 0, name: '', first_name: '', last_name: '', avatar: '' };
+      window.location.hash = '#/';
+      window.location.reload();
+    },
+  },
 };
 </script>
 
