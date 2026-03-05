@@ -180,6 +180,28 @@
   flex-shrink: 0;
   margin-top: 6px;
 }
+.notif-show-more {
+  padding: 8px 16px;
+  text-align: center;
+  border-top: 1px solid var(--border, #e0e0e0);
+}
+.notif-show-more-btn {
+  background: none;
+  border: none;
+  color: var(--primary, #3aa9da);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.notif-show-more-btn:hover {
+  text-decoration: underline;
+}
+.notif-show-more-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  text-decoration: none;
+}
 @media (max-width: 480px) {
 .cnw-social-worker-header-inner { padding: 8px 12px;
 }
@@ -1368,6 +1390,44 @@ to   { opacity: 1; transform: translateY(0);
 .page-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+
+.not-found-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: var(--space-l, 32px);
+}
+.not-found-card {
+  text-align: center;
+  max-width: 400px;
+}
+.not-found-icon {
+  color: var(--text-light, #999);
+  margin-bottom: var(--space-s, 16px);
+}
+.not-found-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text-dark, #222);
+  margin: 0 0 8px;
+  line-height: 1;
+}
+.not-found-message {
+  font-size: 15px;
+  color: var(--text-light, #777);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.not-found-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  font-size: 14px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 

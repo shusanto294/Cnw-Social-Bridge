@@ -42,7 +42,7 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
                 <td><select id="user_id" name="user_id" required>
                     <option value="">-- Select --</option>
                     <?php foreach ( $users as $u ) : ?>
-                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->user_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->user_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
             <tr><th><label for="points">Points</label></th>
@@ -74,12 +74,33 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
     <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-reputation&action=add' ) ); ?>" class="button button-primary">Add Reputation Entry</a></p>
 
     <?php
-    $rows = $wpdb->get_results(
-        "SELECT rp.*, u.display_name AS user_name
+    $search   = sanitize_text_field( $_GET['s'] ?? '' );
+    $per_page = 20;
+    $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
+    $offset   = ( $paged - 1 ) * $per_page;
+
+    $where = '';
+    $params = array();
+    if ( $search ) {
+        $like   = '%' . $wpdb->esc_like( $search ) . '%';
+        $where  = 'WHERE u.display_name LIKE %s OR rp.action_type LIKE %s OR rp.description LIKE %s';
+        $params = array( $like, $like, $like );
+    }
+
+    $total_query = "SELECT COUNT(*) FROM $table rp LEFT JOIN {$wpdb->users} u ON rp.user_id = u.ID $where";
+    $total       = $search ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $paged       = min( $paged, $total_pages );
+
+    $query = "SELECT rp.*, u.display_name AS user_name
          FROM $table rp
          LEFT JOIN {$wpdb->users} u ON rp.user_id = u.ID
-         ORDER BY rp.created_at DESC LIMIT 100"
-    );
+         $where ORDER BY rp.created_at DESC LIMIT %d OFFSET %d";
+    $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
+    $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
+
+    cnw_admin_search_box( 'cnw-reputation', $search );
+    cnw_admin_pagination( 'cnw-reputation', $paged, $total_pages, $total, $search );
     ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
@@ -97,14 +118,17 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
         <table class="wp-list-table widefat fixed striped">
             <thead><tr>
                 <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
-                <th style="width:40px">ID</th><th style="width:140px">User</th><th style="width:70px">Points</th><th style="width:140px">Action</th><th style="width:80px">Ref Type</th><th style="width:70px">Ref ID</th><th>Description</th><th style="width:150px">Created</th><th style="width:100px">Actions</th>
+                <th style="width:40px">ID</th><th style="width:140px">User</th><th style="width:80px">Total Rep</th><th style="width:70px">Points</th><th style="width:140px">Action</th><th style="width:80px">Ref Type</th><th style="width:70px">Ref ID</th><th>Description</th><th style="width:150px">Created</th><th style="width:100px">Actions</th>
             </tr></thead>
             <tbody>
-            <?php if ( $rows ) : foreach ( $rows as $row ) : ?>
+            <?php if ( $rows ) : foreach ( $rows as $row ) :
+                $user_total = (int) get_user_meta( $row->user_id, 'cnw_reputation_total', true );
+            ?>
                 <tr>
                     <td class="cnw-cb-col"><input type="checkbox" name="bulk_ids[]" value="<?php echo esc_attr( $row->id ); ?>" class="cnw-bulk-cb"></td>
                     <td><?php echo esc_html( $row->id ); ?></td>
                     <td><?php echo esc_html( $row->user_name ); ?></td>
+                    <td><strong><?php echo esc_html( $user_total ); ?></strong></td>
                     <td><strong><?php echo $row->points >= 0 ? '+' : ''; ?><?php echo esc_html( $row->points ); ?></strong></td>
                     <td><?php echo esc_html( str_replace( '_', ' ', ucfirst( $row->action_type ) ) ); ?></td>
                     <td><?php echo $row->reference_type ? esc_html( ucfirst( $row->reference_type ) ) : '—'; ?></td>
@@ -117,10 +141,12 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
                     </td>
                 </tr>
             <?php endforeach; else : ?>
-                <tr><td colspan="10">No reputation entries found.</td></tr>
+                <tr><td colspan="11">No reputation entries found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
     </form>
+
+    <?php cnw_admin_pagination( 'cnw-reputation', $paged, $total_pages, $total, $search ); ?>
 <?php endif; ?>
 </div>

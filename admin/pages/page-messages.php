@@ -40,14 +40,14 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
             <tr><th><label for="sender_id">Sender</label></th>
                 <td><select id="sender_id" name="sender_id" required>
                     <?php foreach ( $users as $u ) : ?>
-                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->sender_id ?? get_current_user_id(), $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->sender_id ?? get_current_user_id(), $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
             <tr><th><label for="recipient_id">Recipient</label></th>
                 <td><select id="recipient_id" name="recipient_id" required>
                     <option value="">-- Select --</option>
                     <?php foreach ( $users as $u ) : ?>
-                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->recipient_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->recipient_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
             <tr><th><label for="subject">Subject</label></th>
@@ -71,13 +71,34 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
     <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-messages&action=add' ) ); ?>" class="button button-primary">Add New Message</a></p>
 
     <?php
-    $rows = $wpdb->get_results(
-        "SELECT m.*, s.display_name AS sender_name, r.display_name AS recipient_name
+    $search   = sanitize_text_field( $_GET['s'] ?? '' );
+    $per_page = 20;
+    $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
+    $offset   = ( $paged - 1 ) * $per_page;
+
+    $where = '';
+    $params = array();
+    if ( $search ) {
+        $like   = '%' . $wpdb->esc_like( $search ) . '%';
+        $where  = 'WHERE m.subject LIKE %s OR m.content LIKE %s OR s.display_name LIKE %s OR r.display_name LIKE %s';
+        $params = array( $like, $like, $like, $like );
+    }
+
+    $total_query = "SELECT COUNT(*) FROM $table m LEFT JOIN {$wpdb->users} s ON m.sender_id = s.ID LEFT JOIN {$wpdb->users} r ON m.recipient_id = r.ID $where";
+    $total       = $search ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $paged       = min( $paged, $total_pages );
+
+    $query = "SELECT m.*, s.display_name AS sender_name, r.display_name AS recipient_name
          FROM $table m
          LEFT JOIN {$wpdb->users} s ON m.sender_id = s.ID
          LEFT JOIN {$wpdb->users} r ON m.recipient_id = r.ID
-         ORDER BY m.created_at DESC LIMIT 100"
-    );
+         $where ORDER BY m.created_at DESC LIMIT %d OFFSET %d";
+    $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
+    $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
+
+    cnw_admin_search_box( 'cnw-messages', $search );
+    cnw_admin_pagination( 'cnw-messages', $paged, $total_pages, $total, $search );
     ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
@@ -118,5 +139,7 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
             </tbody>
         </table>
     </form>
+
+    <?php cnw_admin_pagination( 'cnw-messages', $paged, $total_pages, $total, $search ); ?>
 <?php endif; ?>
 </div>

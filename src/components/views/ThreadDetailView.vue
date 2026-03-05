@@ -6,7 +6,7 @@
     </button>
 
     <div v-if="loading" class="cnw-social-worker-loading">Loading…</div>
-    <div v-else-if="!thread" class="cnw-social-worker-empty">Thread not found.</div>
+    <NotFoundView v-else-if="notFound" message="This thread does not exist or has been removed." />
 
     <template v-else>
       <!-- Thread post — matches QuestionCard design -->
@@ -207,14 +207,16 @@
 
 <script>
 import ReplyCard from '@/components/shared/ReplyCard.vue';
+import NotFoundView from '@/components/views/NotFoundView.vue';
 import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread } from '@/api/index.js';
 
 export default {
   name: 'ThreadDetailView',
-  components: { ReplyCard },
+  components: { ReplyCard, NotFoundView },
   data() {
     return {
       thread: null,
+      notFound: false,
       replies: [],
       loading: true,
       loadingReplies: false,
@@ -258,17 +260,24 @@ export default {
   async mounted() {
     const id = this.$route.params.id;
     try {
-      this.thread = await getThread(id);
-      this.localUpvotes = parseInt(this.thread.likes) || 0;
-      this.localDownvotes = parseInt(this.thread.dislikes) || 0;
-      this.userVote = this.thread.user_vote ? parseInt(this.thread.user_vote) : 0;
-      this.isSaved = !!(this.thread.is_saved && parseInt(this.thread.is_saved));
-      this.localSavesCount = parseInt(this.thread.saves_count) || 0;
+      const result = await getThread(id);
+      if (!result || result.code || !result.id) {
+        this.notFound = true;
+      } else {
+        this.thread = result;
+        this.localUpvotes = parseInt(this.thread.likes) || 0;
+        this.localDownvotes = parseInt(this.thread.dislikes) || 0;
+        this.userVote = this.thread.user_vote ? parseInt(this.thread.user_vote) : 0;
+        this.isSaved = !!(this.thread.is_saved && parseInt(this.thread.is_saved));
+        this.localSavesCount = parseInt(this.thread.saves_count) || 0;
+      }
     } catch (e) {
-      console.error(e);
+      this.notFound = true;
     } finally {
       this.loading = false;
     }
+
+    if (this.notFound) return;
 
     this.loadingReplies = true;
     try {

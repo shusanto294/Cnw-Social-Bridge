@@ -159,6 +159,9 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/users/(?P<id>\d+)', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_user' ), 'permission_callback' => '__return_true',
         ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/reputation', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_user_reputation' ), 'permission_callback' => '__return_true',
+        ) );
     }
 
     /* ------------------------------------------------------------------
@@ -398,6 +401,9 @@ class Cnw_Social_Bridge_REST_API {
 
         $thread_id = (int) $wpdb->insert_id;
 
+        // Award reputation: +5 for creating a thread
+        $this->award_reputation( get_current_user_id(), 5, 'thread_created', 'thread', $thread_id, 'Created a new thread' );
+
         // Save tags
         $tags = isset( $params['tags'] ) && is_array( $params['tags'] ) ? $params['tags'] : array();
         foreach ( $tags as $tag_name ) {
@@ -461,6 +467,33 @@ class Cnw_Social_Bridge_REST_API {
 
         $id = intval( $request['id'] );
 
+        // Get thread author before deletion for reputation reversal
+        $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $id
+        ) );
+
+        // Collect reply authors for reputation reversal
+        $reply_authors = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id = %d", $id
+        ) );
+
+        // Remove all reputation entries referencing this thread or its replies/votes
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'thread' AND reference_id = %d", $id
+        ) );
+        // Remove reputation for replies belonging to this thread
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'reply' AND reference_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id = %d)", $id
+        ) );
+        // Remove reputation for votes on this thread
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'vote' AND reference_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'thread' AND target_id = %d)", $id
+        ) );
+        // Remove reputation for votes on replies of this thread
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'vote' AND reference_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'reply' AND target_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id = %d))", $id
+        ) );
+
         // Delete related replies and votes first
         $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_replies', array( 'thread_id' => $id ) );
         $wpdb->query( $wpdb->prepare(
@@ -472,6 +505,12 @@ class Cnw_Social_Bridge_REST_API {
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete thread', array( 'status' => 500 ) );
+        }
+
+        // Recalculate reputation for all affected users
+        $affected_users = array_unique( array_merge( array( $thread_author ), $reply_authors ) );
+        foreach ( $affected_users as $uid ) {
+            if ( $uid ) $this->recalc_user_reputation( (int) $uid );
         }
 
         return array( 'success' => true, 'deleted' => $id );
@@ -581,6 +620,9 @@ class Cnw_Social_Bridge_REST_API {
         $thread_id = intval( $params['thread_id'] );
         $actor_name = wp_get_current_user()->display_name;
 
+        // Award reputation: +3 for creating a reply
+        $this->award_reputation( $actor_id, 3, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
+
         // Notify thread author
         $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $thread_id
@@ -633,6 +675,30 @@ class Cnw_Social_Bridge_REST_API {
 
         $id = intval( $request['id'] );
 
+        // Get reply author before deletion for reputation reversal
+        $reply_author = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
+        ) );
+
+        // Collect all affected user IDs (vote reputation recipients)
+        $affected_users = array( $reply_author );
+
+        // Remove reputation entries for this reply and its votes
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'reply' AND reference_id = %d", $id
+        ) );
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'vote' AND reference_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'reply' AND target_id = %d)", $id
+        ) );
+        // Also remove reputation for child replies
+        $child_authors = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE parent_id = %d", $id
+        ) );
+        $affected_users = array_merge( $affected_users, $child_authors );
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'reply' AND reference_id IN (SELECT id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE parent_id = %d)", $id
+        ) );
+
         // Delete child replies
         $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_replies', array( 'parent_id' => $id ) );
         // Delete votes on this reply
@@ -645,6 +711,11 @@ class Cnw_Social_Bridge_REST_API {
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete reply', array( 'status' => 500 ) );
+        }
+
+        // Recalculate reputation for all affected users
+        foreach ( array_unique( array_filter( $affected_users ) ) as $uid ) {
+            $this->recalc_user_reputation( (int) $uid );
         }
 
         return array( 'success' => true, 'deleted' => $id );
@@ -934,18 +1005,47 @@ class Cnw_Social_Bridge_REST_API {
             $user_id, $target_type, $target_id
         ) );
 
+        // Helper: get the content owner (the person who receives reputation for votes)
+        $content_owner = 0;
+        if ( $target_type === 'thread' ) {
+            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
+            ) );
+        } elseif ( $target_type === 'reply' ) {
+            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
+            ) );
+        }
+
         if ( $existing ) {
             if ( (int) $existing->vote_type === $vote_type ) {
                 // Same vote — remove it (toggle off)
+                // Reverse the reputation for the old vote
+                $wpdb->query( $wpdb->prepare(
+                    "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'vote' AND reference_id = %d",
+                    (int) $existing->id
+                ) );
                 $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_votes', array( 'id' => $existing->id ) );
+                if ( $content_owner ) $this->recalc_user_reputation( $content_owner );
                 return array( 'success' => true, 'action' => 'removed', 'id' => (int) $existing->id );
             } else {
-                // Different vote — update
+                // Different vote — update: reverse old reputation, apply new
+                $wpdb->query( $wpdb->prepare(
+                    "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE reference_type = 'vote' AND reference_id = %d",
+                    (int) $existing->id
+                ) );
                 $wpdb->update(
                     $wpdb->prefix . 'cnw_social_worker_votes',
                     array( 'vote_type' => $vote_type ),
                     array( 'id' => $existing->id )
                 );
+                // Award new vote reputation to content owner
+                if ( $content_owner && $content_owner !== $user_id ) {
+                    $rep_points = $vote_type === 1 ? 2 : -1;
+                    $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
+                    $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
+                    $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', (int) $existing->id, $rep_desc );
+                }
                 return array( 'success' => true, 'action' => 'updated', 'id' => (int) $existing->id );
             }
         }
@@ -964,17 +1064,22 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create vote', array( 'status' => 500 ) );
         }
 
+        $vote_id = (int) $wpdb->insert_id;
+
+        // Award reputation to content owner (+2 for upvote, -1 for downvote)
+        if ( $content_owner && $content_owner !== $user_id ) {
+            $rep_points = $vote_type === 1 ? 2 : -1;
+            $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
+            $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
+            $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', $vote_id, $rep_desc );
+        }
+
         // Notify on upvote only
         if ( $vote_type === 1 ) {
             $actor_name = wp_get_current_user()->display_name;
-            if ( $target_type === 'thread' ) {
-                $owner = (int) $wpdb->get_var( $wpdb->prepare(
-                    "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
-                ) );
-                if ( $owner ) {
-                    $this->insert_notification( $owner, $user_id, 'vote', 'thread', $target_id,
-                        "{$actor_name} upvoted your thread." );
-                }
+            if ( $target_type === 'thread' && $content_owner ) {
+                $this->insert_notification( $content_owner, $user_id, 'vote', 'thread', $target_id,
+                    "{$actor_name} upvoted your thread." );
             } elseif ( $target_type === 'reply' ) {
                 $row = $wpdb->get_row( $wpdb->prepare(
                     "SELECT author_id, thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
@@ -986,7 +1091,7 @@ class Cnw_Social_Bridge_REST_API {
             }
         }
 
-        return array( 'success' => true, 'action' => 'created', 'id' => $wpdb->insert_id );
+        return array( 'success' => true, 'action' => 'created', 'id' => $vote_id );
     }
 
     public function delete_vote( WP_REST_Request $request ) {
@@ -1056,10 +1161,12 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'user_id, points, and action_type are required', array( 'status' => 400 ) );
         }
 
+        $rep_user_id = intval( $params['user_id'] );
+
         $result = $wpdb->insert(
             $wpdb->prefix . 'cnw_social_worker_reputation',
             array(
-                'user_id'        => intval( $params['user_id'] ),
+                'user_id'        => $rep_user_id,
                 'points'         => intval( $params['points'] ),
                 'action_type'    => sanitize_text_field( $params['action_type'] ),
                 'reference_type' => isset( $params['reference_type'] ) ? sanitize_text_field( $params['reference_type'] ) : null,
@@ -1072,6 +1179,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create reputation entry', array( 'status' => 500 ) );
         }
 
+        $this->recalc_user_reputation( $rep_user_id );
+
         return array( 'success' => true, 'id' => $wpdb->insert_id );
     }
 
@@ -1081,6 +1190,11 @@ class Cnw_Social_Bridge_REST_API {
         $id     = intval( $request['id'] );
         $params = $request->get_json_params();
         $data   = array();
+
+        // Get old user_id in case it changes
+        $old_user_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE id = %d", $id
+        ) );
 
         if ( isset( $params['points'] ) )         $data['points']         = intval( $params['points'] );
         if ( isset( $params['action_type'] ) )    $data['action_type']    = sanitize_text_field( $params['action_type'] );
@@ -1098,17 +1212,33 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to update reputation entry', array( 'status' => 500 ) );
         }
 
+        // Recalculate for affected user(s)
+        $this->recalc_user_reputation( $old_user_id );
+        if ( isset( $params['user_id'] ) && intval( $params['user_id'] ) !== $old_user_id ) {
+            $this->recalc_user_reputation( intval( $params['user_id'] ) );
+        }
+
         return array( 'success' => true, 'id' => $id );
     }
 
     public function delete_reputation( WP_REST_Request $request ) {
         global $wpdb;
 
-        $id     = intval( $request['id'] );
+        $id = intval( $request['id'] );
+
+        // Get user_id before deleting
+        $rep_user_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE id = %d", $id
+        ) );
+
         $result = $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_reputation', array( 'id' => $id ) );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete reputation entry', array( 'status' => 500 ) );
+        }
+
+        if ( $rep_user_id ) {
+            $this->recalc_user_reputation( $rep_user_id );
         }
 
         return array( 'success' => true, 'deleted' => $id );
@@ -1383,6 +1513,14 @@ class Cnw_Social_Bridge_REST_API {
         return $user;
     }
 
+    public function get_user_reputation( WP_REST_Request $request ) {
+        $user_id = intval( $request['id'] );
+
+        $total = (int) get_user_meta( $user_id, 'cnw_reputation_total', true );
+
+        return array( 'user_id' => $user_id, 'total' => $total );
+    }
+
     /* ==================================================================
      * NOTIFICATIONS
      * ================================================================== */
@@ -1456,6 +1594,49 @@ class Cnw_Social_Bridge_REST_API {
         );
 
         return array( 'success' => true );
+    }
+
+    /* ==================================================================
+     * REPUTATION HELPERS
+     * ================================================================== */
+
+    /**
+     * Award reputation points and update the cached total.
+     */
+    private function award_reputation( $user_id, $points, $action_type, $reference_type = null, $reference_id = null, $description = null ) {
+        global $wpdb;
+
+        if ( ! $user_id || $user_id <= 0 ) {
+            return;
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_reputation',
+            array(
+                'user_id'        => (int) $user_id,
+                'points'         => (int) $points,
+                'action_type'    => $action_type,
+                'reference_type' => $reference_type,
+                'reference_id'   => $reference_id ? (int) $reference_id : null,
+                'description'    => $description,
+            )
+        );
+
+        $this->recalc_user_reputation( $user_id );
+    }
+
+    /**
+     * Recalculate and cache a user's total reputation in usermeta.
+     */
+    private function recalc_user_reputation( $user_id ) {
+        global $wpdb;
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COALESCE(SUM(points), 0) FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE user_id = %d",
+            (int) $user_id
+        ) );
+
+        update_user_meta( (int) $user_id, 'cnw_reputation_total', $total );
     }
 
     /**

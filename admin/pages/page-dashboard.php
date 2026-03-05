@@ -8,6 +8,7 @@ global $wpdb;
 $p = $wpdb->prefix . 'cnw_social_worker_';
 
 $counts = array(
+    'users'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->users}" ),
     'threads'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}threads" ),
     'replies'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}replies" ),
     'messages'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}messages" ),
@@ -18,13 +19,14 @@ $counts = array(
 );
 
 $cards = array(
-    array( 'Threads',    'threads',    'cnw-threads',    'dashicons-format-chat' ),
-    array( 'Replies',    'replies',    'cnw-replies',    'dashicons-admin-comments' ),
-    array( 'Messages',   'messages',   'cnw-messages',   'dashicons-email-alt' ),
-    array( 'Tags',       'tags',       'cnw-tags',       'dashicons-tag' ),
-    array( 'Categories', 'categories', 'cnw-categories', 'dashicons-category' ),
-    array( 'Votes',      'votes',      'cnw-votes',      'dashicons-thumbs-up' ),
-    array( 'Reputation', 'reputation', 'cnw-reputation',  'dashicons-awards' ),
+    array( 'Forum Users', 'users',      'cnw-users',      'dashicons-groups' ),
+    array( 'Threads',     'threads',    'cnw-threads',    'dashicons-format-chat' ),
+    array( 'Tags',        'tags',       'cnw-tags',       'dashicons-tag' ),
+    array( 'Categories',  'categories', 'cnw-categories', 'dashicons-category' ),
+    array( 'Votes',       'votes',      'cnw-votes',      'dashicons-thumbs-up' ),
+    array( 'Replies',     'replies',    'cnw-replies',    'dashicons-admin-comments' ),
+    array( 'Messages',    'messages',   'cnw-messages',   'dashicons-email-alt' ),
+    array( 'Reputation',  'reputation', 'cnw-reputation',  'dashicons-awards' ),
 );
 ?>
 

@@ -74,6 +74,11 @@
               </div>
               <span v-if="!parseInt(n.is_read)" class="notif-item-dot"></span>
             </div>
+            <div v-if="notifHasMore" class="notif-show-more">
+              <button class="notif-show-more-btn" :disabled="loadingMore" @click.stop="loadMoreNotifications">
+                {{ loadingMore ? 'Loading...' : 'Show more' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -185,6 +190,9 @@ export default {
       notifications: [],
       showDropdown: false,
       loading: false,
+      notifPage: 1,
+      notifHasMore: false,
+      loadingMore: false,
       logoUrl: window.cnwData?.logoUrl || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       pollTimer: null,
@@ -228,12 +236,25 @@ export default {
       this.showDropdown = !this.showDropdown;
       if (this.showDropdown && this.notifications.length === 0) {
         this.loading = true;
+        this.notifPage = 1;
         try {
-          const data = await getNotifications();
+          const data = await getNotifications({ page: 1, per_page: 10 });
           this.notifications = data.notifications || [];
+          this.notifHasMore = data.pages > 1;
         } catch { /* silent */ }
         finally { this.loading = false; }
       }
+    },
+    async loadMoreNotifications() {
+      this.loadingMore = true;
+      this.notifPage++;
+      try {
+        const data = await getNotifications({ page: this.notifPage, per_page: 10 });
+        const more = data.notifications || [];
+        this.notifications = [...this.notifications, ...more];
+        this.notifHasMore = this.notifPage < data.pages;
+      } catch { /* silent */ }
+      finally { this.loadingMore = false; }
     },
     onOutsideClick(e) {
       if (this.showDropdown && !e.target.closest('.notif-wrapper')) {
@@ -544,6 +565,29 @@ export default {
   background: var(--primary, #3aa9da);
   flex-shrink: 0;
   margin-top: 6px;
+}
+
+.notif-show-more {
+  padding: 8px 16px;
+  text-align: center;
+  border-top: 1px solid var(--border, #e0e0e0);
+}
+.notif-show-more-btn {
+  background: none;
+  border: none;
+  color: var(--primary, #3aa9da);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.notif-show-more-btn:hover {
+  text-decoration: underline;
+}
+.notif-show-more-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  text-decoration: none;
 }
 
 @media (max-width: 480px) {

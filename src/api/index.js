@@ -200,8 +200,8 @@ export async function getHotQuestions() {
   return apiFetch('/hot-questions');
 }
 
-export async function getNotifications({ page = 1 } = {}) {
-  return apiFetch('/notifications', { page });
+export async function getNotifications({ page = 1, per_page = 10 } = {}) {
+  return apiFetch('/notifications', { page, per_page });
 }
 
 export async function getUnreadNotificationCount() {
@@ -234,6 +234,10 @@ export async function forgotPassword({ user_login }) {
     body: JSON.stringify({ user_login }),
   });
   return res.json();
+}
+
+export async function getUserReputation(userId) {
+  return apiFetch(`/users/${userId}/reputation`);
 }
 
 export async function register({ username, email, password, first_name, last_name }) {

@@ -420,6 +420,7 @@ class Cnw_Social_Bridge {
                 'first_name' => get_user_meta( get_current_user_id(), 'first_name', true ),
                 'last_name'  => get_user_meta( get_current_user_id(), 'last_name', true ),
                 'avatar'     => get_avatar_url( get_current_user_id(), array( 'size' => 80 ) ),
+                'reputation' => (int) get_user_meta( get_current_user_id(), 'cnw_reputation_total', true ),
             ),
         ) );
 

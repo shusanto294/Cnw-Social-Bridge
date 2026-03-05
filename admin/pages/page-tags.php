@@ -54,12 +54,33 @@ if ( $action === 'edit' && $id ) {
     $thread_tags_table = $wpdb->prefix . 'cnw_social_worker_thread_tags';
     $followed_table    = $wpdb->prefix . 'cnw_social_worker_user_followed_tags';
 
-    $rows = $wpdb->get_results(
-        "SELECT t.*,
+    $search   = sanitize_text_field( $_GET['s'] ?? '' );
+    $per_page = 20;
+    $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
+    $offset   = ( $paged - 1 ) * $per_page;
+
+    $where = '';
+    $params = array();
+    if ( $search ) {
+        $like   = '%' . $wpdb->esc_like( $search ) . '%';
+        $where  = 'WHERE t.name LIKE %s OR t.slug LIKE %s OR t.description LIKE %s';
+        $params = array( $like, $like, $like );
+    }
+
+    $total_query = "SELECT COUNT(*) FROM $table t $where";
+    $total       = $search ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $paged       = min( $paged, $total_pages );
+
+    $query = "SELECT t.*,
             (SELECT COUNT(*) FROM $thread_tags_table tt WHERE tt.tag_id = t.id) AS thread_count,
             (SELECT COUNT(*) FROM $followed_table uf WHERE uf.tag_id = t.id) AS follower_count
-         FROM $table t ORDER BY t.name ASC"
-    );
+         FROM $table t $where ORDER BY t.name ASC LIMIT %d OFFSET %d";
+    $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
+    $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
+
+    cnw_admin_search_box( 'cnw-tags', $search );
+    cnw_admin_pagination( 'cnw-tags', $paged, $total_pages, $total, $search );
     ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
@@ -101,5 +122,7 @@ if ( $action === 'edit' && $id ) {
             </tbody>
         </table>
     </form>
+
+    <?php cnw_admin_pagination( 'cnw-tags', $paged, $total_pages, $total, $search ); ?>
 <?php endif; ?>
 </div>

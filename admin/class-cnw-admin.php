@@ -9,6 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+require_once __DIR__ . '/includes/pagination-helpers.php';
+
 class Cnw_Social_Bridge_Admin {
 
     public function __construct() {
@@ -40,6 +42,9 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_bulk_categories',  array( $this, 'handle_bulk_categories' ) );
         add_action( 'admin_post_cnw_bulk_votes',       array( $this, 'handle_bulk_votes' ) );
         add_action( 'admin_post_cnw_bulk_reputation',  array( $this, 'handle_bulk_reputation' ) );
+        add_action( 'admin_post_cnw_save_user',           array( $this, 'handle_save_user' ) );
+        add_action( 'admin_post_cnw_delete_user',       array( $this, 'handle_delete_user' ) );
+        add_action( 'admin_post_cnw_bulk_users',         array( $this, 'handle_bulk_users' ) );
     }
 
     /* ------------------------------------------------------------------
@@ -59,14 +64,14 @@ class Cnw_Social_Bridge_Admin {
 
         $submenus = array(
             array( 'cnw-social-bridge', 'Dashboard',  'cnw-social-bridge', 'page_dashboard' ),
+            array( 'cnw-social-bridge', 'Forum Users', 'cnw-users',         'page_users' ),
             array( 'cnw-social-bridge', 'Threads',     'cnw-threads',       'page_threads' ),
-            array( 'cnw-social-bridge', 'Replies',     'cnw-replies',       'page_replies' ),
-            array( 'cnw-social-bridge', 'Messages',    'cnw-messages',      'page_messages' ),
             array( 'cnw-social-bridge', 'Tags',        'cnw-tags',          'page_tags' ),
             array( 'cnw-social-bridge', 'Categories',  'cnw-categories',    'page_categories' ),
             array( 'cnw-social-bridge', 'Votes',       'cnw-votes',         'page_votes' ),
+            array( 'cnw-social-bridge', 'Replies',     'cnw-replies',       'page_replies' ),
+            array( 'cnw-social-bridge', 'Messages',    'cnw-messages',      'page_messages' ),
             array( 'cnw-social-bridge', 'Reputation',  'cnw-reputation',    'page_reputation' ),
-            array( 'cnw-social-bridge', 'Forum Users', 'cnw-users',         'page_users' ),
             array( 'cnw-social-bridge', 'Settings',    'cnw-settings',      'page_settings' ),
         );
 
@@ -125,6 +130,42 @@ class Cnw_Social_Bridge_Admin {
                 });
             });
         " );
+
+        // Select2 for searchable dropdowns on add/edit forms
+        $page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+        $act  = isset( $_GET['action'] ) ? $_GET['action'] : '';
+        if ( strpos( $hook, 'cnw' ) !== false && in_array( $act, array( 'add', 'edit' ), true ) && $page !== 'cnw-settings' ) {
+            wp_enqueue_style(
+                'select2',
+                'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
+                array(),
+                '4.1.0'
+            );
+            wp_enqueue_script(
+                'select2',
+                'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
+                array( 'jquery' ),
+                '4.1.0',
+                true
+            );
+            wp_add_inline_script( 'select2', "
+                jQuery(function($){
+                    var always = ['user_id','author_id','sender_id','recipient_id','thread_id','parent_id'];
+                    $('.cnw-crud-form select').each(function(){
+                        var id = $(this).attr('id') || '';
+                        var opts = $(this).find('option').length;
+                        if(opts > 8 || always.indexOf(id) !== -1){
+                            $(this).select2({
+                                width: '360px',
+                                placeholder: $(this).find('option:first').text(),
+                                allowClear: false,
+                                minimumResultsForSearch: 0
+                            });
+                        }
+                    });
+                });
+            " );
+        }
 
         if ( strpos( $hook, 'cnw-settings' ) !== false ) {
             wp_enqueue_media();
@@ -448,11 +489,22 @@ class Cnw_Social_Bridge_Admin {
             'description'    => sanitize_text_field( $_POST['description'] ?? '' ),
         );
 
+        $user_id_for_recalc = intval( $data['user_id'] );
+
         if ( $id ) {
+            // If editing, we may also need to recalc the old user if user_id changed
+            $old_user_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT user_id FROM $table WHERE id = %d", $id
+            ) );
             $wpdb->update( $table, $data, array( 'id' => $id ) );
+            if ( $old_user_id && $old_user_id !== $user_id_for_recalc ) {
+                $this->recalc_reputation_total( $old_user_id );
+            }
         } else {
             $wpdb->insert( $table, $data );
         }
+
+        $this->recalc_reputation_total( $user_id_for_recalc );
 
         wp_redirect( add_query_arg( array( 'page' => 'cnw-reputation', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
         exit;
@@ -465,11 +517,27 @@ class Cnw_Social_Bridge_Admin {
         global $wpdb;
         $id = intval( $_GET['id'] ?? 0 );
         if ( $id ) {
+            // Get user_id before deleting so we can recalculate
+            $user_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT user_id FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE id = %d", $id
+            ) );
             $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_reputation', array( 'id' => $id ) );
+            if ( $user_id ) {
+                $this->recalc_reputation_total( $user_id );
+            }
         }
 
         wp_redirect( add_query_arg( array( 'page' => 'cnw-reputation', 'msg' => 'deleted' ), admin_url( 'admin.php' ) ) );
         exit;
+    }
+
+    private function recalc_reputation_total( $user_id ) {
+        global $wpdb;
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COALESCE(SUM(points), 0) FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE user_id = %d",
+            (int) $user_id
+        ) );
+        update_user_meta( (int) $user_id, 'cnw_reputation_total', $total );
     }
 
     /* ------------------------------------------------------------------
@@ -537,7 +605,113 @@ class Cnw_Social_Bridge_Admin {
     }
 
     public function handle_bulk_reputation() {
-        $this->bulk_delete( 'cnw_bulk_reputation', 'cnw-reputation', 'reputation' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_bulk_reputation' );
+
+        $bulk = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids  = array_map( 'intval', (array) ( $_POST['bulk_ids'] ?? array() ) );
+
+        if ( $bulk === 'delete' && ! empty( $ids ) ) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'cnw_social_worker_reputation';
+            $ph    = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+            // Collect affected user IDs before deleting
+            $affected_users = $wpdb->get_col( $wpdb->prepare(
+                "SELECT DISTINCT user_id FROM $table WHERE id IN ($ph)", ...$ids
+            ) );
+
+            $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id IN ($ph)", ...$ids ) );
+
+            // Recalculate totals for affected users
+            foreach ( $affected_users as $uid ) {
+                $this->recalc_reputation_total( (int) $uid );
+            }
+        }
+
+        $count = count( $ids );
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-reputation', 'msg' => 'bulk_deleted', 'count' => $count ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * USER handlers
+     * ------------------------------------------------------------------ */
+
+    public function handle_save_user() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_user' );
+
+        $id = intval( $_POST['id'] ?? 0 );
+        if ( ! $id ) wp_die( 'Invalid user.' );
+
+        $userdata = array(
+            'ID'           => $id,
+            'display_name' => sanitize_text_field( $_POST['display_name'] ?? '' ),
+            'user_email'   => sanitize_email( $_POST['user_email'] ?? '' ),
+            'first_name'   => sanitize_text_field( $_POST['first_name'] ?? '' ),
+            'last_name'    => sanitize_text_field( $_POST['last_name'] ?? '' ),
+        );
+
+        $role = sanitize_text_field( $_POST['role'] ?? '' );
+        if ( $role ) {
+            $userdata['role'] = $role;
+        }
+
+        wp_update_user( $userdata );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    private function delete_user_forum_data( $user_id ) {
+        global $wpdb;
+        $uid = (int) $user_id;
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_votes',      array( 'user_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_replies',    array( 'author_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_threads',    array( 'author_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_messages',   array( 'sender_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_messages',   array( 'recipient_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_reputation', array( 'user_id' => $uid ) );
+        $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_user_followed_tags', array( 'user_id' => $uid ) );
+        delete_user_meta( $uid, 'cnw_reputation_total' );
+    }
+
+    public function handle_delete_user() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_delete_user' );
+
+        $id = intval( $_GET['id'] ?? 0 );
+        if ( $id && $id !== get_current_user_id() ) {
+            $this->delete_user_forum_data( $id );
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user( $id );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'msg' => 'deleted' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_bulk_users() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_bulk_users' );
+
+        $bulk = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids  = array_map( 'intval', (array) ( $_POST['bulk_ids'] ?? array() ) );
+        $current = get_current_user_id();
+
+        if ( $bulk === 'delete' && ! empty( $ids ) ) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            $ids = array_filter( $ids, function( $id ) use ( $current ) { return $id !== $current; } );
+            foreach ( $ids as $uid ) {
+                $this->delete_user_forum_data( $uid );
+                wp_delete_user( $uid );
+            }
+        }
+
+        $count = count( $ids );
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'msg' => 'bulk_deleted', 'count' => $count ), admin_url( 'admin.php' ) ) );
+        exit;
     }
 
     /* ------------------------------------------------------------------

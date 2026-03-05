@@ -40,7 +40,7 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
             <tr><th><label for="user_id">User</label></th>
                 <td><select id="user_id" name="user_id" required>
                     <?php foreach ( $users as $u ) : ?>
-                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->user_id ?? get_current_user_id(), $u->ID ); ?>><?php echo esc_html( $u->display_name ); ?></option>
+                    <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->user_id ?? get_current_user_id(), $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
             <tr><th><label for="target_type">Target Type</label></th>
@@ -65,12 +65,33 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
     <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-votes&action=add' ) ); ?>" class="button button-primary">Add New Vote</a></p>
 
     <?php
-    $rows = $wpdb->get_results(
-        "SELECT v.*, u.display_name AS user_name
+    $search   = sanitize_text_field( $_GET['s'] ?? '' );
+    $per_page = 20;
+    $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
+    $offset   = ( $paged - 1 ) * $per_page;
+
+    $where = '';
+    $params = array();
+    if ( $search ) {
+        $like   = '%' . $wpdb->esc_like( $search ) . '%';
+        $where  = 'WHERE u.display_name LIKE %s OR v.target_type LIKE %s';
+        $params = array( $like, $like );
+    }
+
+    $total_query = "SELECT COUNT(*) FROM $table v LEFT JOIN {$wpdb->users} u ON v.user_id = u.ID $where";
+    $total       = $search ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $paged       = min( $paged, $total_pages );
+
+    $query = "SELECT v.*, u.display_name AS user_name
          FROM $table v
          LEFT JOIN {$wpdb->users} u ON v.user_id = u.ID
-         ORDER BY v.created_at DESC LIMIT 100"
-    );
+         $where ORDER BY v.created_at DESC LIMIT %d OFFSET %d";
+    $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
+    $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
+
+    cnw_admin_search_box( 'cnw-votes', $search );
+    cnw_admin_pagination( 'cnw-votes', $paged, $total_pages, $total, $search );
     ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
@@ -111,5 +132,7 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
             </tbody>
         </table>
     </form>
+
+    <?php cnw_admin_pagination( 'cnw-votes', $paged, $total_pages, $total, $search ); ?>
 <?php endif; ?>
 </div>

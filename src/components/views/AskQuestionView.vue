@@ -81,25 +81,17 @@
 
                 <!-- Create new category option -->
                 <div
-                  v-if="categorySearch.trim() && !exactCategoryMatch && !showNewCategoryForm"
+                  v-if="categorySearch.trim() && !exactCategoryMatch"
                   class="ask-category-option ask-create-option"
-                  @mousedown.prevent="startNewCategory"
-                >+ Create "{{ categorySearch.trim() }}"</div>
-
-                <div v-if="filteredCategories.length === 0 && !categorySearch.trim() && !showNewCategoryForm" class="ask-category-option ask-category-empty">No categories yet</div>
-
-                <!-- Inline new category form -->
-                <div v-if="showNewCategoryForm" class="ask-new-item-form" @mousedown.prevent>
-                  <p class="ask-new-item-label">New Category</p>
-                  <input v-model="newCategoryName" type="text" placeholder="Category name" class="ask-inline-input" @keydown.enter.prevent="addNewCategory" />
-                  <div class="ask-inline-actions">
-                    <button type="button" class="ask-inline-btn ask-inline-btn--primary" @click="addNewCategory" :disabled="!newCategoryName.trim() || creatingCategory">
-                      {{ creatingCategory ? '…' : 'Create' }}
-                    </button>
-                    <button type="button" class="ask-inline-btn" @click="showNewCategoryForm = false">Cancel</button>
-                  </div>
-                  <p v-if="categoryError" class="ask-inline-error">{{ categoryError }}</p>
+                  @mousedown.prevent="addNewCategory(categorySearch.trim())"
+                >
+                  <template v-if="creatingCategory">Creating…</template>
+                  <template v-else>+ Create "{{ categorySearch.trim() }}"</template>
                 </div>
+
+                <div v-if="filteredCategories.length === 0 && !categorySearch.trim()" class="ask-category-option ask-category-empty">No categories yet</div>
+
+                <p v-if="categoryError" class="ask-inline-error" style="padding: 4px 12px; margin: 0;">{{ categoryError }}</p>
               </div>
             </div>
           </div>
@@ -177,8 +169,6 @@ export default {
       selectedCategory: null,
       showCategoryDropdown: false,
       categorySearch: '',
-      showNewCategoryForm: false,
-      newCategoryName: '',
       creatingCategory: false,
       categoryError: '',
 
@@ -258,14 +248,8 @@ export default {
       this.selectedCategory = cat;
       this.closeCategoryDropdown();
     },
-    startNewCategory() {
-      this.newCategoryName = this.categorySearch.trim();
-      this.showNewCategoryForm = true;
-      this.categoryError = '';
-    },
-    async addNewCategory() {
-      const name = this.newCategoryName.trim();
-      if (!name) return;
+    async addNewCategory(name) {
+      if (!name || this.creatingCategory) return;
       this.creatingCategory = true;
       this.categoryError = '';
       try {

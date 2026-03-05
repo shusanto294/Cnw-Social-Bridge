@@ -9,6 +9,7 @@ import ActivityView from '@/components/views/ActivityView.vue';
 import SavedThreadsView from '@/components/views/SavedThreadsView.vue';
 import GuidelinesView from '@/components/views/GuidelinesView.vue';
 import ReportIssueView from '@/components/views/ReportIssueView.vue';
+import NotFoundView from '@/components/views/NotFoundView.vue';
 
 const routes = [
   { path: '/', component: QuestionListView },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/saved', component: SavedThreadsView },
   { path: '/guidelines', component: GuidelinesView },
   { path: '/report', component: ReportIssueView },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFoundView },
 ];
 
 export default createRouter({
