@@ -182,6 +182,11 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/users/me/avatar', array(
             'methods' => 'POST', 'callback' => array( $this, 'upload_avatar' ), 'permission_callback' => 'is_user_logged_in',
         ) );
+
+        // ── Activity ────────────────────────────────────────────────
+        register_rest_route( $ns, '/users/me/activity', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_user_activity' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
     }
 
     /* ------------------------------------------------------------------
@@ -460,6 +465,9 @@ class Cnw_Social_Bridge_REST_API {
         // Award reputation: +5 for creating a thread
         $this->award_reputation( get_current_user_id(), 5, 'thread_created', 'thread', $thread_id, 'Created a new thread' );
 
+        $thread_title = sanitize_text_field( $params['title'] );
+        $this->log_activity( get_current_user_id(), 'thread_created', 'Asked a new question: ' . $thread_title, 5, null, 'thread', $thread_id, '#/thread/' . $thread_id );
+
         // Save tags
         $tags = isset( $params['tags'] ) && is_array( $params['tags'] ) ? $params['tags'] : array();
         foreach ( $tags as $tag_name ) {
@@ -515,6 +523,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to update thread', array( 'status' => 500 ) );
         }
 
+        $this->log_activity( get_current_user_id(), 'thread_updated', 'Updated a question', 0, 'No points for editing', 'thread', $id, '#/thread/' . $id );
+
         return array( 'success' => true, 'id' => $id );
     }
 
@@ -568,6 +578,8 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( $affected_users as $uid ) {
             if ( $uid ) $this->recalc_user_reputation( (int) $uid );
         }
+
+        $this->log_activity( get_current_user_id(), 'thread_deleted', 'Deleted a question', -5, 'Points reversed for deleted question' );
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -690,6 +702,8 @@ class Cnw_Social_Bridge_REST_API {
         // Award reputation: +2 for creating a reply
         $this->award_reputation( $actor_id, 2, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
 
+        $this->log_activity( $actor_id, 'reply_created', 'Posted a reply', 2, null, 'thread', $thread_id, '#/thread/' . $thread_id );
+
         // Notify thread author
         $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $thread_id
@@ -733,6 +747,11 @@ class Cnw_Social_Bridge_REST_API {
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to update reply', array( 'status' => 500 ) );
         }
+
+        $thread_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
+        ) );
+        $this->log_activity( get_current_user_id(), 'reply_updated', 'Updated a reply', 0, 'No points for editing', 'thread', $thread_id, '#/thread/' . $thread_id );
 
         return array( 'success' => true, 'id' => $id );
     }
@@ -784,6 +803,8 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( array_unique( array_filter( $affected_users ) ) as $uid ) {
             $this->recalc_user_reputation( (int) $uid );
         }
+
+        $this->log_activity( get_current_user_id(), 'reply_deleted', 'Deleted a reply', -2, 'Points reversed for deleted reply' );
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -852,12 +873,15 @@ class Cnw_Social_Bridge_REST_API {
             // Award +25 reputation to reply author (skip if marking own reply)
             if ( ! $is_own_reply ) {
                 $this->award_reputation( (int) $reply->author_id, 25, 'best_answer', 'reply', $reply_id, 'Reply marked as solution' );
+                $this->log_activity( (int) $reply->author_id, 'best_answer', 'Your reply was marked as the best answer', 25, null, 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
 
                 // Notify the reply author
                 $actor_name = wp_get_current_user()->display_name;
                 $this->insert_notification( (int) $reply->author_id, $user_id, 'solution', 'thread', (int) $reply->thread_id,
                     "{$actor_name} marked your reply as helpful." );
             }
+
+            $this->log_activity( $user_id, 'marked_solution', 'Marked a reply as the best answer', 0, 'No points for marking solution', 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
 
             return array( 'success' => true, 'action' => 'marked', 'is_solution' => true );
         }
@@ -1140,20 +1164,18 @@ class Cnw_Social_Bridge_REST_API {
         $target_id   = intval( $params['target_id'] );
         $vote_type   = intval( $params['vote_type'] );
 
-        // Block self-voting: users cannot vote on their own content
-        $self_check_author = 0;
+        // Resolve content owner
+        $content_owner = 0;
         if ( $target_type === 'thread' ) {
-            $self_check_author = (int) $wpdb->get_var( $wpdb->prepare(
+            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
                 "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
             ) );
         } elseif ( $target_type === 'reply' ) {
-            $self_check_author = (int) $wpdb->get_var( $wpdb->prepare(
+            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
                 "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
             ) );
         }
-        if ( $self_check_author && $self_check_author === $user_id ) {
-            return new WP_Error( 'self_vote', 'You cannot vote on your own content', array( 'status' => 403 ) );
-        }
+        $is_self_vote = ( $content_owner && $content_owner === $user_id );
 
         // Check existing vote — toggle or update
         $existing = $wpdb->get_row( $wpdb->prepare(
@@ -1162,8 +1184,14 @@ class Cnw_Social_Bridge_REST_API {
             $user_id, $target_type, $target_id
         ) );
 
-        // Content owner already resolved during self-vote check
-        $content_owner = $self_check_author;
+        // Resolve thread link for activity log
+        $link_thread_id = $target_id;
+        if ( $target_type === 'reply' ) {
+            $link_thread_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
+            ) );
+        }
+        $vote_link = '#/thread/' . $link_thread_id;
 
         if ( $existing ) {
             if ( (int) $existing->vote_type === $vote_type ) {
@@ -1176,6 +1204,19 @@ class Cnw_Social_Bridge_REST_API {
                 $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_votes', array( 'id' => $existing->id ) );
                 if ( $content_owner ) $this->recalc_user_reputation( $content_owner );
                 $this->recalc_user_reputation( $user_id );
+
+                $remove_label = $vote_type === 1 ? 'Removed upvote from' : 'Removed downvote from';
+                $remove_pts   = ( $vote_type === 1 && ! $is_self_vote ) ? -1 : 0;
+                $remove_rsn   = $is_self_vote ? 'Own content — no points' : ( $vote_type === 1 ? null : 'No points for removing downvote' );
+                $this->log_activity( $user_id, 'vote_removed', $remove_label . ' a ' . $target_type, $remove_pts, $remove_rsn, $target_type, $target_id, $vote_link );
+
+                // Log for content owner: upvote removed = they lose 10 pts
+                if ( ! $is_self_vote && $content_owner ) {
+                    $owner_pts  = $vote_type === 1 ? -10 : 1;
+                    $owner_desc = $vote_type === 1 ? 'An upvote was removed from your ' . $target_type : 'A downvote was removed from your ' . $target_type;
+                    $this->log_activity( $content_owner, 'received_vote', $owner_desc, $owner_pts, null, $target_type, $target_id, $vote_link );
+                }
+
                 return array( 'success' => true, 'action' => 'removed', 'id' => (int) $existing->id );
             } else {
                 // Different vote — update: reverse old reputation, apply new
@@ -1188,17 +1229,26 @@ class Cnw_Social_Bridge_REST_API {
                     array( 'vote_type' => $vote_type ),
                     array( 'id' => $existing->id )
                 );
-                // Award new vote reputation to content owner
-                if ( $content_owner && $content_owner !== $user_id ) {
+                // Award new vote reputation to content owner (not for self-votes)
+                if ( ! $is_self_vote && $content_owner ) {
                     $rep_points = $vote_type === 1 ? 10 : -1;
                     $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
                     $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
                     $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', (int) $existing->id, $rep_desc );
+
+                    $owner_desc = $vote_type === 1 ? 'Your ' . $target_type . ' received an upvote' : 'Your ' . $target_type . ' received a downvote';
+                    $this->log_activity( $content_owner, 'received_vote', $owner_desc, $rep_points, null, $target_type, $target_id, $vote_link );
                 }
-                // Award +1 to the voter for giving an upvote
-                if ( $vote_type === 1 ) {
+                // Award +1 to the voter for giving an upvote (not for self-votes)
+                if ( $vote_type === 1 && ! $is_self_vote ) {
                     $this->award_reputation( $user_id, 1, 'gave_upvote', 'vote', (int) $existing->id, 'Gave an upvote' );
                 }
+
+                $change_label = $vote_type === 1 ? 'Changed vote to upvote on' : 'Changed vote to downvote on';
+                $change_pts   = ( $vote_type === 1 && ! $is_self_vote ) ? 1 : 0;
+                $change_rsn   = $is_self_vote ? 'Own content — no points' : ( $vote_type === 1 ? null : 'No points for downvoting' );
+                $this->log_activity( $user_id, 'vote_changed', $change_label . ' a ' . $target_type, $change_pts, $change_rsn, $target_type, $target_id, $vote_link );
+
                 return array( 'success' => true, 'action' => 'updated', 'id' => (int) $existing->id );
             }
         }
@@ -1219,21 +1269,34 @@ class Cnw_Social_Bridge_REST_API {
 
         $vote_id = (int) $wpdb->insert_id;
 
-        // Award reputation to content owner (+10 for upvote, -1 for downvote)
-        if ( $content_owner && $content_owner !== $user_id ) {
+        // Award reputation to content owner (+10 for upvote, -1 for downvote) — not for self-votes
+        if ( ! $is_self_vote && $content_owner ) {
             $rep_points = $vote_type === 1 ? 10 : -1;
             $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
             $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
             $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', $vote_id, $rep_desc );
         }
 
-        // Award +1 to the voter for giving an upvote
-        if ( $vote_type === 1 ) {
+        // Award +1 to the voter for giving an upvote — not for self-votes
+        if ( $vote_type === 1 && ! $is_self_vote ) {
             $this->award_reputation( $user_id, 1, 'gave_upvote', 'vote', $vote_id, 'Gave an upvote' );
         }
 
-        // Notify on upvote only
-        if ( $vote_type === 1 ) {
+        // Log activity for the voter
+        $vote_label = $vote_type === 1 ? 'Upvoted' : 'Downvoted';
+        $vote_pts   = ( $vote_type === 1 && ! $is_self_vote ) ? 1 : 0;
+        $vote_rsn   = $is_self_vote ? 'Own content — no points' : ( $vote_type === 1 ? null : 'No points for downvoting' );
+        $this->log_activity( $user_id, 'voted', $vote_label . ' a ' . $target_type, $vote_pts, $vote_rsn, $target_type, $target_id, $vote_link );
+
+        // Log activity for content owner receiving the vote (not for self-votes)
+        if ( ! $is_self_vote && $content_owner ) {
+            $owner_pts  = $vote_type === 1 ? 10 : -1;
+            $owner_desc = $vote_type === 1 ? 'Your ' . $target_type . ' received an upvote' : 'Your ' . $target_type . ' received a downvote';
+            $this->log_activity( $content_owner, 'received_vote', $owner_desc, $owner_pts, null, $target_type, $target_id, $vote_link );
+        }
+
+        // Notify on upvote only (not for self-votes)
+        if ( $vote_type === 1 && ! $is_self_vote ) {
             $actor_name = wp_get_current_user()->display_name;
             if ( $target_type === 'thread' && $content_owner ) {
                 $this->insert_notification( $content_owner, $user_id, 'vote', 'thread', $target_id,
@@ -1528,6 +1591,9 @@ class Cnw_Social_Bridge_REST_API {
             array( 'user_id' => $user_id, 'tag_id' => $tag_id )
         );
 
+        $tag_name = $wpdb->get_var( $wpdb->prepare( "SELECT name FROM {$wpdb->prefix}cnw_social_worker_tags WHERE id = %d", $tag_id ) );
+        $this->log_activity( $user_id, 'tag_followed', 'Followed tag: ' . ( $tag_name ?: '#' . $tag_id ), 0, 'No points for following tags' );
+
         return array( 'success' => true );
     }
 
@@ -1540,6 +1606,9 @@ class Cnw_Social_Bridge_REST_API {
             $wpdb->prefix . 'cnw_social_worker_user_followed_tags',
             array( 'user_id' => $user_id, 'tag_id' => $tag_id )
         );
+
+        $tag_name = $wpdb->get_var( $wpdb->prepare( "SELECT name FROM {$wpdb->prefix}cnw_social_worker_tags WHERE id = %d", $tag_id ) );
+        $this->log_activity( $user_id, 'tag_unfollowed', 'Unfollowed tag: ' . ( $tag_name ?: '#' . $tag_id ), 0, 'No points for unfollowing tags' );
 
         return array( 'success' => true );
     }
@@ -1557,6 +1626,8 @@ class Cnw_Social_Bridge_REST_API {
             $wpdb->prefix . 'cnw_social_worker_saved_threads',
             array( 'user_id' => $user_id, 'thread_id' => $thread_id )
         );
+
+        $this->log_activity( $user_id, 'thread_saved', 'Saved a thread', 0, 'No points for saving', 'thread', $thread_id, '#/thread/' . $thread_id );
 
         // Notify thread author
         $owner = (int) $wpdb->get_var( $wpdb->prepare(
@@ -1581,6 +1652,8 @@ class Cnw_Social_Bridge_REST_API {
             array( 'user_id' => $user_id, 'thread_id' => $thread_id )
         );
 
+        $this->log_activity( $user_id, 'thread_unsaved', 'Unsaved a thread', 0, 'No points for unsaving', 'thread', $thread_id, '#/thread/' . $thread_id );
+
         return array( 'success' => true );
     }
 
@@ -1588,6 +1661,16 @@ class Cnw_Social_Bridge_REST_API {
         global $wpdb;
 
         $current_user_id = get_current_user_id();
+        $page     = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+        $per_page = 10;
+        $offset   = ( $page - 1 ) * $per_page;
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
+             JOIN {$wpdb->prefix}cnw_social_worker_threads t ON st.thread_id = t.id
+             WHERE st.user_id = %d AND t.status = 'published'",
+            $current_user_id
+        ) );
 
         $threads = $wpdb->get_results( $wpdb->prepare(
             "SELECT t.*, u.display_name AS author_name, u.ID AS author_id,
@@ -1601,9 +1684,12 @@ class Cnw_Social_Bridge_REST_API {
              JOIN {$wpdb->prefix}cnw_social_worker_threads t ON st.thread_id = t.id
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
              WHERE st.user_id = %d AND t.status = 'published'
-             ORDER BY st.created_at DESC",
+             ORDER BY st.created_at DESC
+             LIMIT %d OFFSET %d",
             $current_user_id,
-            $current_user_id
+            $current_user_id,
+            $per_page,
+            $offset
         ) );
 
         // Attach tags + avatar, handle anonymous
@@ -1622,7 +1708,11 @@ class Cnw_Social_Bridge_REST_API {
             }
         }
 
-        return array( 'threads' => $threads );
+        return array(
+            'threads' => $threads,
+            'total'   => $total,
+            'pages'   => ceil( $total / $per_page ),
+        );
     }
 
     public function get_hot_questions() {
@@ -1819,6 +1909,8 @@ class Cnw_Social_Bridge_REST_API {
             update_user_meta( $user_id, 'description', sanitize_textarea_field( $body['bio'] ) );
         }
 
+        $this->log_activity( $user_id, 'profile_updated', 'Updated profile information', 0, 'No points for profile update' );
+
         return array( 'success' => true );
     }
 
@@ -1861,6 +1953,8 @@ class Cnw_Social_Bridge_REST_API {
         update_user_meta( $user_id, 'cnw_avatar_url', esc_url_raw( $url ) );
         update_user_meta( $user_id, 'cnw_avatar_attachment_id', $attachment_id );
 
+        $this->log_activity( $user_id, 'avatar_updated', 'Updated profile photo', 0, 'No points for updating photo' );
+
         return array( 'success' => true, 'avatar' => $url );
     }
 
@@ -1869,6 +1963,9 @@ class Cnw_Social_Bridge_REST_API {
         $current   = (bool) get_user_meta( $user_id, 'cnw_anonymous', true );
         $new_value = ! $current;
         update_user_meta( $user_id, 'cnw_anonymous', $new_value ? '1' : '' );
+
+        $label = $new_value ? 'Enabled anonymous mode' : 'Disabled anonymous mode';
+        $this->log_activity( $user_id, 'anonymous_toggled', $label, 0, 'No points for toggling anonymous mode' );
 
         return array( 'anonymous' => $new_value );
     }
@@ -2068,10 +2165,13 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'registration_failed', $user_id->get_error_message(), array( 'status' => 400 ) );
         }
 
+        $this->log_activity( $user_id, 'registered', 'Registered a new account', 0, 'No points for registration' );
+
         return array( 'success' => true, 'message' => 'Account created successfully.' );
     }
 
     public function handle_logout() {
+        $this->log_activity( get_current_user_id(), 'logout', 'Logged out of the forum', 0, 'No points for logout' );
         wp_logout();
         return array( 'success' => true );
     }
@@ -2111,6 +2211,8 @@ class Cnw_Social_Bridge_REST_API {
         // Set the current user so we can generate a fresh nonce.
         wp_set_current_user( $user->ID );
 
+        $this->log_activity( $user->ID, 'login', 'Logged in to the forum', 0, 'No points for login' );
+
         return array(
             'success'     => true,
             'nonce'       => wp_create_nonce( 'wp_rest' ),
@@ -2121,6 +2223,62 @@ class Cnw_Social_Bridge_REST_API {
                 'last_name'  => get_user_meta( $user->ID, 'last_name', true ),
                 'avatar'     => $this->get_user_avatar( $user->ID, 80 ),
             ),
+        );
+    }
+
+    /* ------------------------------------------------------------------
+     * Activity log
+     * ------------------------------------------------------------------ */
+
+    private function log_activity( $user_id, $action_type, $description, $points = 0, $reason = null, $reference_type = null, $reference_id = null, $link = null ) {
+        global $wpdb;
+
+        if ( ! $user_id || $user_id <= 0 ) {
+            return;
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_activity',
+            array(
+                'user_id'        => (int) $user_id,
+                'action_type'    => $action_type,
+                'description'    => $description,
+                'points'         => (int) $points,
+                'reason'         => $reason,
+                'reference_type' => $reference_type,
+                'reference_id'   => $reference_id ? (int) $reference_id : null,
+                'link'           => $link,
+            )
+        );
+    }
+
+    public function get_user_activity( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $user_id  = get_current_user_id();
+        $page     = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+        $per_page = 10;
+        $offset   = ( $page - 1 ) * $per_page;
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_activity WHERE user_id = %d",
+            $user_id
+        ) );
+
+        $activities = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_activity
+             WHERE user_id = %d
+             ORDER BY created_at DESC
+             LIMIT %d OFFSET %d",
+            $user_id,
+            $per_page,
+            $offset
+        ) );
+
+        return array(
+            'activities' => $activities,
+            'total'      => $total,
+            'pages'      => ceil( $total / $per_page ),
         );
     }
 }

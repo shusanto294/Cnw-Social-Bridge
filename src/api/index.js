@@ -211,8 +211,8 @@ export async function unsaveThread(threadId) {
   return res.json();
 }
 
-export async function getSavedThreads() {
-  return apiFetch('/saved-threads');
+export async function getSavedThreads({ page = 1 } = {}) {
+  return apiFetch('/saved-threads', { page });
 }
 
 export async function getHotQuestions() {
@@ -303,6 +303,10 @@ export async function toggleAnonymous() {
   const url = await apiUrl('/users/me/anonymous');
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
+}
+
+export async function getUserActivity({ page = 1 } = {}) {
+  return apiFetch('/users/me/activity', { page });
 }
 
 export async function uploadAvatar(file) {

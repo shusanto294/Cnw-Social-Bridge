@@ -27,11 +27,12 @@
 
       <!-- Anonymous Toggle -->
       <div v-if="isOwn" class="profile-anon-row">
-        <span>Set Anonymous</span>
-        <label class="profile-toggle">
-          <input type="checkbox" :checked="user.anonymous" @change="handleToggleAnonymous" />
-          <span class="profile-toggle-slider"></span>
-        </label>
+        <button type="button" class="ask-anon-toggle" :class="{ 'is-active': user.anonymous }" @click="handleToggleAnonymous">
+          <span>Anonymous</span>
+          <span class="toggle-track" :class="{ on: user.anonymous }">
+            <span class="toggle-thumb"></span>
+          </span>
+        </button>
       </div>
 
       <!-- Personal Info -->
@@ -106,6 +107,11 @@
               <p class="profile-card-meta">{{ formatDate(reply.created_at) }} &bull; {{ reply.saves_count || 0 }} helpful</p>
             </div>
           </div>
+          <div v-if="repliesPages > 1" class="profile-pagination">
+            <button :disabled="repliesPage <= 1" @click="fetchReplies(repliesPage - 1)">&laquo; Prev</button>
+            <button v-for="p in repliesPages" :key="p" class="profile-page-btn" :class="{ 'is-active': p === repliesPage }" @click="fetchReplies(p)">{{ p }}</button>
+            <button :disabled="repliesPage >= repliesPages" @click="fetchReplies(repliesPage + 1)">Next &raquo;</button>
+          </div>
         </template>
 
         <!-- Questions Tab -->
@@ -125,21 +131,73 @@
               <p class="profile-card-meta">{{ formatDate(thread.created_at) }} &bull; {{ thread.saves_count || 0 }} helpful</p>
             </div>
           </div>
+          <div v-if="threadsPages > 1" class="profile-pagination">
+            <button :disabled="threadsPage <= 1" @click="fetchThreads(threadsPage - 1)">&laquo; Prev</button>
+            <button v-for="p in threadsPages" :key="p" class="profile-page-btn" :class="{ 'is-active': p === threadsPage }" @click="fetchThreads(p)">{{ p }}</button>
+            <button :disabled="threadsPage >= threadsPages" @click="fetchThreads(threadsPage + 1)">Next &raquo;</button>
+          </div>
         </template>
 
         <!-- Saved Tab -->
         <template v-if="activeTab === 'saved'">
-          <div class="profile-empty-state">
-            <p class="profile-empty-title">Saved threads</p>
-            <p class="profile-empty-desc">View saved threads from the <router-link to="/saved">Saved Threads</router-link> page.</p>
+          <div v-if="loadingSaved" class="cnw-social-worker-loading" style="padding:20px">Loading saved threads...</div>
+          <div v-else-if="savedThreads.length === 0" class="profile-empty-state">
+            <p class="profile-empty-title">No saved threads yet</p>
+            <p class="profile-empty-desc">Threads you mark as helpful will appear here.</p>
+          </div>
+          <div v-else class="profile-cards-grid">
+            <div v-for="thread in savedThreads" :key="thread.id" class="profile-content-card" @click="$router.push('/thread/' + thread.id)">
+              <h4 class="profile-card-title">{{ thread.title }}</h4>
+              <p class="profile-card-excerpt">{{ truncate(thread.content, 120) }}</p>
+              <div class="profile-card-tags">
+                <span v-for="tag in thread.tags" :key="tag" class="qcard-tag">{{ tag }}</span>
+              </div>
+              <p class="profile-card-meta">{{ formatDate(thread.created_at) }} &bull; {{ thread.saves_count || 0 }} helpful</p>
+            </div>
+          </div>
+          <div v-if="savedPages > 1" class="profile-pagination">
+            <button :disabled="savedPage <= 1" @click="fetchSaved(savedPage - 1)">&laquo; Prev</button>
+            <button v-for="p in savedPages" :key="p" class="profile-page-btn" :class="{ 'is-active': p === savedPage }" @click="fetchSaved(p)">{{ p }}</button>
+            <button :disabled="savedPage >= savedPages" @click="fetchSaved(savedPage + 1)">Next &raquo;</button>
           </div>
         </template>
 
         <!-- Activity Tab -->
         <template v-if="activeTab === 'activity'">
-          <div class="profile-empty-state">
-            <p class="profile-empty-title">Activity</p>
-            <p class="profile-empty-desc">View activity from the <router-link to="/activity">My Activity</router-link> page.</p>
+          <div v-if="loadingActivity" class="cnw-social-worker-loading" style="padding:20px">Loading activity...</div>
+          <div v-else-if="activities.length === 0" class="profile-empty-state">
+            <p class="profile-empty-title">No activity yet</p>
+            <p class="profile-empty-desc">Your actions will be recorded here.</p>
+          </div>
+          <div v-else class="profile-activity-list">
+            <div v-for="act in activities" :key="act.id" class="profile-activity-row">
+              <div class="activity-icon" :class="'activity-icon--' + act.action_type">
+                <svg v-if="act.action_type === 'login'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <svg v-else-if="act.action_type === 'thread_created'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg v-else-if="act.action_type === 'reply_created'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
+                <svg v-else-if="act.action_type === 'voted' || act.action_type === 'received_vote'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                <svg v-else-if="act.action_type === 'best_answer' || act.action_type === 'marked_solution'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg v-else-if="act.action_type === 'thread_saved'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div class="activity-body">
+                <p class="activity-desc">
+                  {{ act.description }}
+                  <router-link v-if="act.link" :to="act.link.replace('#', '')" class="activity-link">View &rarr;</router-link>
+                </p>
+                <div class="activity-meta">
+                  <span class="activity-date">{{ formatDate(act.created_at) }}</span>
+                  <span v-if="act.points > 0" class="activity-points activity-points--positive">+{{ act.points }} pts</span>
+                  <span v-else-if="act.points < 0" class="activity-points activity-points--negative">{{ act.points }} pts</span>
+                  <span v-else-if="act.reason" class="activity-reason">{{ act.reason }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="activityPages > 1" class="profile-pagination">
+            <button :disabled="activityPage <= 1" @click="fetchActivity(activityPage - 1)">&laquo; Prev</button>
+            <button v-for="p in activityPages" :key="p" class="profile-page-btn" :class="{ 'is-active': p === activityPage }" @click="fetchActivity(p)">{{ p }}</button>
+            <button :disabled="activityPage >= activityPages" @click="fetchActivity(activityPage + 1)">Next &raquo;</button>
           </div>
         </template>
       </div>
@@ -148,7 +206,7 @@
 </template>
 
 <script>
-import { getUser, getUserThreads, getUserReplies, updateUserProfile, toggleAnonymous, uploadAvatar } from '@/api/index.js';
+import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar } from '@/api/index.js';
 
 export default {
   name: 'UserProfileView',
@@ -166,8 +224,20 @@ export default {
       ],
       threads: [],
       replies: [],
+      savedThreads: [],
       loadingThreads: false,
       loadingReplies: false,
+      loadingSaved: false,
+      repliesPage: 1,
+      repliesPages: 1,
+      threadsPage: 1,
+      threadsPages: 1,
+      savedPage: 1,
+      savedPages: 1,
+      activities: [],
+      loadingActivity: false,
+      activityPage: 1,
+      activityPages: 1,
       editing: false,
       saving: false,
       editForm: { first_name: '', last_name: '', phone: '' },
@@ -198,8 +268,10 @@ export default {
   },
   watch: {
     activeTab(tab) {
-      if (tab === 'answers' && this.replies.length === 0) this.fetchReplies();
-      if (tab === 'questions' && this.threads.length === 0) this.fetchThreads();
+      if (tab === 'answers' && this.replies.length === 0) this.fetchReplies(1);
+      if (tab === 'questions' && this.threads.length === 0) this.fetchThreads(1);
+      if (tab === 'saved' && this.savedThreads.length === 0) this.fetchSaved(1);
+      if (tab === 'activity' && this.activities.length === 0) this.fetchActivity(1);
     },
   },
   created() {
@@ -220,21 +292,45 @@ export default {
         this.loading = false;
       }
     },
-    async fetchThreads() {
+    async fetchThreads(page) {
+      if (page) this.threadsPage = page;
       this.loadingThreads = true;
       try {
-        const data = await getUserThreads(this.userId);
+        const data = await getUserThreads(this.userId, { page: this.threadsPage });
         this.threads = data.threads || [];
+        this.threadsPages = data.pages || 1;
       } catch { /* silent */ }
       finally { this.loadingThreads = false; }
     },
-    async fetchReplies() {
+    async fetchReplies(page) {
+      if (page) this.repliesPage = page;
       this.loadingReplies = true;
       try {
-        const data = await getUserReplies(this.userId);
+        const data = await getUserReplies(this.userId, { page: this.repliesPage });
         this.replies = data.replies || [];
+        this.repliesPages = data.pages || 1;
       } catch { /* silent */ }
       finally { this.loadingReplies = false; }
+    },
+    async fetchSaved(page) {
+      if (page) this.savedPage = page;
+      this.loadingSaved = true;
+      try {
+        const data = await getSavedThreads({ page: this.savedPage });
+        this.savedThreads = data.threads || data || [];
+        this.savedPages = data.pages || 1;
+      } catch { /* silent */ }
+      finally { this.loadingSaved = false; }
+    },
+    async fetchActivity(page) {
+      if (page) this.activityPage = page;
+      this.loadingActivity = true;
+      try {
+        const data = await getUserActivity({ page: this.activityPage });
+        this.activities = data.activities || [];
+        this.activityPages = data.pages || 1;
+      } catch { /* silent */ }
+      finally { this.loadingActivity = false; }
     },
     startEdit() {
       this.editForm.first_name = this.user.first_name || '';
@@ -403,50 +499,7 @@ export default {
 /* ── Anonymous Toggle ───────────────────────────────────────── */
 .profile-anon-row {
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2xs, 9.9px);
-  font-family: 'Poppins', sans-serif;
-  font-weight: 300;
-  font-size: var(--text-xs, 14px);
-  line-height: 16px;
-  color: var(--text-body, #414141);
-}
-.profile-toggle {
-  position: relative;
-  display: inline-block;
-  width: 42px;
-  height: 22px;
-}
-.profile-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.profile-toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: #ccc;
-  border-radius: 22px;
-  transition: 0.2s;
-}
-.profile-toggle-slider::before {
-  content: "";
-  position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: 0.2s;
-}
-.profile-toggle input:checked + .profile-toggle-slider {
-  background: var(--primary);
-}
-.profile-toggle input:checked + .profile-toggle-slider::before {
-  transform: translateX(20px);
 }
 
 /* ── Personal Info Card ─────────────────────────────────────── */
@@ -561,8 +614,12 @@ export default {
 /* ── Tabs ───────────────────────────────────────────────────── */
 .profile-tabs {
   display: flex;
+  justify-content: center;
   gap: 0;
-  border-bottom: 2px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius-m);
+  padding: var(--space-3xs);
+  margin-top: var(--space-s);
 }
 .profile-tab {
   display: flex;
@@ -577,9 +634,7 @@ export default {
   line-height: 16px;
   color: var(--text-body, #414141);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
 .profile-tab:hover {
   color: #000;
@@ -587,8 +642,7 @@ export default {
 .profile-tab.is-active {
   color: #fff;
   background: var(--primary);
-  border-radius: var(--radius-m) var(--radius-m) 0 0;
-  border-bottom-color: var(--primary);
+  border-radius: var(--radius-m);
 }
 .profile-tab.is-active svg {
   stroke: #fff;
@@ -643,6 +697,144 @@ export default {
   color: #999;
 }
 
+/* ── Activity List ─────────────────────────────────────────── */
+.profile-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.profile-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs, 14px);
+  padding: var(--space-xs, 14px) 0;
+  border-bottom: 1px solid var(--border);
+}
+.profile-activity-row:last-child {
+  border-bottom: none;
+}
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-body, #414141);
+}
+.activity-icon--thread_created { background: #e3f2fd; color: #1976d2; }
+.activity-icon--reply_created { background: #e8f5e9; color: #388e3c; }
+.activity-icon--voted,
+.activity-icon--received_vote { background: #fff3e0; color: #f57c00; }
+.activity-icon--best_answer,
+.activity-icon--marked_solution { background: #e8f5e9; color: #22a55b; }
+.activity-icon--login { background: #f3e5f5; color: #7b1fa2; }
+.activity-icon--thread_saved,
+.activity-icon--thread_unsaved { background: #fce4ec; color: #c62828; }
+.activity-icon--registered { background: #e0f7fa; color: #00838f; }
+.activity-icon--vote_removed,
+.activity-icon--vote_changed { background: #fff3e0; color: #f57c00; }
+.activity-icon--thread_updated,
+.activity-icon--reply_updated { background: #e3f2fd; color: #1976d2; }
+.activity-icon--thread_deleted,
+.activity-icon--reply_deleted { background: #ffebee; color: #c62828; }
+.activity-icon--logout { background: #f3e5f5; color: #7b1fa2; }
+.activity-icon--profile_updated,
+.activity-icon--avatar_updated,
+.activity-icon--anonymous_toggled { background: #e0f7fa; color: #00838f; }
+.activity-icon--tag_followed,
+.activity-icon--tag_unfollowed { background: #fff3e0; color: #f57c00; }
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+.activity-desc {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: var(--text-xs, 14px);
+  line-height: 20px;
+  color: #000;
+}
+.activity-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 6px;
+}
+.activity-link:hover {
+  text-decoration: underline;
+}
+.activity-meta {
+  display: flex;
+  margin-top: 4px;
+}
+.activity-date {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: 12px;
+  color: #999;
+}
+.activity-points {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.activity-points--positive {
+  background: #e8f5e9;
+  color: #22a55b;
+}
+.activity-points--negative {
+  background: #ffebee;
+  color: #c62828;
+}
+.activity-reason {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+/* ── Pagination ────────────────────────────────────────────── */
+.profile-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4xs, 4.95px);
+  margin-top: var(--space-s, 19.8px);
+}
+.profile-pagination button {
+  padding: var(--space-3xs, 7px) var(--space-2xs, 9.9px);
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: var(--radius-s, 2px);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: var(--text-xs, 14px);
+  line-height: 16px;
+  color: var(--text-body, #414141);
+  cursor: pointer;
+  min-width: 36px;
+  text-align: center;
+}
+.profile-pagination button:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.profile-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.profile-page-btn.is-active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
 /* ── Empty State ────────────────────────────────────────────── */
 .profile-empty-state {
   border: var(--radius-xs, 1px) solid var(--primary);
@@ -695,6 +887,9 @@ export default {
   .profile-helpful {
     justify-content: center;
   }
+  .profile-anon-row {
+    justify-content: center;
+  }
   .profile-info-grid {
     grid-template-columns: 1fr;
   }
@@ -702,12 +897,27 @@ export default {
     grid-template-columns: 1fr;
   }
   .profile-tabs {
-    overflow-x: auto;
+    flex-direction: column;
+    gap: var(--space-3xs, 7px);
+    align-items: stretch;
   }
   .profile-tab {
-    padding: 8px 14px;
+    justify-content: center;
+    padding: 10px 14px;
     font-size: 13px;
-    white-space: nowrap;
+  }
+  .profile-activity-row .activity-body {
+    text-align: left;
+  }
+  .profile-activity-row .activity-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .profile-activity-row .activity-link {
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
   }
 }
 </style>
