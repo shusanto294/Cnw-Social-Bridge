@@ -13,7 +13,11 @@
         <div class="reply-header-left">
           <div class="reply-user-info">
             <div class="reply-avatar-wrap">
+              <span v-if="isAnonymous" class="reply-anon-avatar" title="Anonymous">
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+              </span>
               <img
+                v-else
                 :src="avatarUrl"
                 :alt="reply.author_name"
                 class="cnw-social-worker-avatar reply-avatar"
@@ -21,7 +25,7 @@
               />
             </div>
             <span class="reply-author">{{ reply.author_name }}</span>
-            <span class="cnw-social-worker-verified" title="Verified">✓</span>
+            <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
           </div>
           <div class="reply-date-wrap">
             <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
@@ -76,7 +80,11 @@
 
       <!-- Inline reply box for THIS specific reply -->
       <div v-if="showReplyBox" class="reply-inline-form">
+        <span v-if="isCurrentUserAnonymous" class="reply-anon-avatar">
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+        </span>
         <img
+          v-else
           :src="currentUserAvatar"
           class="cnw-social-worker-avatar"
           width="24" height="24"
@@ -198,12 +206,18 @@ export default {
     nestedReplies() {
       return this.allReplies.filter(r => String(r.parent_id) === String(this.reply.id));
     },
+    isAnonymous() {
+      return !!(this.reply.is_anonymous && parseInt(this.reply.is_anonymous));
+    },
     avatarUrl() {
       return this.reply.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=30`;
     },
     currentUserAvatar() {
       const d = window.cnwData;
       return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
+    },
+    isCurrentUserAnonymous() {
+      return !!(window.cnwData?.currentUser?.anonymous);
     },
     isOwner() {
       const uid = window.cnwData?.currentUser?.id;
@@ -458,8 +472,23 @@ export default {
   border-radius: 50%;
   flex-shrink: 0;
 }
+.reply-avatar-wrap img{
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+}
 .reply-avatar {
   border-radius: 50%;
+}
+.reply-anon-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary, #3aa9da);
+  flex-shrink: 0;
 }
 .reply-author {
   font-size: var(--text-xs);

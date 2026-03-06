@@ -180,6 +180,36 @@ class Cnw_Social_Bridge_Admin {
                 true
             );
         }
+
+        // Avatar picker on user edit page
+        $page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+        $act  = isset( $_GET['action'] ) ? $_GET['action'] : '';
+        if ( $page === 'cnw-users' && $act === 'edit' ) {
+            wp_enqueue_media();
+            wp_add_inline_script( 'jquery', "
+                jQuery(function($){
+                    var frame;
+                    $('#cnw-avatar-upload').on('click',function(e){
+                        e.preventDefault();
+                        if(frame){frame.open();return;}
+                        frame=wp.media({title:'Choose Profile Photo',button:{text:'Use as Profile Photo'},multiple:false,library:{type:'image'}});
+                        frame.on('select',function(){
+                            var url=frame.state().get('selection').first().toJSON().url;
+                            $('#cnw_avatar_url').val(url);
+                            $('#cnw-avatar-preview').attr('src',url);
+                            $('#cnw-avatar-remove').show();
+                        });
+                        frame.open();
+                    });
+                    $('#cnw-avatar-remove').on('click',function(e){
+                        e.preventDefault();
+                        $('#cnw_avatar_url').val('');
+                        $('#cnw-avatar-preview').attr('src','" . esc_url( get_avatar_url( intval( $_GET['id'] ?? 0 ), array( 'size' => 150 ) ) ) . "');
+                        $(this).hide();
+                    });
+                });
+            " );
+        }
     }
 
     /* ------------------------------------------------------------------
@@ -663,7 +693,19 @@ class Cnw_Social_Bridge_Admin {
 
         wp_update_user( $userdata );
 
-        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        // Save phone
+        $phone = sanitize_text_field( $_POST['cnw_phone'] ?? '' );
+        update_user_meta( $id, 'cnw_phone', $phone );
+
+        // Save custom avatar
+        $avatar_url = esc_url_raw( $_POST['cnw_avatar_url'] ?? '' );
+        if ( $avatar_url ) {
+            update_user_meta( $id, 'cnw_avatar_url', $avatar_url );
+        } else {
+            delete_user_meta( $id, 'cnw_avatar_url' );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $id, 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
         exit;
     }
 

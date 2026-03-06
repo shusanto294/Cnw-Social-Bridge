@@ -53,13 +53,13 @@
 
         <!-- Stats row 1: Upvote/Downvote + Helpful + Views -->
         <div class="qcard-stats-row">
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
             <span>{{ localUpvotes }}</span>
             <span>Upvote</span>
           </button>
           <span class="stat-divider"></span>
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
             <span>{{ localDownvotes }}</span>
             <span>Downvote</span>
@@ -128,7 +128,11 @@
 
           <!-- Write message box -->
           <div v-if="isLoggedIn" class="inline-reply-form">
+            <span v-if="isCurrentUserAnonymous" class="qcard-anon-avatar qcard-anon-avatar-sm">
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+            </span>
             <img
+              v-else
               :src="currentUserAvatar"
               class="cnw-social-worker-avatar"
               width="24" height="24"
@@ -244,6 +248,9 @@ export default {
     currentUserAvatar() {
       return window.cnwData?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
     },
+    isCurrentUserAnonymous() {
+      return !!(window.cnwData?.currentUser?.anonymous);
+    },
     topLevelReplies() {
       return this.replies.filter(r => !r.parent_id || r.parent_id === '0' || r.parent_id === 0);
     },
@@ -290,7 +297,7 @@ export default {
   },
   methods: {
     async vote(type) {
-      if (!this.isLoggedIn || this.isOwner) return;
+      if (!this.isLoggedIn) return;
       const prev = this.userVote;
       const prevUp = this.localUpvotes;
       const prevDown = this.localDownvotes;

@@ -9,6 +9,7 @@ import ActivityView from '@/components/views/ActivityView.vue';
 import SavedThreadsView from '@/components/views/SavedThreadsView.vue';
 import GuidelinesView from '@/components/views/GuidelinesView.vue';
 import ReportIssueView from '@/components/views/ReportIssueView.vue';
+import UserProfileView from '@/components/views/UserProfileView.vue';
 import NotFoundView from '@/components/views/NotFoundView.vue';
 
 const routes = [
@@ -17,6 +18,7 @@ const routes = [
   { path: '/ask', component: AskQuestionView },
   { path: '/messages', component: MessagesView },
   { path: '/users', component: UsersView },
+  { path: '/profile', component: UserProfileView },
   { path: '/tags', component: TagsView },
   { path: '/activity', component: ActivityView },
   { path: '/saved', component: SavedThreadsView },

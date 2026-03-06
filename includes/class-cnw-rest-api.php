@@ -167,6 +167,21 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/users/(?P<id>\d+)/reputation', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_user_reputation' ), 'permission_callback' => '__return_true',
         ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/threads', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_user_threads' ), 'permission_callback' => '__return_true',
+        ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/replies', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_user_replies' ), 'permission_callback' => '__return_true',
+        ) );
+        register_rest_route( $ns, '/users/me/profile', array(
+            'methods' => 'PUT', 'callback' => array( $this, 'update_user_profile' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/users/me/anonymous', array(
+            'methods' => 'POST', 'callback' => array( $this, 'toggle_anonymous' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/users/me/avatar', array(
+            'methods' => 'POST', 'callback' => array( $this, 'upload_avatar' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
     }
 
     /* ------------------------------------------------------------------
@@ -342,7 +357,7 @@ class Cnw_Social_Bridge_REST_API {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
             } else {
-                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+                $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
             }
         }
 
@@ -396,7 +411,7 @@ class Cnw_Social_Bridge_REST_API {
             $thread->author_name   = 'Anonymous';
             $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
         } else {
-            $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+            $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
         }
 
         return $thread;
@@ -418,7 +433,11 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'Title and content are required', array( 'status' => 400 ) );
         }
 
-        $is_anonymous = ! empty( $params['anonymous'] ) ? 1 : 0;
+        if ( isset( $params['anonymous'] ) ) {
+            $is_anonymous = ! empty( $params['anonymous'] ) ? 1 : 0;
+        } else {
+            $is_anonymous = (bool) get_user_meta( get_current_user_id(), 'cnw_anonymous', true ) ? 1 : 0;
+        }
 
         $result = $wpdb->insert(
             $wpdb->prefix . 'cnw_social_worker_threads',
@@ -579,7 +598,13 @@ class Cnw_Social_Bridge_REST_API {
         ) );
 
         foreach ( $replies as &$reply ) {
-            $reply->author_avatar = get_avatar_url( (int) $reply->author_id, array( 'size' => 40 ) );
+            if ( ! empty( $reply->is_anonymous ) && (int) $reply->is_anonymous === 1 ) {
+                $reply->author_name   = 'Anonymous';
+                $reply->author_avatar = get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
+                $reply->author_id     = 0;
+            } else {
+                $reply->author_avatar = $this->get_user_avatar( (int) $reply->author_id, 40 );
+            }
         }
 
         return array( 'replies' => $replies );
@@ -637,15 +662,20 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'thread_id and content are required', array( 'status' => 400 ) );
         }
 
+        $user_id = get_current_user_id();
+        $is_anonymous = (bool) get_user_meta( $user_id, 'cnw_anonymous', true ) ? 1 : 0;
+
         $result = $wpdb->insert(
             $wpdb->prefix . 'cnw_social_worker_replies',
             array(
-                'thread_id' => intval( $params['thread_id'] ),
-                'author_id' => get_current_user_id(),
-                'parent_id' => isset( $params['parent_id'] ) ? intval( $params['parent_id'] ) : null,
-                'content'   => wp_kses_post( $params['content'] ),
-                'status'    => 'approved',
-            )
+                'thread_id'    => intval( $params['thread_id'] ),
+                'author_id'    => $user_id,
+                'parent_id'    => isset( $params['parent_id'] ) ? intval( $params['parent_id'] ) : null,
+                'content'      => wp_kses_post( $params['content'] ),
+                'status'       => 'approved',
+                'is_anonymous' => $is_anonymous,
+            ),
+            array( '%d', '%d', '%d', '%s', '%s', '%d' )
         );
 
         if ( false === $result ) {
@@ -1588,7 +1618,7 @@ class Cnw_Social_Bridge_REST_API {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
             } else {
-                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+                $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
             }
         }
 
@@ -1622,7 +1652,7 @@ class Cnw_Social_Bridge_REST_API {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
             } else {
-                $thread->author_avatar = get_avatar_url( (int) $thread->author_id, array( 'size' => 80 ) );
+                $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
             }
         }
 
@@ -1635,7 +1665,7 @@ class Cnw_Social_Bridge_REST_API {
         $user_id = intval( $request['id'] );
 
         $user = $wpdb->get_row( $wpdb->prepare(
-            "SELECT u.ID, u.display_name, u.user_email, u.user_login
+            "SELECT u.ID, u.display_name, u.user_email, u.user_login, u.user_registered
              FROM {$wpdb->users} u
              WHERE u.ID = %d",
             $user_id
@@ -1645,7 +1675,202 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'not_found', 'User not found', array( 'status' => 404 ) );
         }
 
-        return $user;
+        $first_name = get_user_meta( $user_id, 'first_name', true );
+        $last_name  = get_user_meta( $user_id, 'last_name', true );
+        $phone      = get_user_meta( $user_id, 'cnw_phone', true );
+        $bio        = get_user_meta( $user_id, 'description', true );
+        $anonymous  = (bool) get_user_meta( $user_id, 'cnw_anonymous', true );
+        $reputation = (int) get_user_meta( $user_id, 'cnw_reputation_total', true );
+        $avatar     = $this->get_user_avatar( $user_id, 150 );
+
+        $helpful_count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
+             INNER JOIN {$wpdb->prefix}cnw_social_worker_replies r ON r.thread_id = st.thread_id
+             WHERE r.author_id = %d",
+            $user_id
+        ) );
+
+        $thread_count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE author_id = %d",
+            $user_id
+        ) );
+
+        $reply_count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d",
+            $user_id
+        ) );
+
+        // Only show email/phone to the profile owner
+        $is_own = get_current_user_id() === $user_id;
+
+        return array(
+            'id'              => (int) $user->ID,
+            'display_name'    => $user->display_name,
+            'first_name'      => $first_name,
+            'last_name'       => $last_name,
+            'email'           => $is_own ? $user->user_email : '',
+            'phone'           => $is_own ? $phone : '',
+            'bio'             => $bio,
+            'avatar'          => $avatar,
+            'user_registered' => $user->user_registered,
+            'anonymous'       => $anonymous,
+            'reputation'      => $reputation,
+            'helpful_count'   => $helpful_count,
+            'thread_count'    => $thread_count,
+            'reply_count'     => $reply_count,
+            'is_own'          => $is_own,
+        );
+    }
+
+    public function get_user_threads( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $user_id  = intval( $request['id'] );
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 10;
+        $offset   = ( $page - 1 ) * $per_page;
+        $current  = get_current_user_id();
+
+        $threads = $wpdb->get_results( $wpdb->prepare(
+            "SELECT t.*, u.display_name AS author_name,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id) AS reply_count,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
+             FROM {$wpdb->prefix}cnw_social_worker_threads t
+             LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
+             WHERE t.author_id = %d
+             ORDER BY t.created_at DESC
+             LIMIT %d OFFSET %d",
+            $user_id, $per_page, $offset
+        ) );
+
+        foreach ( $threads as &$thread ) {
+            $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
+            $tag_names = $wpdb->get_col( $wpdb->prepare(
+                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_tags tg
+                 INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags tt ON tg.id = tt.tag_id
+                 WHERE tt.thread_id = %d",
+                $thread->id
+            ) );
+            $thread->tags = $tag_names;
+        }
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE author_id = %d",
+            $user_id
+        ) );
+
+        return array( 'threads' => $threads, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
+    public function get_user_replies( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $user_id  = intval( $request['id'] );
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 10;
+        $offset   = ( $page - 1 ) * $per_page;
+
+        $replies = $wpdb->get_results( $wpdb->prepare(
+            "SELECT r.*, t.title AS thread_title, u.display_name AS author_name,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st WHERE st.thread_id = r.thread_id) AS saves_count
+             FROM {$wpdb->prefix}cnw_social_worker_replies r
+             LEFT JOIN {$wpdb->prefix}cnw_social_worker_threads t ON r.thread_id = t.id
+             LEFT JOIN {$wpdb->users} u ON r.author_id = u.ID
+             WHERE r.author_id = %d
+             ORDER BY r.created_at DESC
+             LIMIT %d OFFSET %d",
+            $user_id, $per_page, $offset
+        ) );
+
+        foreach ( $replies as &$reply ) {
+            $reply->author_avatar = $this->get_user_avatar( (int) $reply->author_id, 80 );
+            // Get tags from parent thread
+            $tag_names = $wpdb->get_col( $wpdb->prepare(
+                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_tags tg
+                 INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags tt ON tg.id = tt.tag_id
+                 WHERE tt.thread_id = %d",
+                $reply->thread_id
+            ) );
+            $reply->tags = $tag_names;
+        }
+
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d",
+            $user_id
+        ) );
+
+        return array( 'replies' => $replies, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
+    public function update_user_profile( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+        $body    = $request->get_json_params();
+
+        if ( isset( $body['first_name'] ) ) {
+            update_user_meta( $user_id, 'first_name', sanitize_text_field( $body['first_name'] ) );
+        }
+        if ( isset( $body['last_name'] ) ) {
+            update_user_meta( $user_id, 'last_name', sanitize_text_field( $body['last_name'] ) );
+        }
+        if ( isset( $body['phone'] ) ) {
+            update_user_meta( $user_id, 'cnw_phone', sanitize_text_field( $body['phone'] ) );
+        }
+        if ( isset( $body['bio'] ) ) {
+            update_user_meta( $user_id, 'description', sanitize_textarea_field( $body['bio'] ) );
+        }
+
+        return array( 'success' => true );
+    }
+
+    /**
+     * Get the user's avatar URL, preferring a custom upload over Gravatar.
+     */
+    private function get_user_avatar( $user_id, $size = 150 ) {
+        $custom = get_user_meta( $user_id, 'cnw_avatar_url', true );
+        if ( $custom ) {
+            return $custom;
+        }
+        return get_avatar_url( $user_id, array( 'size' => $size ) );
+    }
+
+    public function upload_avatar( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+        $files   = $request->get_file_params();
+
+        if ( empty( $files['file'] ) ) {
+            return new WP_Error( 'no_file', 'No file uploaded.', array( 'status' => 400 ) );
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        // Validate file type
+        $allowed = array( 'image/jpeg', 'image/png', 'image/gif', 'image/webp' );
+        if ( ! in_array( $files['file']['type'], $allowed, true ) ) {
+            return new WP_Error( 'invalid_type', 'Only JPEG, PNG, GIF, and WebP images are allowed.', array( 'status' => 400 ) );
+        }
+
+        $attachment_id = media_handle_upload( 'file', 0 );
+
+        if ( is_wp_error( $attachment_id ) ) {
+            return new WP_Error( 'upload_failed', $attachment_id->get_error_message(), array( 'status' => 500 ) );
+        }
+
+        $url = wp_get_attachment_url( $attachment_id );
+        update_user_meta( $user_id, 'cnw_avatar_url', esc_url_raw( $url ) );
+        update_user_meta( $user_id, 'cnw_avatar_attachment_id', $attachment_id );
+
+        return array( 'success' => true, 'avatar' => $url );
+    }
+
+    public function toggle_anonymous( WP_REST_Request $request ) {
+        $user_id   = get_current_user_id();
+        $current   = (bool) get_user_meta( $user_id, 'cnw_anonymous', true );
+        $new_value = ! $current;
+        update_user_meta( $user_id, 'cnw_anonymous', $new_value ? '1' : '' );
+
+        return array( 'anonymous' => $new_value );
     }
 
     public function get_user_reputation( WP_REST_Request $request ) {
@@ -1680,7 +1905,7 @@ class Cnw_Social_Bridge_REST_API {
 
         foreach ( $notifications as &$n ) {
             $n->actor_avatar = $n->actor_id
-                ? get_avatar_url( (int) $n->actor_id, array( 'size' => 40 ) )
+                ? $this->get_user_avatar( (int) $n->actor_id, 40 )
                 : get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
         }
 
@@ -1894,7 +2119,7 @@ class Cnw_Social_Bridge_REST_API {
                 'name'       => $user->display_name,
                 'first_name' => get_user_meta( $user->ID, 'first_name', true ),
                 'last_name'  => get_user_meta( $user->ID, 'last_name', true ),
-                'avatar'     => get_avatar_url( $user->ID, array( 'size' => 80 ) ),
+                'avatar'     => $this->get_user_avatar( $user->ID, 80 ),
             ),
         );
     }

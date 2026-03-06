@@ -48,6 +48,24 @@ if ( $action === 'edit' && $id ) {
                 <td><input type="text" id="first_name" name="first_name" class="regular-text" value="<?php echo esc_attr( $item->first_name ); ?>"></td></tr>
             <tr><th><label for="last_name">Last Name</label></th>
                 <td><input type="text" id="last_name" name="last_name" class="regular-text" value="<?php echo esc_attr( $item->last_name ); ?>"></td></tr>
+            <?php $phone = get_user_meta( $item->ID, 'cnw_phone', true ); ?>
+            <tr><th><label for="cnw_phone">Phone</label></th>
+                <td><input type="tel" id="cnw_phone" name="cnw_phone" class="regular-text" value="<?php echo esc_attr( $phone ); ?>"></td></tr>
+            <?php $avatar_url = get_user_meta( $item->ID, 'cnw_avatar_url', true ); ?>
+            <tr><th><label>Profile Photo</label></th>
+                <td>
+                    <div style="margin-bottom:10px;">
+                        <img id="cnw-avatar-preview" src="<?php echo esc_url( $avatar_url ?: get_avatar_url( $item->ID, array( 'size' => 150 ) ) ); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
+                    </div>
+                    <input type="hidden" id="cnw_avatar_url" name="cnw_avatar_url" value="<?php echo esc_attr( $avatar_url ); ?>">
+                    <button type="button" id="cnw-avatar-upload" class="button">Choose Photo</button>
+                    <?php if ( $avatar_url ) : ?>
+                        <button type="button" id="cnw-avatar-remove" class="button" style="margin-left:5px;">Remove Photo</button>
+                    <?php else : ?>
+                        <button type="button" id="cnw-avatar-remove" class="button" style="margin-left:5px;display:none;">Remove Photo</button>
+                    <?php endif; ?>
+                    <p class="description">Upload a custom profile photo or use the default Gravatar.</p>
+                </td></tr>
             <tr><th><label for="role">Role</label></th>
                 <td><select id="role" name="role">
                     <?php

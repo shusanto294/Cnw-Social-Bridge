@@ -85,9 +85,10 @@ class Cnw_Social_Bridge {
             author_id  bigint(20) unsigned NOT NULL,
             parent_id  bigint(20) unsigned DEFAULT NULL,
             content    longtext            NOT NULL,
-            status     varchar(20)         DEFAULT 'approved',
-            created_at datetime            DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            status       varchar(20)         DEFAULT 'approved',
+            is_anonymous tinyint(1)          DEFAULT 0,
+            created_at   datetime            DEFAULT CURRENT_TIMESTAMP,
+            updated_at   datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY thread_id  (thread_id),
             KEY author_id  (author_id),
@@ -234,6 +235,13 @@ class Cnw_Social_Bridge {
 
         // Ensure description column exists for existing installs.
         self::migrate_tags_description_column();
+
+        // Ensure is_anonymous column exists on replies for existing installs.
+        $replies_table = $wpdb->prefix . 'cnw_social_worker_replies';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM `{$replies_table}` LIKE 'is_anonymous'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE `{$replies_table}` ADD COLUMN `is_anonymous` tinyint(1) DEFAULT 0 AFTER `status`" );
+        }
 
         $this->create_user_roles();
 
@@ -430,8 +438,9 @@ class Cnw_Social_Bridge {
                 'name'       => $current_user->display_name,
                 'first_name' => get_user_meta( get_current_user_id(), 'first_name', true ),
                 'last_name'  => get_user_meta( get_current_user_id(), 'last_name', true ),
-                'avatar'     => get_avatar_url( get_current_user_id(), array( 'size' => 80 ) ),
+                'avatar'     => get_user_meta( get_current_user_id(), 'cnw_avatar_url', true ) ?: get_avatar_url( get_current_user_id(), array( 'size' => 80 ) ),
                 'reputation' => (int) get_user_meta( get_current_user_id(), 'cnw_reputation_total', true ),
+                'anonymous'  => (bool) get_user_meta( get_current_user_id(), 'cnw_anonymous', true ),
             ),
         ) );
 

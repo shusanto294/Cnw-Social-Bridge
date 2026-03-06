@@ -4,13 +4,18 @@
     <div class="sidebar-user-card">
       <div class="sidebar-user-bg"></div>
       <div class="sidebar-user-identity">
+        <span v-if="currentUser.anonymous" class="sidebar-anon-avatar">
+          <svg width="28" height="28" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+        </span>
         <img
+          v-else
           :src="currentUser.avatar || defaultAvatar"
           :alt="displayName"
           class="cnw-social-worker-avatar sidebar-avatar"
           width="72" height="72"
         />
-        <p class="sidebar-username">{{ displayName }}</p>
+        <router-link v-if="currentUser.id" to="/profile" class="sidebar-username sidebar-username-link">{{ displayName }}</router-link>
+        <p v-else class="sidebar-username">{{ displayName }}</p>
       </div>
     </div>
 
@@ -205,8 +210,19 @@ data() {
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
   },
+  mounted() {
+    this._onAvatarUpdated = (e) => { this.currentUser = Object.assign({}, this.currentUser, { avatar: e.detail }); };
+    this._onAnonUpdated = (e) => { this.currentUser = Object.assign({}, this.currentUser, { anonymous: e.detail }); };
+    window.addEventListener('cnw-avatar-updated', this._onAvatarUpdated);
+    window.addEventListener('cnw-anonymous-updated', this._onAnonUpdated);
+  },
+  beforeUnmount() {
+    window.removeEventListener('cnw-avatar-updated', this._onAvatarUpdated);
+    window.removeEventListener('cnw-anonymous-updated', this._onAnonUpdated);
+  },
   computed: {
     displayName() {
+      if (this.currentUser.anonymous) return 'Anonymous';
       const fn = this.currentUser.first_name || '';
       const ln = this.currentUser.last_name || '';
       const full = (fn + ' ' + ln).trim();
@@ -259,6 +275,17 @@ data() {
   border: 2px solid #fff;
   margin-bottom: 8px;
 }
+.sidebar-anon-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary, #3aa9da);
+  border: 2px solid #fff;
+  margin-bottom: 8px;
+}
 
 .sidebar-username {
   color: var(--text-dark);
@@ -266,6 +293,13 @@ data() {
   font-weight: 600;
   text-align: center;
   padding: 0 8px;
+}
+.sidebar-username-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+.sidebar-username-link:hover {
+  color: var(--primary);
 }
 
 .sidebar-nav {

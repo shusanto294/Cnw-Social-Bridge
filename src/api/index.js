@@ -277,6 +277,46 @@ export async function register({ username, email, password, first_name, last_nam
   return data;
 }
 
+export async function getUser(userId) {
+  return apiFetch(`/users/${userId}`);
+}
+
+export async function getUserThreads(userId, { page = 1 } = {}) {
+  return apiFetch(`/users/${userId}/threads`, { page });
+}
+
+export async function getUserReplies(userId, { page = 1 } = {}) {
+  return apiFetch(`/users/${userId}/replies`, { page });
+}
+
+export async function updateUserProfile({ first_name, last_name, phone, bio }) {
+  const url = await apiUrl('/users/me/profile');
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ first_name, last_name, phone, bio }),
+  });
+  return res.json();
+}
+
+export async function toggleAnonymous() {
+  const url = await apiUrl('/users/me/anonymous');
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function uploadAvatar(file) {
+  const url = await apiUrl('/users/me/avatar');
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-WP-Nonce': NONCE },
+    body: formData,
+  });
+  return res.json();
+}
+
 export async function login({ username, password }) {
   const url = await apiUrl('/login');
   const res = await fetch(url, {

@@ -159,7 +159,7 @@ export default {
     return {
       title: '',
       content: '',
-      isAnonymous: false,
+      isAnonymous: !!(window.cnwData?.currentUser?.anonymous),
       submitting: false,
       error: '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
@@ -450,6 +450,13 @@ export default {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2xs);
+}
+
+.ask-input-area img{
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .ask-avatar {
