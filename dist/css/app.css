@@ -109,6 +109,7 @@
   position: relative;
   border-radius: var(--radius-sm);
   border: none;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -927,9 +928,20 @@
 }
 .reply-header-left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2xs);
   min-width: 0;
+}
+.reply-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  flex-shrink: 0;
+}
+.reply-date-wrap {
+  display: flex;
+  align-items: center;
 }
 .reply-owner-actions {
   display: flex;
@@ -956,7 +968,6 @@
   font-weight: 300;
   color: #999;
   line-height: 16px;
-  flex: 1;
 }
 
 /* ── Body text ────────────────────────────────────────────────── */
@@ -1099,14 +1110,8 @@
     align-items: flex-start;
 }
 .reply-header-left {
-    flex-wrap: wrap;
     flex: 1;
     min-width: 0;
-}
-.reply-date {
-    width: 100%;
-    flex: none;
-    margin-top: 2px;
 }
 .reply-body {
     padding-left: var(--space-xs);

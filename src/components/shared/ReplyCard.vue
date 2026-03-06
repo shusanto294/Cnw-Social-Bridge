@@ -11,17 +11,21 @@
       <!-- Header: avatar + name + verified + date + owner actions -->
       <div class="reply-header">
         <div class="reply-header-left">
-          <div class="reply-avatar-wrap">
-            <img
-              :src="avatarUrl"
-              :alt="reply.author_name"
-              class="cnw-social-worker-avatar reply-avatar"
-              width="22" height="22"
-            />
+          <div class="reply-user-info">
+            <div class="reply-avatar-wrap">
+              <img
+                :src="avatarUrl"
+                :alt="reply.author_name"
+                class="cnw-social-worker-avatar reply-avatar"
+                width="22" height="22"
+              />
+            </div>
+            <span class="reply-author">{{ reply.author_name }}</span>
+            <span class="cnw-social-worker-verified" title="Verified">✓</span>
           </div>
-          <span class="reply-author">{{ reply.author_name }}</span>
-          <span class="cnw-social-worker-verified" title="Verified">✓</span>
-          <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+          <div class="reply-date-wrap">
+            <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
+          </div>
         </div>
         <div v-if="isOwner" class="reply-owner-actions">
           <button class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
@@ -429,9 +433,20 @@ export default {
 }
 .reply-header-left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2xs);
   min-width: 0;
+}
+.reply-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  flex-shrink: 0;
+}
+.reply-date-wrap {
+  display: flex;
+  align-items: center;
 }
 .reply-owner-actions {
   display: flex;
@@ -458,7 +473,6 @@ export default {
   font-weight: 300;
   color: #999;
   line-height: 16px;
-  flex: 1;
 }
 
 /* ── Body text ────────────────────────────────────────────────── */
@@ -602,14 +616,8 @@ export default {
     align-items: flex-start;
   }
   .reply-header-left {
-    flex-wrap: wrap;
     flex: 1;
     min-width: 0;
-  }
-  .reply-date {
-    width: 100%;
-    flex: none;
-    margin-top: 2px;
   }
   .reply-body {
     padding-left: var(--space-xs);

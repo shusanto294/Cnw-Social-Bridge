@@ -18,7 +18,22 @@ if ( $action === 'edit' && $id ) {
 }
 
 $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER BY display_name ASC LIMIT 200" );
-$action_types = array( 'thread_created', 'reply_created', 'received_upvote', 'received_downvote', 'best_answer', 'manual_adjustment' );
+$action_types = array(
+    'thread_created'  => 'Thread Created (+5)',
+    'reply_created'   => 'Reply Created (+2)',
+    'received_upvote' => 'Received Upvote (+10)',
+    'best_answer'     => 'Reply Marked as Solution (+25)',
+    'gave_upvote'     => 'Gave Upvote (+1)',
+    'manual_adjustment' => 'Manual Adjustment',
+);
+$action_type_points = array(
+    'thread_created'  => 5,
+    'reply_created'   => 2,
+    'received_upvote' => 10,
+    'best_answer'     => 25,
+    'gave_upvote'     => 1,
+    'manual_adjustment' => 0,
+);
 ?>
 
 <div class="wrap cnw-admin-wrap">
@@ -45,14 +60,14 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
                     <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->user_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
-            <tr><th><label for="points">Points</label></th>
-                <td><input type="number" id="points" name="points" value="<?php echo esc_attr( $item->points ?? 0 ); ?>" required></td></tr>
             <tr><th><label for="action_type">Action Type</label></th>
                 <td><select id="action_type" name="action_type" required>
-                    <?php foreach ( $action_types as $at ) : ?>
-                    <option value="<?php echo esc_attr( $at ); ?>" <?php selected( $item->action_type ?? '', $at ); ?>><?php echo esc_html( str_replace( '_', ' ', ucfirst( $at ) ) ); ?></option>
+                    <?php foreach ( $action_types as $at_key => $at_label ) : ?>
+                    <option value="<?php echo esc_attr( $at_key ); ?>" data-points="<?php echo esc_attr( $action_type_points[ $at_key ] ); ?>" <?php selected( $item->action_type ?? '', $at_key ); ?>><?php echo esc_html( $at_label ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
+            <tr><th><label for="points">Points</label></th>
+                <td><input type="number" id="points" name="points" value="<?php echo esc_attr( $item->points ?? 0 ); ?>" required></td></tr>
             <tr><th><label for="reference_type">Reference Type</label></th>
                 <td><select id="reference_type" name="reference_type">
                     <option value="">None</option>
@@ -65,6 +80,21 @@ $action_types = array( 'thread_created', 'reply_created', 'received_upvote', 're
             <tr><th><label for="description">Description</label></th>
                 <td><input type="text" id="description" name="description" class="regular-text" value="<?php echo esc_attr( $item->description ?? '' ); ?>"></td></tr>
         </table>
+
+        <script>
+        document.getElementById('action_type').addEventListener('change', function() {
+            var sel = this.options[this.selectedIndex];
+            var pts = sel.getAttribute('data-points');
+            if (pts !== null) document.getElementById('points').value = pts;
+        });
+        <?php if ( ! $item ) : ?>
+        (function() {
+            var sel = document.getElementById('action_type');
+            var pts = sel.options[sel.selectedIndex].getAttribute('data-points');
+            if (pts !== null) document.getElementById('points').value = pts;
+        })();
+        <?php endif; ?>
+        </script>
 
         <?php submit_button( $item ? 'Update Entry' : 'Create Entry' ); ?>
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-reputation' ) ); ?>" class="button">&larr; Back to list</a>
