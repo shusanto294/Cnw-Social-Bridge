@@ -306,6 +306,15 @@ class Cnw_Social_Bridge_REST_API {
                     )";
                 }
                 break;
+            case 'frequent':
+                $order = "ORDER BY (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') DESC, t.created_at DESC";
+                break;
+            case 'score':
+                $order = "ORDER BY (
+                    (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1)
+                    - (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1)
+                ) DESC, t.created_at DESC";
+                break;
         }
 
         $current_user_id = get_current_user_id();
@@ -361,8 +370,10 @@ class Cnw_Social_Bridge_REST_API {
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+                $thread->author_reputation = 0;
             } else {
-                $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
+                $thread->author_avatar     = $this->get_user_avatar( (int) $thread->author_id, 80 );
+                $thread->author_reputation = (int) get_user_meta( (int) $thread->author_id, 'cnw_reputation_total', true );
             }
         }
 
@@ -413,10 +424,12 @@ class Cnw_Social_Bridge_REST_API {
         ) );
 
         if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
-            $thread->author_name   = 'Anonymous';
-            $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            $thread->author_name       = 'Anonymous';
+            $thread->author_avatar     = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            $thread->author_reputation = 0;
         } else {
-            $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
+            $thread->author_avatar     = $this->get_user_avatar( (int) $thread->author_id, 80 );
+            $thread->author_reputation = (int) get_user_meta( (int) $thread->author_id, 'cnw_reputation_total', true );
         }
 
         return $thread;
@@ -611,11 +624,13 @@ class Cnw_Social_Bridge_REST_API {
 
         foreach ( $replies as &$reply ) {
             if ( ! empty( $reply->is_anonymous ) && (int) $reply->is_anonymous === 1 ) {
-                $reply->author_name   = 'Anonymous';
-                $reply->author_avatar = get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
-                $reply->author_id     = 0;
+                $reply->author_name       = 'Anonymous';
+                $reply->author_avatar     = get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
+                $reply->author_id         = 0;
+                $reply->author_reputation = 0;
             } else {
-                $reply->author_avatar = $this->get_user_avatar( (int) $reply->author_id, 40 );
+                $reply->author_avatar     = $this->get_user_avatar( (int) $reply->author_id, 40 );
+                $reply->author_reputation = (int) get_user_meta( (int) $reply->author_id, 'cnw_reputation_total', true );
             }
         }
 
@@ -699,16 +714,19 @@ class Cnw_Social_Bridge_REST_API {
         $thread_id = intval( $params['thread_id'] );
         $actor_name = wp_get_current_user()->display_name;
 
-        // Award reputation: +2 for creating a reply
-        $this->award_reputation( $actor_id, 2, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
-
-        $this->log_activity( $actor_id, 'reply_created', 'Posted a reply', 2, null, 'thread', $thread_id, '#/thread/' . $thread_id );
-
-        // Notify thread author
+        // Fetch thread author to check self-reply
         $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $thread_id
         ) );
-        if ( $thread_author ) {
+
+        // Award reputation: +2 for creating a reply, but NOT if replying to own thread
+        if ( $actor_id !== $thread_author ) {
+            $this->award_reputation( $actor_id, 2, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
+            $this->log_activity( $actor_id, 'reply_created', 'Posted a reply', 2, null, 'thread', $thread_id, '#/thread/' . $thread_id );
+        } else {
+            $this->log_activity( $actor_id, 'reply_created', 'Posted a reply to own thread', 0, 'No points for replying to own thread', 'thread', $thread_id, '#/thread/' . $thread_id );
+        }
+        if ( $thread_author && $thread_author !== $actor_id ) {
             $this->insert_notification( $thread_author, $actor_id, 'reply', 'thread', $thread_id,
                 "{$actor_name} replied to your thread." );
         }
@@ -827,61 +845,65 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'not_found', 'Reply not found', array( 'status' => 404 ) );
         }
 
+        // Only the thread author can mark/unmark a solution.
+        $thread = $wpdb->get_row( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", (int) $reply->thread_id
+        ) );
+        if ( ! $thread || (int) $thread->author_id !== $user_id ) {
+            return new WP_Error( 'forbidden', 'Only the question author can accept an answer.', array( 'status' => 403 ) );
+        }
+
         $is_own_reply = ( (int) $reply->author_id === $user_id );
+
+        // Cannot accept your own reply.
+        if ( $is_own_reply && ! (int) $reply->is_solution ) {
+            return new WP_Error( 'forbidden', 'You cannot accept your own answer.', array( 'status' => 403 ) );
+        }
 
         $is_solution = (int) $reply->is_solution;
 
+        $actor_name = wp_get_current_user()->display_name;
+
         if ( $is_solution ) {
-            // Unmark solution
+            // Unmark solution.
             $wpdb->update(
                 $wpdb->prefix . 'cnw_social_worker_replies',
                 array( 'is_solution' => 0 ),
                 array( 'id' => $reply_id )
             );
-            // Remove solution reputation
+            // Remove solution reputation.
             $wpdb->query( $wpdb->prepare(
                 "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE action_type = 'best_answer' AND reference_type = 'reply' AND reference_id = %d",
                 $reply_id
             ) );
             $this->recalc_user_reputation( (int) $reply->author_id );
+
+            // Log activity & notify the reply author about the undo.
+            if ( ! $is_own_reply ) {
+                $this->log_activity( (int) $reply->author_id, 'best_answer_removed', 'Your reply was unmarked as best answer (-25 points)', -25, null, 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
+                $this->insert_notification( (int) $reply->author_id, $user_id, 'solution_removed', 'thread', (int) $reply->thread_id,
+                    "{$actor_name} unmarked your reply as best answer." );
+            }
+            $this->log_activity( $user_id, 'unmarked_solution', 'Unmarked a reply as best answer', 0, null, 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
+
             return array( 'success' => true, 'action' => 'unmarked', 'is_solution' => false );
         } else {
-            // Unmark any existing solution for this thread
-            $old_solution = $wpdb->get_row( $wpdb->prepare(
-                "SELECT id, author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id = %d AND is_solution = 1",
-                (int) $reply->thread_id
-            ) );
-            if ( $old_solution ) {
-                $wpdb->update(
-                    $wpdb->prefix . 'cnw_social_worker_replies',
-                    array( 'is_solution' => 0 ),
-                    array( 'id' => (int) $old_solution->id )
-                );
-                $wpdb->query( $wpdb->prepare(
-                    "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE action_type = 'best_answer' AND reference_type = 'reply' AND reference_id = %d",
-                    (int) $old_solution->id
-                ) );
-                $this->recalc_user_reputation( (int) $old_solution->author_id );
-            }
-
-            // Mark this reply as solution
+            // Mark this reply as solution (multiple allowed per thread).
             $wpdb->update(
                 $wpdb->prefix . 'cnw_social_worker_replies',
                 array( 'is_solution' => 1 ),
                 array( 'id' => $reply_id )
             );
-            // Award +25 reputation to reply author (skip if marking own reply)
+            // Award +25 reputation to reply author (skip if marking own reply).
             if ( ! $is_own_reply ) {
-                $this->award_reputation( (int) $reply->author_id, 25, 'best_answer', 'reply', $reply_id, 'Reply marked as solution' );
+                $this->award_reputation( (int) $reply->author_id, 25, 'best_answer', 'reply', $reply_id, 'Reply marked as best answer' );
                 $this->log_activity( (int) $reply->author_id, 'best_answer', 'Your reply was marked as the best answer', 25, null, 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
 
-                // Notify the reply author
-                $actor_name = wp_get_current_user()->display_name;
                 $this->insert_notification( (int) $reply->author_id, $user_id, 'solution', 'thread', (int) $reply->thread_id,
-                    "{$actor_name} marked your reply as helpful." );
+                    "{$actor_name} marked your reply as best answer." );
             }
 
-            $this->log_activity( $user_id, 'marked_solution', 'Marked a reply as the best answer', 0, 'No points for marking solution', 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
+            $this->log_activity( $user_id, 'marked_solution', 'Marked a reply as the best answer', 0, null, 'thread', (int) $reply->thread_id, '#/thread/' . (int) $reply->thread_id );
 
             return array( 'success' => true, 'action' => 'marked', 'is_solution' => true );
         }
@@ -1539,6 +1561,12 @@ class Cnw_Social_Bridge_REST_API {
             $data['slug'] = sanitize_title( $body['name'] );
             $formats[]    = '%s';
             $formats[]    = '%s';
+        }
+        if ( ! empty( $body['slug'] ) ) {
+            $data['slug'] = sanitize_title( $body['slug'] );
+            if ( ! isset( $data['name'] ) ) {
+                $formats[] = '%s';
+            }
         }
         if ( array_key_exists( 'description', $body ) ) {
             $data['description'] = sanitize_textarea_field( $body['description'] ) ?: null;
@@ -2232,6 +2260,7 @@ class Cnw_Social_Bridge_REST_API {
                 'first_name' => get_user_meta( $user->ID, 'first_name', true ),
                 'last_name'  => get_user_meta( $user->ID, 'last_name', true ),
                 'avatar'     => $this->get_user_avatar( $user->ID, 80 ),
+                'reputation' => (int) get_user_meta( $user->ID, 'cnw_reputation_total', true ),
             ),
         );
     }

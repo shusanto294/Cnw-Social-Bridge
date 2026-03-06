@@ -22,7 +22,7 @@ $action_types = array(
     'thread_created'  => 'Thread Created (+5)',
     'reply_created'   => 'Reply Created (+2)',
     'received_upvote' => 'Received Upvote (+10)',
-    'best_answer'     => 'Reply Marked as Solution (+25)',
+    'best_answer'     => 'Accepted as Best Answer (+25)',
     'gave_upvote'     => 'Gave Upvote (+1)',
     'manual_adjustment' => 'Manual Adjustment',
 );

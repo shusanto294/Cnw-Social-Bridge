@@ -467,6 +467,19 @@
 .sidebar-username-link:hover {
   color: var(--primary);
 }
+.sidebar-reputation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 300;
+  color: #999;
+  margin-top: 2px;
+}
+.sidebar-reputation svg {
+  flex-shrink: 0;
+}
 .sidebar-nav {
   border-radius: var(--radius);
   overflow: hidden;
@@ -935,6 +948,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  position: relative;
 }
 
 /* ── Header ───────────────────────────────────────────────────── */
@@ -1056,16 +1070,39 @@
   flex-shrink: 0;
 }
 
-/* ── Helpful (heart) button ───────────────────────────────────── */
-.helpful-btn:hover {
-  color: #e74c3c;
+/* ── Accept (checkmark) button ────────────────────────────────── */
+.accept-btn:hover {
+  color: #22a55b;
 }
-.helpful-btn:disabled {
+.accept-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.helpful-active {
-  color: #e74c3c !important;
+.accept-active {
+  color: #22a55b !important;
+  font-weight: 500;
+}
+
+/* ── Best Answer badge ───────────────────────────────────────── */
+.reply-best-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f5e9;
+  color: #22a55b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Best Answer bubble highlight ────────────────────────────── */
+.reply-bubble.reply-best-answer {
+  border: 1.5px solid #22a55b;
+  background: #f6fef8;
 }
 
 /* ── Inline reply form (inside the bubble) ────────────────────── */
@@ -1138,6 +1175,16 @@
 }
 .reply-bubble {
     padding: var(--space-2xs) var(--space-xs);
+    padding-bottom: var(--space-xs);
+}
+.reply-bubble.reply-has-actions {
+    padding-bottom: 28px;
+}
+.reply-bubble.reply-best-answer {
+    padding-bottom: 28px;
+}
+.reply-bubble.reply-has-actions.reply-best-answer {
+    padding-bottom: 50px;
 }
 .reply-header {
     align-items: flex-start;
@@ -1145,6 +1192,20 @@
 .reply-header-left {
     flex: 1;
     min-width: 0;
+}
+.reply-best-answer-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+}
+.reply-owner-actions {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+}
+  /* When both badge and actions exist, stack actions above badge */
+.reply-bubble.reply-best-answer .reply-owner-actions {
+    bottom: 28px;
 }
 .reply-body {
     padding-left: var(--space-xs);
@@ -1163,9 +1224,33 @@
     padding: var(--space-3xs) var(--space-2xs);
     gap: var(--space-3xs);
 }
+.reply-bubble.reply-has-actions {
+    padding-bottom: 26px;
+}
+.reply-bubble.reply-best-answer {
+    padding-bottom: 26px;
+}
+.reply-bubble.reply-has-actions.reply-best-answer {
+    padding-bottom: 48px;
+}
 .reply-header {
     flex-wrap: wrap;
     gap: var(--space-3xs);
+}
+.reply-best-answer-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    font-size: 10px;
+    padding: 2px 6px;
+}
+.reply-owner-actions {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+}
+.reply-bubble.reply-best-answer .reply-owner-actions {
+    bottom: 26px;
 }
 .reply-date {
     font-size: 11px;
@@ -2781,21 +2866,41 @@ to   { opacity: 1; transform: translateY(0);
   border-color: #e74c3c;
 }
 
-/* Follow icon button */
-.tag-follow-icon-btn:hover {
-  background: var(--bg);
-  color: var(--primary);
-  border-color: var(--primary);
+/* Follow / Unfollow button */
+.tag-follow-wrap {
+  margin-top: auto;
 }
-.tag-follow-icon-btn.is-following {
+.tag-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 14px;
+  margin-top: auto;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tag-follow-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
+.tag-follow-btn.is-following {
   background: var(--primary);
   color: #fff;
   border-color: var(--primary);
 }
-.tag-follow-icon-btn.is-following:hover {
-  opacity: 0.85;
+.tag-follow-btn.is-following:hover {
+  background: #e74c3c;
+  border-color: #e74c3c;
 }
-.tag-follow-icon-btn:disabled {
+.tag-follow-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -3424,6 +3529,31 @@ to   { opacity: 1; transform: translateY(0);
 .profile-helpful svg {
   flex-shrink: 0;
 }
+.profile-stats-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs, 9.9px);
+  flex-wrap: wrap;
+}
+.profile-stats-divider {
+  width: 1px;
+  height: 14px;
+  background: #ccc;
+  flex-shrink: 0;
+}
+.profile-reputation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4xs, 4.95px);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: var(--text-xs, 14px);
+  line-height: 16px;
+  color: var(--text-body, #414141);
+}
+.profile-reputation svg {
+  flex-shrink: 0;
+}
 
 /* ── Anonymous Toggle ───────────────────────────────────────── */
 .profile-anon-row {
@@ -3640,9 +3770,6 @@ to   { opacity: 1; transform: translateY(0);
   color: #fff;
   background: var(--primary);
   border-radius: var(--radius-m);
-}
-.profile-tab.is-active svg {
-  stroke: #fff;
 }
 
 /* ── Tab Content ────────────────────────────────────────────── */
@@ -3881,6 +4008,61 @@ to   { opacity: 1; transform: translateY(0);
   text-decoration: none;
 }
 
+/* ── Stats Grid ─────────────────────────────────────────────── */
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs, 14px);
+}
+.stats-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-s, 19.8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3xs, 7px);
+  text-align: center;
+  transition: box-shadow 0.15s;
+}
+.stats-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.stats-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stats-card-icon--reputation { background: #fff8e1; color: #f5a623;
+}
+.stats-card-icon--questions { background: #e3f2fd; color: #1976d2;
+}
+.stats-card-icon--answers { background: #e8f5e9; color: #388e3c;
+}
+.stats-card-icon--helpful { background: #fce4ec; color: #e53935;
+}
+.stats-card-icon--joined { background: #f3e5f5; color: #7b1fa2;
+}
+.stats-card-icon--ratio { background: #e0f7fa; color: #00838f;
+}
+.stats-card-value {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  color: #000;
+  line-height: 1.2;
+}
+.stats-card-label {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: var(--text-xs, 14px);
+  color: #999;
+  line-height: 1.2;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 760px) {
 .profile-header {
@@ -3928,6 +4110,9 @@ to   { opacity: 1; transform: translateY(0);
     display: block;
     margin-left: 0;
     margin-top: 4px;
+}
+.profile-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
 }
 }
 
@@ -4048,6 +4233,22 @@ button {
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.cnw-reputation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #f5a623;
+  white-space: nowrap;
+  line-height: 16px;
+}
+.cnw-reputation-badge svg {
+  flex-shrink: 0;
+  stroke: #f5a623;
 }
 
 .cnw-social-worker-tag-badge {

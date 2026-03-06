@@ -7,7 +7,7 @@
     </div>
 
     <!-- Reply content bubble -->
-    <div class="reply-bubble">
+    <div class="reply-bubble" :class="{ 'reply-best-answer': localIsSolution, 'reply-has-actions': isOwner }">
       <!-- Header: avatar + name + verified + date + owner actions -->
       <div class="reply-header">
         <div class="reply-header-left">
@@ -26,11 +26,19 @@
             </div>
             <span class="reply-author">{{ reply.author_name }}</span>
             <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
+            <span v-if="!isAnonymous && reply.author_reputation" class="cnw-reputation-badge" :title="reply.author_reputation + ' reputation points'">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {{ formatReputation(reply.author_reputation) }}
+            </span>
           </div>
           <div class="reply-date-wrap">
             <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
           </div>
         </div>
+        <span v-if="localIsSolution" class="reply-best-answer-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Best Answer
+        </span>
         <div v-if="isOwner" class="reply-owner-actions">
           <button class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -57,11 +65,13 @@
           <span>{{ localDownvotes }}</span>
           <span>Downvote</span>
         </button>
-        <span class="reply-divider"></span>
-        <button class="reply-stat-btn helpful-btn" :class="{ 'helpful-active': localIsSolution }" @click="toggleSolution" :disabled="!isLoggedIn || markingSolution">
-          <svg width="14" height="14" viewBox="0 0 24 24" :fill="localIsSolution ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span>Helpful</span>
-        </button>
+        <template v-if="canAccept || localIsSolution">
+          <span class="reply-divider"></span>
+          <button class="reply-stat-btn accept-btn" :class="{ 'accept-active': localIsSolution }" @click="toggleSolution" :disabled="!canAccept || markingSolution" :title="acceptTooltip">
+            <svg width="14" height="14" viewBox="0 0 24 24" :fill="localIsSolution ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>{{ localIsSolution ? 'Accepted' : 'Accept' }}</span>
+          </button>
+        </template>
       </div>
 
       <!-- Footer: Replies | Reply -->
@@ -227,6 +237,20 @@ export default {
       const uid = window.cnwData?.currentUser?.id;
       return uid && String(this.threadAuthorId) === String(uid);
     },
+    isReplyByThreadOwner() {
+      return String(this.reply.author_id) === String(this.threadAuthorId);
+    },
+    canAccept() {
+      if (!this.isLoggedIn || !this.isThreadOwner) return false;
+      if (this.localIsSolution) return true; // always allow undo
+      return !this.isReplyByThreadOwner;
+    },
+    acceptTooltip() {
+      if (this.localIsSolution) return 'Undo — remove best answer';
+      if (!this.isThreadOwner) return 'Only the question author can accept an answer';
+      if (this.isReplyByThreadOwner) return 'You cannot accept your own answer';
+      return 'Accept as best answer (+25 rep)';
+    },
   },
   methods: {
     async toggleSolution() {
@@ -319,6 +343,12 @@ export default {
       const date = new Date(d);
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         + ' • ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    },
+    formatReputation(n) {
+      if (!n) return '0';
+      n = Number(n);
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return n.toString();
     },
   },
 };
@@ -436,6 +466,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  position: relative;
 }
 
 /* ── Header ───────────────────────────────────────────────────── */
@@ -557,16 +588,39 @@ export default {
   flex-shrink: 0;
 }
 
-/* ── Helpful (heart) button ───────────────────────────────────── */
-.helpful-btn:hover {
-  color: #e74c3c;
+/* ── Accept (checkmark) button ────────────────────────────────── */
+.accept-btn:hover {
+  color: #22a55b;
 }
-.helpful-btn:disabled {
+.accept-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.helpful-active {
-  color: #e74c3c !important;
+.accept-active {
+  color: #22a55b !important;
+  font-weight: 500;
+}
+
+/* ── Best Answer badge ───────────────────────────────────────── */
+.reply-best-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f5e9;
+  color: #22a55b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Best Answer bubble highlight ────────────────────────────── */
+.reply-bubble.reply-best-answer {
+  border: 1.5px solid #22a55b;
+  background: #f6fef8;
 }
 
 /* ── Inline reply form (inside the bubble) ────────────────────── */
@@ -640,6 +694,16 @@ export default {
   }
   .reply-bubble {
     padding: var(--space-2xs) var(--space-xs);
+    padding-bottom: var(--space-xs);
+  }
+  .reply-bubble.reply-has-actions {
+    padding-bottom: 28px;
+  }
+  .reply-bubble.reply-best-answer {
+    padding-bottom: 28px;
+  }
+  .reply-bubble.reply-has-actions.reply-best-answer {
+    padding-bottom: 50px;
   }
   .reply-header {
     align-items: flex-start;
@@ -647,6 +711,20 @@ export default {
   .reply-header-left {
     flex: 1;
     min-width: 0;
+  }
+  .reply-best-answer-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+  }
+  .reply-owner-actions {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+  }
+  /* When both badge and actions exist, stack actions above badge */
+  .reply-bubble.reply-best-answer .reply-owner-actions {
+    bottom: 28px;
   }
   .reply-body {
     padding-left: var(--space-xs);
@@ -666,9 +744,33 @@ export default {
     padding: var(--space-3xs) var(--space-2xs);
     gap: var(--space-3xs);
   }
+  .reply-bubble.reply-has-actions {
+    padding-bottom: 26px;
+  }
+  .reply-bubble.reply-best-answer {
+    padding-bottom: 26px;
+  }
+  .reply-bubble.reply-has-actions.reply-best-answer {
+    padding-bottom: 48px;
+  }
   .reply-header {
     flex-wrap: wrap;
     gap: var(--space-3xs);
+  }
+  .reply-best-answer-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  .reply-owner-actions {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+  }
+  .reply-bubble.reply-best-answer .reply-owner-actions {
+    bottom: 26px;
   }
   .reply-date {
     font-size: 11px;

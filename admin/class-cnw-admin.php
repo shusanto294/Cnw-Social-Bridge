@@ -46,7 +46,8 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_delete_user',       array( $this, 'handle_delete_user' ) );
         add_action( 'admin_post_cnw_bulk_users',         array( $this, 'handle_bulk_users' ) );
         add_action( 'admin_post_cnw_export_data',       array( $this, 'handle_export_data' ) );
-        add_action( 'admin_post_cnw_import_data',       array( $this, 'handle_import_data' ) );
+        add_action( 'admin_post_cnw_import_data',       array( $this, 'handle_import_upload' ) );
+        add_action( 'wp_ajax_cnw_import_step',           array( $this, 'ajax_import_step' ) );
     }
 
     /* ------------------------------------------------------------------
@@ -794,354 +795,564 @@ class Cnw_Social_Bridge_Admin {
         global $wpdb;
         $p = $wpdb->prefix . 'cnw_social_worker_';
 
-        // Collect all plugin tables.
+        // All plugin tables.
         $tables = array(
             'threads', 'replies', 'messages', 'categories', 'tags',
             'thread_tags', 'user_followed_tags', 'votes', 'reputation',
-            'saved_threads', 'notifications',
+            'saved_threads', 'notifications', 'activity',
         );
 
-        $data = array(
-            'plugin_version' => CNW_SOCIAL_BRIDGE_VERSION,
-            'exported_at'    => current_time( 'mysql' ),
-        );
-
+        $table_data = array();
         foreach ( $tables as $t ) {
             $full = $p . $t;
             if ( $wpdb->get_var( "SHOW TABLES LIKE '$full'" ) === $full ) {
-                $data[ $t ] = $wpdb->get_results( "SELECT * FROM `$full`", ARRAY_A );
+                $table_data[ $t ] = $wpdb->get_results( "SELECT * FROM `$full`", ARRAY_A );
             } else {
-                $data[ $t ] = array();
+                $table_data[ $t ] = array();
             }
         }
 
-        // Collect referenced WP user data for matching on import.
+        // Collect referenced WP user IDs.
         $user_ids = array();
-        foreach ( $data['threads'] as $r )      { $user_ids[ (int) $r['author_id'] ] = true; }
-        foreach ( $data['replies'] as $r )       { $user_ids[ (int) $r['author_id'] ] = true; }
-        foreach ( $data['messages'] as $r )      { $user_ids[ (int) $r['sender_id'] ] = true; $user_ids[ (int) $r['recipient_id'] ] = true; }
-        foreach ( $data['votes'] as $r )         { $user_ids[ (int) $r['user_id'] ] = true; }
-        foreach ( $data['reputation'] as $r )    { $user_ids[ (int) $r['user_id'] ] = true; }
-        foreach ( $data['tags'] as $r )          { if ( ! empty( $r['created_by'] ) ) $user_ids[ (int) $r['created_by'] ] = true; }
-        foreach ( $data['categories'] as $r )    { if ( ! empty( $r['created_by'] ) ) $user_ids[ (int) $r['created_by'] ] = true; }
-        foreach ( $data['user_followed_tags'] as $r ) { $user_ids[ (int) $r['user_id'] ] = true; }
-        foreach ( $data['saved_threads'] as $r ) { $user_ids[ (int) $r['user_id'] ] = true; }
-        foreach ( $data['notifications'] as $r ) { $user_ids[ (int) $r['user_id'] ] = true; if ( ! empty( $r['actor_id'] ) ) $user_ids[ (int) $r['actor_id'] ] = true; }
+        foreach ( $table_data['threads'] as $r )               { $user_ids[ (int) $r['author_id'] ] = true; }
+        foreach ( $table_data['replies'] as $r )                { $user_ids[ (int) $r['author_id'] ] = true; }
+        foreach ( $table_data['messages'] as $r )               { $user_ids[ (int) $r['sender_id'] ] = true; $user_ids[ (int) $r['recipient_id'] ] = true; }
+        foreach ( $table_data['votes'] as $r )                  { $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['reputation'] as $r )             { $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['activity'] as $r )               { $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['tags'] as $r )                   { if ( ! empty( $r['created_by'] ) ) $user_ids[ (int) $r['created_by'] ] = true; }
+        foreach ( $table_data['categories'] as $r )             { if ( ! empty( $r['created_by'] ) ) $user_ids[ (int) $r['created_by'] ] = true; }
+        foreach ( $table_data['user_followed_tags'] as $r )     { $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['saved_threads'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['notifications'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; if ( ! empty( $r['actor_id'] ) ) $user_ids[ (int) $r['actor_id'] ] = true; }
         unset( $user_ids[0] );
 
+        // Build users array with all CNW meta.
         $users = array();
+        $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'cnw_reputation_total', 'description' );
         foreach ( array_keys( $user_ids ) as $uid ) {
             $u = get_userdata( $uid );
-            if ( $u ) {
-                $users[] = array(
-                    'id'           => $uid,
-                    'user_login'   => $u->user_login,
-                    'user_email'   => $u->user_email,
-                    'display_name' => $u->display_name,
-                    'first_name'   => get_user_meta( $uid, 'first_name', true ),
-                    'last_name'    => get_user_meta( $uid, 'last_name', true ),
-                    'roles'        => $u->roles,
-                );
+            if ( ! $u ) continue;
+            $user_entry = array(
+                'id'           => $uid,
+                'user_login'   => $u->user_login,
+                'user_email'   => $u->user_email,
+                'display_name' => $u->display_name,
+                'first_name'   => get_user_meta( $uid, 'first_name', true ),
+                'last_name'    => get_user_meta( $uid, 'last_name', true ),
+                'roles'        => $u->roles,
+            );
+            foreach ( $cnw_meta_keys as $mk ) {
+                $user_entry[ $mk ] = get_user_meta( $uid, $mk, true );
             }
+            $users[] = $user_entry;
         }
-        $data['users'] = $users;
 
-        // Send as JSON download.
-        $filename = 'cnw-social-bridge-export-' . gmdate( 'Y-m-d-His' ) . '.json';
-        header( 'Content-Type: application/json; charset=utf-8' );
+        // Plugin settings.
+        $settings = array(
+            'cnw_social_logo_url'        => get_option( 'cnw_social_logo_url', '' ),
+            'cnw_social_mobile_logo_url' => get_option( 'cnw_social_mobile_logo_url', '' ),
+            'cnw_social_bridge_version'  => get_option( 'cnw_social_bridge_version', '' ),
+        );
+
+        // Build ZIP.
+        $tmp_file = wp_tempnam( 'cnw-export' ) . '.zip';
+        $zip = new ZipArchive();
+        if ( $zip->open( $tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE ) !== true ) {
+            wp_die( 'Could not create ZIP file.' );
+        }
+
+        $json_flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE;
+        $zip->addFromString( 'meta.json', wp_json_encode( array(
+            'plugin_version' => CNW_SOCIAL_BRIDGE_VERSION,
+            'exported_at'    => current_time( 'mysql' ),
+            'format'         => 'cnw-social-bridge-export',
+            'format_version' => 2,
+        ), $json_flags ) );
+        $zip->addFromString( 'users.json',              wp_json_encode( $users, $json_flags ) );
+        $zip->addFromString( 'settings.json',           wp_json_encode( $settings, $json_flags ) );
+        foreach ( $tables as $t ) {
+            $zip->addFromString( $t . '.json', wp_json_encode( $table_data[ $t ], $json_flags ) );
+        }
+
+        $zip->close();
+
+        $filename = 'cnw-social-bridge-export-' . gmdate( 'Y-m-d-His' ) . '.zip';
+        header( 'Content-Type: application/zip' );
         header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Content-Length: ' . filesize( $tmp_file ) );
         header( 'Cache-Control: no-cache, no-store, must-revalidate' );
-        echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+        readfile( $tmp_file );
+        @unlink( $tmp_file );
         exit;
     }
 
-    public function handle_import_data() {
+    /* ------------------------------------------------------------------
+     * Import — Step 1: Upload ZIP and extract to temp dir
+     * ------------------------------------------------------------------ */
+    public function handle_import_upload() {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
         check_admin_referer( 'cnw_import_data' );
 
+        $redirect_args = array( 'page' => 'cnw-import-export' );
+
         if ( empty( $_FILES['cnw_import_file']['tmp_name'] ) ) {
-            wp_redirect( add_query_arg( array( 'page' => 'cnw-import-export', 'import_error' => urlencode( 'No file uploaded.' ) ), admin_url( 'admin.php' ) ) );
+            $redirect_args['import_error'] = urlencode( 'No file uploaded.' );
+            wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
             exit;
         }
 
-        $json = file_get_contents( $_FILES['cnw_import_file']['tmp_name'] );
-        $data = json_decode( $json, true );
+        $file = $_FILES['cnw_import_file'];
+        $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
 
-        if ( ! $data || ! is_array( $data ) ) {
-            wp_redirect( add_query_arg( array( 'page' => 'cnw-import-export', 'import_error' => urlencode( 'Invalid JSON file.' ) ), admin_url( 'admin.php' ) ) );
+        // Determine upload dir for extraction.
+        $upload_dir = wp_upload_dir();
+        $extract_dir = trailingslashit( $upload_dir['basedir'] ) . 'cnw-import-' . wp_generate_password( 12, false );
+        wp_mkdir_p( $extract_dir );
+
+        if ( $ext === 'zip' ) {
+            $zip = new ZipArchive();
+            if ( $zip->open( $file['tmp_name'] ) !== true ) {
+                $redirect_args['import_error'] = urlencode( 'Could not open ZIP file.' );
+                wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+                exit;
+            }
+            $zip->extractTo( $extract_dir );
+            $zip->close();
+        } elseif ( $ext === 'json' ) {
+            // Legacy single-JSON support: split into individual files.
+            $json = file_get_contents( $file['tmp_name'] );
+            $data = json_decode( $json, true );
+            if ( ! $data || ! is_array( $data ) ) {
+                $this->rmdir_recursive( $extract_dir );
+                $redirect_args['import_error'] = urlencode( 'Invalid JSON file.' );
+                wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+                exit;
+            }
+            // Write each key as a separate JSON file.
+            $json_flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE;
+            $meta = array(
+                'plugin_version' => isset( $data['plugin_version'] ) ? $data['plugin_version'] : '',
+                'exported_at'    => isset( $data['exported_at'] ) ? $data['exported_at'] : '',
+                'format'         => 'cnw-social-bridge-export',
+                'format_version' => 1,
+            );
+            file_put_contents( $extract_dir . '/meta.json', wp_json_encode( $meta, $json_flags ) );
+            $keys = array( 'users', 'categories', 'tags', 'threads', 'thread_tags', 'replies', 'messages', 'votes', 'reputation', 'activity', 'saved_threads', 'user_followed_tags', 'notifications', 'settings' );
+            foreach ( $keys as $k ) {
+                $val = isset( $data[ $k ] ) ? $data[ $k ] : array();
+                file_put_contents( $extract_dir . '/' . $k . '.json', wp_json_encode( $val, $json_flags ) );
+            }
+        } else {
+            $this->rmdir_recursive( $extract_dir );
+            $redirect_args['import_error'] = urlencode( 'Unsupported file type. Please upload a .zip or .json file.' );
+            wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
             exit;
         }
 
+        // Validate that essential files exist.
+        if ( ! file_exists( $extract_dir . '/meta.json' ) ) {
+            $this->rmdir_recursive( $extract_dir );
+            $redirect_args['import_error'] = urlencode( 'Invalid export file: missing meta.json.' );
+            wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        // Store the extract directory and ID maps in a transient.
+        $import_id = wp_generate_password( 16, false );
+        set_transient( 'cnw_import_' . $import_id, array(
+            'dir'        => $extract_dir,
+            'user_map'   => array(),
+            'cat_map'    => array(),
+            'tag_map'    => array(),
+            'thread_map' => array(),
+            'reply_map'  => array(),
+            'msg_map'    => array(),
+            'vote_map'   => array(),
+        ), HOUR_IN_SECONDS );
+
+        $redirect_args['import_ready'] = $import_id;
+        wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * Import — AJAX batch steps
+     * ------------------------------------------------------------------ */
+    public function ajax_import_step() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        check_ajax_referer( 'cnw_import_ajax', '_nonce' );
+
+        $import_id = sanitize_text_field( $_POST['import_id'] ?? '' );
+        $step      = sanitize_text_field( $_POST['step'] ?? '' );
+
+        $state = get_transient( 'cnw_import_' . $import_id );
+        if ( ! $state || empty( $state['dir'] ) ) {
+            wp_send_json_error( 'Import session expired or invalid.' );
+        }
+
+        $dir = $state['dir'];
         global $wpdb;
         $p = $wpdb->prefix . 'cnw_social_worker_';
 
-        // ── Step 1: Build user ID map (old → new) ──
-        $user_map = array( 0 => 0 );
-        $export_users = isset( $data['users'] ) ? $data['users'] : array();
-
-        foreach ( $export_users as $eu ) {
-            $old_id = (int) $eu['id'];
-            // Try matching by email first, then by login.
-            $existing = get_user_by( 'email', $eu['user_email'] );
-            if ( ! $existing ) {
-                $existing = get_user_by( 'login', $eu['user_login'] );
-            }
-
-            if ( $existing ) {
-                $user_map[ $old_id ] = (int) $existing->ID;
-            } else {
-                // Create user with a random password.
-                $new_id = wp_insert_user( array(
-                    'user_login'   => $this->unique_login( $eu['user_login'] ),
-                    'user_email'   => $eu['user_email'],
-                    'user_pass'    => wp_generate_password( 16 ),
-                    'display_name' => $eu['display_name'],
-                    'first_name'   => isset( $eu['first_name'] ) ? $eu['first_name'] : '',
-                    'last_name'    => isset( $eu['last_name'] ) ? $eu['last_name'] : '',
-                    'role'         => ! empty( $eu['roles'] ) ? $eu['roles'][0] : 'cnw_forum_member',
-                ) );
-                if ( ! is_wp_error( $new_id ) ) {
-                    $user_map[ $old_id ] = (int) $new_id;
-                } else {
-                    $user_map[ $old_id ] = 0;
-                }
-            }
-        }
-
-        // Helper to remap a user ID.
-        $ru = function( $old ) use ( &$user_map ) {
-            $old = (int) $old;
-            return isset( $user_map[ $old ] ) ? $user_map[ $old ] : 0;
+        // Helper: read a JSON file from the extracted dir.
+        $read_json = function( $name ) use ( $dir ) {
+            $file = $dir . '/' . $name . '.json';
+            if ( ! file_exists( $file ) ) return array();
+            $data = json_decode( file_get_contents( $file ), true );
+            return is_array( $data ) ? $data : array();
         };
 
-        // ── Step 2: Categories (self-referencing parent_id) ──
-        $cat_map = array( 0 => 0 );
-        $cats = isset( $data['categories'] ) ? $data['categories'] : array();
-        // Sort so root categories (parent_id NULL/0) come first.
-        usort( $cats, function( $a, $b ) {
-            $pa = empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'];
-            $pb = empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'];
-            return $pa - $pb;
-        });
-        foreach ( $cats as $row ) {
-            $old_id = (int) $row['id'];
-            $parent = empty( $row['parent_id'] ) ? null : ( isset( $cat_map[ (int) $row['parent_id'] ] ) ? $cat_map[ (int) $row['parent_id'] ] : null );
-            $wpdb->insert( $p . 'categories', array(
-                'name'        => $row['name'],
-                'slug'        => $row['slug'],
-                'description' => isset( $row['description'] ) ? $row['description'] : null,
-                'parent_id'   => $parent ?: null,
-                'icon'        => isset( $row['icon'] ) ? $row['icon'] : null,
-                'color'       => isset( $row['color'] ) ? $row['color'] : null,
-                'sort_order'  => isset( $row['sort_order'] ) ? (int) $row['sort_order'] : 0,
-                'is_active'   => isset( $row['is_active'] ) ? (int) $row['is_active'] : 1,
-                'created_by'  => $ru( isset( $row['created_by'] ) ? $row['created_by'] : 0 ) ?: null,
-                'created_at'  => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-            $cat_map[ $old_id ] = (int) $wpdb->insert_id;
+        // Helper: remap user ID.
+        $ru = function( $old ) use ( &$state ) {
+            $old = (int) $old;
+            return isset( $state['user_map'][ $old ] ) ? $state['user_map'][ $old ] : 0;
+        };
+
+        $count = 0;
+
+        switch ( $step ) {
+
+            case 'users':
+                $users = $read_json( 'users' );
+                $state['user_map'] = array( 0 => 0 );
+                $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description' );
+                foreach ( $users as $eu ) {
+                    $old_id = (int) $eu['id'];
+                    $existing = get_user_by( 'email', $eu['user_email'] );
+                    if ( ! $existing ) {
+                        $existing = get_user_by( 'login', $eu['user_login'] );
+                    }
+                    if ( $existing ) {
+                        $state['user_map'][ $old_id ] = (int) $existing->ID;
+                    } else {
+                        $new_id = wp_insert_user( array(
+                            'user_login'   => $this->unique_login( $eu['user_login'] ),
+                            'user_email'   => $eu['user_email'],
+                            'user_pass'    => wp_generate_password( 16 ),
+                            'display_name' => $eu['display_name'] ?? '',
+                            'first_name'   => $eu['first_name'] ?? '',
+                            'last_name'    => $eu['last_name'] ?? '',
+                            'role'         => ! empty( $eu['roles'] ) ? $eu['roles'][0] : 'cnw_forum_member',
+                        ) );
+                        $state['user_map'][ $old_id ] = ! is_wp_error( $new_id ) ? (int) $new_id : 0;
+                    }
+                    // Restore CNW user meta.
+                    $new_uid = $state['user_map'][ $old_id ];
+                    if ( $new_uid ) {
+                        foreach ( $cnw_meta_keys as $mk ) {
+                            if ( isset( $eu[ $mk ] ) && $eu[ $mk ] !== '' ) {
+                                update_user_meta( $new_uid, $mk, $eu[ $mk ] );
+                            }
+                        }
+                    }
+                    $count++;
+                }
+                break;
+
+            case 'categories':
+                $cats = $read_json( 'categories' );
+                $state['cat_map'] = array( 0 => 0 );
+                usort( $cats, function( $a, $b ) {
+                    return ( empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'] ) - ( empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'] );
+                });
+                foreach ( $cats as $row ) {
+                    $old_id = (int) $row['id'];
+                    $parent = empty( $row['parent_id'] ) ? null : ( $state['cat_map'][ (int) $row['parent_id'] ] ?? null );
+                    $wpdb->insert( $p . 'categories', array(
+                        'name'        => $row['name'],
+                        'slug'        => $row['slug'],
+                        'description' => $row['description'] ?? null,
+                        'parent_id'   => $parent ?: null,
+                        'icon'        => $row['icon'] ?? null,
+                        'color'       => $row['color'] ?? null,
+                        'sort_order'  => (int) ( $row['sort_order'] ?? 0 ),
+                        'is_active'   => (int) ( $row['is_active'] ?? 1 ),
+                        'created_by'  => $ru( $row['created_by'] ?? 0 ) ?: null,
+                        'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['cat_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'tags':
+                $tags = $read_json( 'tags' );
+                $state['tag_map'] = array();
+                foreach ( $tags as $row ) {
+                    $old_id = (int) $row['id'];
+                    $wpdb->insert( $p . 'tags', array(
+                        'name'        => $row['name'],
+                        'slug'        => $row['slug'],
+                        'description' => $row['description'] ?? null,
+                        'created_by'  => $ru( $row['created_by'] ?? 0 ) ?: null,
+                        'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['tag_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'threads':
+                $threads = $read_json( 'threads' );
+                $state['thread_map'] = array();
+                foreach ( $threads as $row ) {
+                    $old_id = (int) $row['id'];
+                    $wpdb->insert( $p . 'threads', array(
+                        'author_id'    => $ru( $row['author_id'] ),
+                        'title'        => $row['title'],
+                        'content'      => $row['content'],
+                        'status'       => $row['status'] ?? 'published',
+                        'is_anonymous' => (int) ( $row['is_anonymous'] ?? 0 ),
+                        'views'        => (int) ( $row['views'] ?? 0 ),
+                        'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                        'updated_at'   => $row['updated_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['thread_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'thread_tags':
+                $tt = $read_json( 'thread_tags' );
+                foreach ( $tt as $row ) {
+                    $tid   = $state['thread_map'][ (int) $row['thread_id'] ] ?? 0;
+                    $tagid = $state['tag_map'][ (int) $row['tag_id'] ] ?? 0;
+                    if ( $tid && $tagid ) {
+                        $wpdb->replace( $p . 'thread_tags', array( 'thread_id' => $tid, 'tag_id' => $tagid ) );
+                        $count++;
+                    }
+                }
+                break;
+
+            case 'replies':
+                $replies = $read_json( 'replies' );
+                $state['reply_map'] = array();
+                usort( $replies, function( $a, $b ) {
+                    return ( empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'] ) - ( empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'] );
+                });
+                foreach ( $replies as $row ) {
+                    $old_id = (int) $row['id'];
+                    $parent = empty( $row['parent_id'] ) ? null : ( $state['reply_map'][ (int) $row['parent_id'] ] ?? null );
+                    $tid    = $state['thread_map'][ (int) $row['thread_id'] ] ?? 0;
+                    $wpdb->insert( $p . 'replies', array(
+                        'thread_id'    => $tid,
+                        'author_id'    => $ru( $row['author_id'] ),
+                        'parent_id'    => $parent,
+                        'content'      => $row['content'],
+                        'status'       => $row['status'] ?? 'approved',
+                        'is_solution'  => (int) ( $row['is_solution'] ?? 0 ),
+                        'is_anonymous' => (int) ( $row['is_anonymous'] ?? 0 ),
+                        'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                        'updated_at'   => $row['updated_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['reply_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'messages':
+                $messages = $read_json( 'messages' );
+                $state['msg_map'] = array();
+                usort( $messages, function( $a, $b ) {
+                    return ( empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'] ) - ( empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'] );
+                });
+                foreach ( $messages as $row ) {
+                    $old_id = (int) $row['id'];
+                    $parent = empty( $row['parent_id'] ) ? null : ( $state['msg_map'][ (int) $row['parent_id'] ] ?? null );
+                    $wpdb->insert( $p . 'messages', array(
+                        'sender_id'    => $ru( $row['sender_id'] ),
+                        'recipient_id' => $ru( $row['recipient_id'] ),
+                        'subject'      => $row['subject'] ?? null,
+                        'content'      => $row['content'],
+                        'is_read'      => (int) ( $row['is_read'] ?? 0 ),
+                        'parent_id'    => $parent,
+                        'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['msg_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'votes':
+                $votes = $read_json( 'votes' );
+                $state['vote_map'] = array();
+                foreach ( $votes as $row ) {
+                    $old_id      = (int) $row['id'];
+                    $target_type = $row['target_type'];
+                    $target_id   = (int) $row['target_id'];
+                    if ( $target_type === 'thread' ) {
+                        $target_id = $state['thread_map'][ $target_id ] ?? 0;
+                    } elseif ( $target_type === 'reply' ) {
+                        $target_id = $state['reply_map'][ $target_id ] ?? 0;
+                    }
+                    $wpdb->insert( $p . 'votes', array(
+                        'user_id'     => $ru( $row['user_id'] ),
+                        'target_type' => $target_type,
+                        'target_id'   => $target_id,
+                        'vote_type'   => (int) $row['vote_type'],
+                        'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $state['vote_map'][ $old_id ] = (int) $wpdb->insert_id;
+                    $count++;
+                }
+                break;
+
+            case 'reputation':
+                $rep = $read_json( 'reputation' );
+                foreach ( $rep as $row ) {
+                    $ref_type = $row['reference_type'] ?? null;
+                    $ref_id   = isset( $row['reference_id'] ) ? (int) $row['reference_id'] : null;
+                    if ( $ref_type === 'thread' && $ref_id ) {
+                        $ref_id = $state['thread_map'][ $ref_id ] ?? 0;
+                    } elseif ( $ref_type === 'reply' && $ref_id ) {
+                        $ref_id = $state['reply_map'][ $ref_id ] ?? 0;
+                    } elseif ( $ref_type === 'vote' && $ref_id ) {
+                        $ref_id = $state['vote_map'][ $ref_id ] ?? 0;
+                    }
+                    $wpdb->insert( $p . 'reputation', array(
+                        'user_id'        => $ru( $row['user_id'] ),
+                        'points'         => (int) $row['points'],
+                        'action_type'    => $row['action_type'],
+                        'reference_type' => $ref_type,
+                        'reference_id'   => $ref_id ?: null,
+                        'description'    => $row['description'] ?? null,
+                        'created_at'     => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $count++;
+                }
+                break;
+
+            case 'activity':
+                $activity = $read_json( 'activity' );
+                foreach ( $activity as $row ) {
+                    $ref_type = $row['reference_type'] ?? null;
+                    $ref_id   = isset( $row['reference_id'] ) ? (int) $row['reference_id'] : null;
+                    if ( $ref_type === 'thread' && $ref_id ) {
+                        $ref_id = $state['thread_map'][ $ref_id ] ?? 0;
+                    } elseif ( $ref_type === 'reply' && $ref_id ) {
+                        $ref_id = $state['reply_map'][ $ref_id ] ?? 0;
+                    }
+                    $wpdb->insert( $p . 'activity', array(
+                        'user_id'        => $ru( $row['user_id'] ),
+                        'action_type'    => $row['action_type'],
+                        'description'    => $row['description'] ?? '',
+                        'points'         => (int) ( $row['points'] ?? 0 ),
+                        'reason'         => $row['reason'] ?? null,
+                        'reference_type' => $ref_type,
+                        'reference_id'   => $ref_id ?: null,
+                        'link'           => $row['link'] ?? null,
+                        'created_at'     => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $count++;
+                }
+                break;
+
+            case 'notifications':
+                // Also handles saved_threads and user_followed_tags.
+                $st = $read_json( 'saved_threads' );
+                foreach ( $st as $row ) {
+                    $uid = $ru( $row['user_id'] );
+                    $tid = $state['thread_map'][ (int) $row['thread_id'] ] ?? 0;
+                    if ( $uid && $tid ) {
+                        $wpdb->replace( $p . 'saved_threads', array(
+                            'user_id'    => $uid,
+                            'thread_id'  => $tid,
+                            'created_at' => $row['created_at'] ?? current_time( 'mysql' ),
+                        ) );
+                        $count++;
+                    }
+                }
+                $uft = $read_json( 'user_followed_tags' );
+                foreach ( $uft as $row ) {
+                    $uid   = $ru( $row['user_id'] );
+                    $tagid = $state['tag_map'][ (int) $row['tag_id'] ] ?? 0;
+                    if ( $uid && $tagid ) {
+                        $wpdb->replace( $p . 'user_followed_tags', array(
+                            'user_id'    => $uid,
+                            'tag_id'     => $tagid,
+                            'created_at' => $row['created_at'] ?? current_time( 'mysql' ),
+                        ) );
+                        $count++;
+                    }
+                }
+                $notifs = $read_json( 'notifications' );
+                foreach ( $notifs as $row ) {
+                    $ref_type = $row['reference_type'] ?? null;
+                    $ref_id   = isset( $row['reference_id'] ) ? (int) $row['reference_id'] : null;
+                    if ( $ref_type === 'thread' && $ref_id ) {
+                        $ref_id = $state['thread_map'][ $ref_id ] ?? null;
+                    } elseif ( $ref_type === 'reply' && $ref_id ) {
+                        $ref_id = $state['reply_map'][ $ref_id ] ?? null;
+                    } elseif ( $ref_type === 'tag' && $ref_id ) {
+                        $ref_id = $state['tag_map'][ $ref_id ] ?? null;
+                    }
+                    $wpdb->insert( $p . 'notifications', array(
+                        'user_id'        => $ru( $row['user_id'] ),
+                        'actor_id'       => ! empty( $row['actor_id'] ) ? $ru( $row['actor_id'] ) : null,
+                        'type'           => $row['type'],
+                        'reference_type' => $ref_type,
+                        'reference_id'   => $ref_id,
+                        'message'        => $row['message'],
+                        'is_read'        => (int) ( $row['is_read'] ?? 0 ),
+                        'created_at'     => $row['created_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $count++;
+                }
+                break;
+
+            case 'settings':
+                $settings = $read_json( 'settings' );
+                if ( ! empty( $settings ) && is_array( $settings ) ) {
+                    $allowed = array( 'cnw_social_logo_url', 'cnw_social_mobile_logo_url' );
+                    foreach ( $allowed as $key ) {
+                        if ( isset( $settings[ $key ] ) && $settings[ $key ] !== '' ) {
+                            update_option( $key, sanitize_text_field( $settings[ $key ] ) );
+                            $count++;
+                        }
+                    }
+                }
+                break;
+
+            case 'finalize':
+                // Recalculate reputation totals.
+                foreach ( $state['user_map'] as $new_uid ) {
+                    if ( $new_uid ) {
+                        $total = (int) $wpdb->get_var( $wpdb->prepare(
+                            "SELECT COALESCE(SUM(points), 0) FROM {$p}reputation WHERE user_id = %d", $new_uid
+                        ) );
+                        update_user_meta( $new_uid, 'cnw_reputation_total', $total );
+                        $count++;
+                    }
+                }
+                // Cleanup.
+                $this->rmdir_recursive( $dir );
+                delete_transient( 'cnw_import_' . $import_id );
+                wp_send_json_success( array( 'count' => $count, 'done' => true ) );
+                return;
+
+            default:
+                wp_send_json_error( 'Unknown step: ' . $step );
+                return;
         }
 
-        // ── Step 3: Tags ──
-        $tag_map = array();
-        $tags = isset( $data['tags'] ) ? $data['tags'] : array();
-        foreach ( $tags as $row ) {
-            $old_id = (int) $row['id'];
-            $wpdb->insert( $p . 'tags', array(
-                'name'        => $row['name'],
-                'slug'        => $row['slug'],
-                'description' => isset( $row['description'] ) ? $row['description'] : null,
-                'created_by'  => $ru( isset( $row['created_by'] ) ? $row['created_by'] : 0 ) ?: null,
-                'created_at'  => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-            $tag_map[ $old_id ] = (int) $wpdb->insert_id;
-        }
+        // Save updated state (with new ID maps) back to the transient.
+        set_transient( 'cnw_import_' . $import_id, $state, HOUR_IN_SECONDS );
+        wp_send_json_success( array( 'count' => $count ) );
+    }
 
-        // ── Step 4: Threads ──
-        $thread_map = array();
-        $threads = isset( $data['threads'] ) ? $data['threads'] : array();
-        foreach ( $threads as $row ) {
-            $old_id = (int) $row['id'];
-            $wpdb->insert( $p . 'threads', array(
-                'author_id'    => $ru( $row['author_id'] ),
-                'title'        => $row['title'],
-                'content'      => $row['content'],
-                'status'       => isset( $row['status'] ) ? $row['status'] : 'published',
-                'is_anonymous' => isset( $row['is_anonymous'] ) ? (int) $row['is_anonymous'] : 0,
-                'views'        => isset( $row['views'] ) ? (int) $row['views'] : 0,
-                'created_at'   => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-                'updated_at'   => isset( $row['updated_at'] ) ? $row['updated_at'] : current_time( 'mysql' ),
-            ) );
-            $thread_map[ $old_id ] = (int) $wpdb->insert_id;
+    private function rmdir_recursive( $dir ) {
+        if ( ! is_dir( $dir ) ) return;
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator( $dir, RecursiveDirectoryIterator::SKIP_DOTS ),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ( $items as $item ) {
+            $item->isDir() ? rmdir( $item->getRealPath() ) : unlink( $item->getRealPath() );
         }
-
-        // ── Step 5: Replies (self-referencing parent_id) ──
-        $reply_map = array();
-        $replies = isset( $data['replies'] ) ? $data['replies'] : array();
-        // Sort so root replies (parent_id NULL/0) come first.
-        usort( $replies, function( $a, $b ) {
-            $pa = empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'];
-            $pb = empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'];
-            return $pa - $pb;
-        });
-        foreach ( $replies as $row ) {
-            $old_id = (int) $row['id'];
-            $parent = empty( $row['parent_id'] ) ? null : ( isset( $reply_map[ (int) $row['parent_id'] ] ) ? $reply_map[ (int) $row['parent_id'] ] : null );
-            $tid    = isset( $thread_map[ (int) $row['thread_id'] ] ) ? $thread_map[ (int) $row['thread_id'] ] : 0;
-            $wpdb->insert( $p . 'replies', array(
-                'thread_id'  => $tid,
-                'author_id'  => $ru( $row['author_id'] ),
-                'parent_id'  => $parent,
-                'content'    => $row['content'],
-                'status'     => isset( $row['status'] ) ? $row['status'] : 'approved',
-                'created_at' => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-                'updated_at' => isset( $row['updated_at'] ) ? $row['updated_at'] : current_time( 'mysql' ),
-            ) );
-            $reply_map[ $old_id ] = (int) $wpdb->insert_id;
-        }
-
-        // ── Step 6: Messages (self-referencing parent_id) ──
-        $msg_map = array();
-        $messages = isset( $data['messages'] ) ? $data['messages'] : array();
-        usort( $messages, function( $a, $b ) {
-            $pa = empty( $a['parent_id'] ) ? 0 : (int) $a['parent_id'];
-            $pb = empty( $b['parent_id'] ) ? 0 : (int) $b['parent_id'];
-            return $pa - $pb;
-        });
-        foreach ( $messages as $row ) {
-            $old_id = (int) $row['id'];
-            $parent = empty( $row['parent_id'] ) ? null : ( isset( $msg_map[ (int) $row['parent_id'] ] ) ? $msg_map[ (int) $row['parent_id'] ] : null );
-            $wpdb->insert( $p . 'messages', array(
-                'sender_id'    => $ru( $row['sender_id'] ),
-                'recipient_id' => $ru( $row['recipient_id'] ),
-                'subject'      => isset( $row['subject'] ) ? $row['subject'] : null,
-                'content'      => $row['content'],
-                'is_read'      => isset( $row['is_read'] ) ? (int) $row['is_read'] : 0,
-                'parent_id'    => $parent,
-                'created_at'   => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-            $msg_map[ $old_id ] = (int) $wpdb->insert_id;
-        }
-
-        // ── Step 7: Votes ──
-        $vote_map = array();
-        $votes = isset( $data['votes'] ) ? $data['votes'] : array();
-        foreach ( $votes as $row ) {
-            $old_id     = (int) $row['id'];
-            $target_type = $row['target_type'];
-            $target_id   = (int) $row['target_id'];
-            if ( $target_type === 'thread' ) {
-                $target_id = isset( $thread_map[ $target_id ] ) ? $thread_map[ $target_id ] : 0;
-            } elseif ( $target_type === 'reply' ) {
-                $target_id = isset( $reply_map[ $target_id ] ) ? $reply_map[ $target_id ] : 0;
-            }
-            $wpdb->insert( $p . 'votes', array(
-                'user_id'     => $ru( $row['user_id'] ),
-                'target_type' => $target_type,
-                'target_id'   => $target_id,
-                'vote_type'   => (int) $row['vote_type'],
-                'created_at'  => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-            $vote_map[ $old_id ] = (int) $wpdb->insert_id;
-        }
-
-        // ── Step 8: Reputation ──
-        $rep = isset( $data['reputation'] ) ? $data['reputation'] : array();
-        foreach ( $rep as $row ) {
-            $ref_type = isset( $row['reference_type'] ) ? $row['reference_type'] : null;
-            $ref_id   = isset( $row['reference_id'] ) ? (int) $row['reference_id'] : null;
-            if ( $ref_type === 'thread' && $ref_id ) {
-                $ref_id = isset( $thread_map[ $ref_id ] ) ? $thread_map[ $ref_id ] : 0;
-            } elseif ( $ref_type === 'reply' && $ref_id ) {
-                $ref_id = isset( $reply_map[ $ref_id ] ) ? $reply_map[ $ref_id ] : 0;
-            } elseif ( $ref_type === 'vote' && $ref_id ) {
-                $ref_id = isset( $vote_map[ $ref_id ] ) ? $vote_map[ $ref_id ] : 0;
-            }
-            $wpdb->insert( $p . 'reputation', array(
-                'user_id'        => $ru( $row['user_id'] ),
-                'points'         => (int) $row['points'],
-                'action_type'    => $row['action_type'],
-                'reference_type' => $ref_type,
-                'reference_id'   => $ref_id ?: null,
-                'description'    => isset( $row['description'] ) ? $row['description'] : null,
-                'created_at'     => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-        }
-
-        // ── Step 9: Junction tables ──
-        // thread_tags
-        $tt = isset( $data['thread_tags'] ) ? $data['thread_tags'] : array();
-        foreach ( $tt as $row ) {
-            $tid = isset( $thread_map[ (int) $row['thread_id'] ] ) ? $thread_map[ (int) $row['thread_id'] ] : 0;
-            $tagid = isset( $tag_map[ (int) $row['tag_id'] ] ) ? $tag_map[ (int) $row['tag_id'] ] : 0;
-            if ( $tid && $tagid ) {
-                $wpdb->replace( $p . 'thread_tags', array( 'thread_id' => $tid, 'tag_id' => $tagid ) );
-            }
-        }
-
-        // user_followed_tags
-        $uft = isset( $data['user_followed_tags'] ) ? $data['user_followed_tags'] : array();
-        foreach ( $uft as $row ) {
-            $uid   = $ru( $row['user_id'] );
-            $tagid = isset( $tag_map[ (int) $row['tag_id'] ] ) ? $tag_map[ (int) $row['tag_id'] ] : 0;
-            if ( $uid && $tagid ) {
-                $wpdb->replace( $p . 'user_followed_tags', array(
-                    'user_id'    => $uid,
-                    'tag_id'     => $tagid,
-                    'created_at' => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-                ) );
-            }
-        }
-
-        // saved_threads
-        $st = isset( $data['saved_threads'] ) ? $data['saved_threads'] : array();
-        foreach ( $st as $row ) {
-            $uid = $ru( $row['user_id'] );
-            $tid = isset( $thread_map[ (int) $row['thread_id'] ] ) ? $thread_map[ (int) $row['thread_id'] ] : 0;
-            if ( $uid && $tid ) {
-                $wpdb->replace( $p . 'saved_threads', array(
-                    'user_id'    => $uid,
-                    'thread_id'  => $tid,
-                    'created_at' => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-                ) );
-            }
-        }
-
-        // ── Step 10: Notifications ──
-        $notifs = isset( $data['notifications'] ) ? $data['notifications'] : array();
-        foreach ( $notifs as $row ) {
-            $ref_type = isset( $row['reference_type'] ) ? $row['reference_type'] : null;
-            $ref_id   = isset( $row['reference_id'] ) ? (int) $row['reference_id'] : null;
-            if ( $ref_type === 'thread' && $ref_id ) {
-                $ref_id = isset( $thread_map[ $ref_id ] ) ? $thread_map[ $ref_id ] : null;
-            } elseif ( $ref_type === 'reply' && $ref_id ) {
-                $ref_id = isset( $reply_map[ $ref_id ] ) ? $reply_map[ $ref_id ] : null;
-            } elseif ( $ref_type === 'tag' && $ref_id ) {
-                $ref_id = isset( $tag_map[ $ref_id ] ) ? $tag_map[ $ref_id ] : null;
-            }
-            $wpdb->insert( $p . 'notifications', array(
-                'user_id'        => $ru( $row['user_id'] ),
-                'actor_id'       => ! empty( $row['actor_id'] ) ? $ru( $row['actor_id'] ) : null,
-                'type'           => $row['type'],
-                'reference_type' => $ref_type,
-                'reference_id'   => $ref_id,
-                'message'        => $row['message'],
-                'is_read'        => isset( $row['is_read'] ) ? (int) $row['is_read'] : 0,
-                'created_at'     => isset( $row['created_at'] ) ? $row['created_at'] : current_time( 'mysql' ),
-            ) );
-        }
-
-        // Recalculate reputation totals for all mapped users.
-        foreach ( $user_map as $new_uid ) {
-            if ( $new_uid ) {
-                $total = (int) $wpdb->get_var( $wpdb->prepare(
-                    "SELECT COALESCE(SUM(points), 0) FROM {$p}reputation WHERE user_id = %d", $new_uid
-                ) );
-                update_user_meta( $new_uid, 'cnw_reputation_total', $total );
-            }
-        }
-
-        wp_redirect( add_query_arg( array( 'page' => 'cnw-import-export', 'import_success' => '1' ), admin_url( 'admin.php' ) ) );
-        exit;
+        rmdir( $dir );
     }
 
     private function unique_login( $login ) {

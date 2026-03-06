@@ -26,6 +26,10 @@
             />
             <span class="qcard-author">{{ thread.author_name }}</span>
             <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
+            <span v-if="!isAnonymous && thread.author_reputation" class="cnw-reputation-badge" :title="thread.author_reputation + ' reputation points'">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {{ formatReputation(thread.author_reputation) }}
+            </span>
             <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
           </div>
           <div class="qcard-meta-right">
@@ -405,6 +409,12 @@ export default {
     },
     formatNum(n) {
       return n ? Number(n).toLocaleString() : '0';
+    },
+    formatReputation(n) {
+      if (!n) return '0';
+      n = Number(n);
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return n.toString();
     },
   },
 };

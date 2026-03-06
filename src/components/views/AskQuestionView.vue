@@ -147,11 +147,44 @@
         </form>
       </template>
     </div>
+
+    <!-- Tag Detail Modal (shown after creating a new tag) -->
+    <div v-if="showTagModal" class="td-modal-overlay" @click.self="closeTagModal">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Tag Details</h3>
+          <button class="td-modal-close" @click="closeTagModal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label class="td-modal-label">Tag Name</label>
+            <input v-model="tagModalForm.name" class="td-modal-input" type="text" />
+          </div>
+          <div>
+            <label class="td-modal-label">Slug</label>
+            <input v-model="tagModalForm.slug" class="td-modal-input" type="text" placeholder="auto-generated-from-name" />
+          </div>
+          <div>
+            <label class="td-modal-label">Description</label>
+            <textarea v-model="tagModalForm.description" class="td-modal-textarea" rows="4" placeholder="Describe what this tag is about…"></textarea>
+          </div>
+          <p v-if="tagModalError" class="ask-inline-error">{{ tagModalError }}</p>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="closeTagModal">Skip</button>
+          <button class="td-modal-save" :disabled="!tagModalForm.name.trim() || savingTagModal" @click="saveTagModal">
+            {{ savingTagModal ? 'Updating…' : 'Update' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { createThread, getCategories, getTags, createTag, createCategory } from '@/api/index.js';
+import { createThread, getCategories, getTags, createTag, updateTag, createCategory } from '@/api/index.js';
 
 export default {
   name: 'AskQuestionView',
@@ -179,6 +212,12 @@ export default {
       tagSearch: '',
       showTagDropdown: false,
       tagError: '',
+
+      // Tag detail modal
+      showTagModal: false,
+      tagModalForm: { id: null, name: '', slug: '', description: '' },
+      savingTagModal: false,
+      tagModalError: '',
     };
   },
   computed: {
@@ -295,7 +334,11 @@ export default {
         const res = await createTag({ name });
         if (res && res.success && res.id) {
           tag.id = res.id;
-          if (!res.existing) this.allTags.push({ id: res.id, name });
+          if (!res.existing) {
+            this.allTags.push({ id: res.id, name });
+            // Show modal for newly created tags
+            this.openTagModal(res.id, name);
+          }
         } else {
           this.tagError = res?.message || 'Could not save tag.';
         }
@@ -318,6 +361,49 @@ export default {
         }
       } else {
         this.createAndAddTag(q);
+      }
+    },
+
+    // ── Tag Detail Modal ──────────────────────────────────────────
+    openTagModal(id, name) {
+      this.tagModalForm = {
+        id,
+        name,
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        description: '',
+      };
+      this.tagModalError = '';
+      this.showTagModal = true;
+    },
+    closeTagModal() {
+      this.showTagModal = false;
+    },
+    async saveTagModal() {
+      if (!this.tagModalForm.name.trim()) return;
+      this.savingTagModal = true;
+      this.tagModalError = '';
+      try {
+        const res = await updateTag({
+          id: this.tagModalForm.id,
+          name: this.tagModalForm.name.trim(),
+          slug: this.tagModalForm.slug.trim(),
+          description: this.tagModalForm.description.trim(),
+        });
+        if (res.success) {
+          // Update the tag name in selected chips and allTags if changed
+          const newName = this.tagModalForm.name.trim();
+          const tagInAll = this.allTags.find(t => t.id === this.tagModalForm.id);
+          if (tagInAll) tagInAll.name = newName;
+          const tagInSelected = this.selectedTagObjects.find(t => t.id === this.tagModalForm.id);
+          if (tagInSelected) tagInSelected.name = newName;
+          this.showTagModal = false;
+        } else {
+          this.tagModalError = res.message || 'Failed to update tag.';
+        }
+      } catch {
+        this.tagModalError = 'Error updating tag.';
+      } finally {
+        this.savingTagModal = false;
       }
     },
 

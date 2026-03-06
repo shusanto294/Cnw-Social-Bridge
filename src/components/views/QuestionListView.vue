@@ -116,8 +116,8 @@ export default {
       ],
       moreFilters: [
         { id: 'my_questions', label: 'Mine' },
-        { id: 'my_answered', label: 'Mine AW' },
-        { id: 'my_unanswered', label: 'Mine UW' },
+        { id: 'frequent', label: 'Frequent' },
+        { id: 'score', label: 'Score' },
       ],
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       moreOpen: false,

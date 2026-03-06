@@ -146,9 +146,10 @@ export async function createTag({ name, description = '' }) {
   return res.json();
 }
 
-export async function updateTag({ id, name, description = '' }) {
+export async function updateTag({ id, name, slug, description = '' }) {
   const url = await apiUrl(`/tags/${id}`);
   const body = { name, description };
+  if (slug) body.slug = slug;
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),

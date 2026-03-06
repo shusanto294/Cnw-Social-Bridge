@@ -16,6 +16,10 @@
         />
         <router-link v-if="currentUser.id" to="/profile" class="sidebar-username sidebar-username-link">{{ displayName }}</router-link>
         <p v-else class="sidebar-username">{{ displayName }}</p>
+        <p v-if="currentUser.id && currentUser.reputation != null" class="sidebar-reputation">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {{ currentUser.reputation || 0 }} Reputation
+        </p>
       </div>
     </div>
 
@@ -36,7 +40,7 @@
             </svg>
           </span>
           <span>Questions</span>
-          <span class="nav-badge">1</span>
+          <!-- <span class="nav-badge">1</span> -->
         </router-link>
 
         <router-link to="/tags" class="sidebar-nav-item" active-class="is-active">
@@ -53,7 +57,7 @@
             </svg>
           </span>
           <span>Tags</span>
-          <span class="nav-badge">1</span>
+          <!-- <span class="nav-badge">1</span> -->
         </router-link>
 
         <router-link to="/ask" class="sidebar-nav-item" active-class="is-active">
@@ -300,6 +304,19 @@ data() {
 }
 .sidebar-username-link:hover {
   color: var(--primary);
+}
+.sidebar-reputation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 300;
+  color: #999;
+  margin-top: 2px;
+}
+.sidebar-reputation svg {
+  flex-shrink: 0;
 }
 
 .sidebar-nav {
