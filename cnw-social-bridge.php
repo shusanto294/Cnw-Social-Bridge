@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.0' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.1.0' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -47,6 +47,7 @@ class Cnw_Social_Bridge {
         add_action( 'init', array( __CLASS__, 'migrate_tags_description_column' ) );
         add_action( 'init', array( __CLASS__, 'migrate_saved_threads_table' ) );
         add_action( 'init', array( __CLASS__, 'migrate_notifications_table' ) );
+        add_action( 'init', array( __CLASS__, 'migrate_replies_solution_column' ) );
 
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
@@ -349,6 +350,15 @@ class Cnw_Social_Bridge {
         $col = $wpdb->get_results( "SHOW COLUMNS FROM `$threads_table` LIKE 'is_anonymous'" );
         if ( empty( $col ) ) {
             $wpdb->query( "ALTER TABLE `$threads_table` ADD COLUMN `is_anonymous` tinyint(1) DEFAULT 0 AFTER `status`" );
+        }
+    }
+
+    public static function migrate_replies_solution_column() {
+        global $wpdb;
+        $replies_table = $wpdb->prefix . 'cnw_social_worker_replies';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM `$replies_table` LIKE 'is_solution'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE `$replies_table` ADD COLUMN `is_solution` tinyint(1) DEFAULT 0 AFTER `status`" );
         }
     }
 

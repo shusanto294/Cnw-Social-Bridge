@@ -47,6 +47,11 @@ class Cnw_Social_Bridge_REST_API {
             array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_reply' ), 'permission_callback' => array( $this, 'can_manage_reply' ) ),
         ) );
 
+        // ── Mark reply as solution ──────────────────────────────────
+        register_rest_route( $ns, '/replies/(?P<id>\d+)/solution', array(
+            'methods' => 'POST', 'callback' => array( $this, 'mark_solution' ), 'permission_callback' => array( $this, 'can_reply' ),
+        ) );
+
         // ── Messages ─────────────────────────────────────────────────
         register_rest_route( $ns, '/messages', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_messages' ),  'permission_callback' => array( $this, 'can_manage' ) ),
@@ -652,8 +657,8 @@ class Cnw_Social_Bridge_REST_API {
         $thread_id = intval( $params['thread_id'] );
         $actor_name = wp_get_current_user()->display_name;
 
-        // Award reputation: +3 for creating a reply
-        $this->award_reputation( $actor_id, 3, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
+        // Award reputation: +2 for creating a reply
+        $this->award_reputation( $actor_id, 2, 'reply_created', 'reply', $reply_id, 'Posted a reply' );
 
         // Notify thread author
         $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
@@ -751,6 +756,81 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         return array( 'success' => true, 'deleted' => $id );
+    }
+
+    /* ==================================================================
+     * MARK REPLY AS SOLUTION
+     * ================================================================== */
+
+    public function mark_solution( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $reply_id = intval( $request['id'] );
+        $user_id  = get_current_user_id();
+
+        // Get the reply and its thread
+        $reply = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $reply_id
+        ) );
+        if ( ! $reply ) {
+            return new WP_Error( 'not_found', 'Reply not found', array( 'status' => 404 ) );
+        }
+
+        $is_own_reply = ( (int) $reply->author_id === $user_id );
+
+        $is_solution = (int) $reply->is_solution;
+
+        if ( $is_solution ) {
+            // Unmark solution
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_replies',
+                array( 'is_solution' => 0 ),
+                array( 'id' => $reply_id )
+            );
+            // Remove solution reputation
+            $wpdb->query( $wpdb->prepare(
+                "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE action_type = 'best_answer' AND reference_type = 'reply' AND reference_id = %d",
+                $reply_id
+            ) );
+            $this->recalc_user_reputation( (int) $reply->author_id );
+            return array( 'success' => true, 'action' => 'unmarked', 'is_solution' => false );
+        } else {
+            // Unmark any existing solution for this thread
+            $old_solution = $wpdb->get_row( $wpdb->prepare(
+                "SELECT id, author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id = %d AND is_solution = 1",
+                (int) $reply->thread_id
+            ) );
+            if ( $old_solution ) {
+                $wpdb->update(
+                    $wpdb->prefix . 'cnw_social_worker_replies',
+                    array( 'is_solution' => 0 ),
+                    array( 'id' => (int) $old_solution->id )
+                );
+                $wpdb->query( $wpdb->prepare(
+                    "DELETE FROM {$wpdb->prefix}cnw_social_worker_reputation WHERE action_type = 'best_answer' AND reference_type = 'reply' AND reference_id = %d",
+                    (int) $old_solution->id
+                ) );
+                $this->recalc_user_reputation( (int) $old_solution->author_id );
+            }
+
+            // Mark this reply as solution
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_replies',
+                array( 'is_solution' => 1 ),
+                array( 'id' => $reply_id )
+            );
+            // Award +25 reputation to reply author (skip if marking own reply)
+            if ( ! $is_own_reply ) {
+                $this->award_reputation( (int) $reply->author_id, 25, 'best_answer', 'reply', $reply_id, 'Reply marked as solution' );
+
+                // Notify the reply author
+                $actor_name = wp_get_current_user()->display_name;
+                $this->insert_notification( (int) $reply->author_id, $user_id, 'solution', 'thread', (int) $reply->thread_id,
+                    "{$actor_name} marked your reply as helpful." );
+            }
+
+            return array( 'success' => true, 'action' => 'marked', 'is_solution' => true );
+        }
     }
 
     /* ==================================================================
@@ -1030,6 +1110,21 @@ class Cnw_Social_Bridge_REST_API {
         $target_id   = intval( $params['target_id'] );
         $vote_type   = intval( $params['vote_type'] );
 
+        // Block self-voting: users cannot vote on their own content
+        $self_check_author = 0;
+        if ( $target_type === 'thread' ) {
+            $self_check_author = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
+            ) );
+        } elseif ( $target_type === 'reply' ) {
+            $self_check_author = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
+            ) );
+        }
+        if ( $self_check_author && $self_check_author === $user_id ) {
+            return new WP_Error( 'self_vote', 'You cannot vote on your own content', array( 'status' => 403 ) );
+        }
+
         // Check existing vote — toggle or update
         $existing = $wpdb->get_row( $wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}cnw_social_worker_votes
@@ -1037,17 +1132,8 @@ class Cnw_Social_Bridge_REST_API {
             $user_id, $target_type, $target_id
         ) );
 
-        // Helper: get the content owner (the person who receives reputation for votes)
-        $content_owner = 0;
-        if ( $target_type === 'thread' ) {
-            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
-                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $target_id
-            ) );
-        } elseif ( $target_type === 'reply' ) {
-            $content_owner = (int) $wpdb->get_var( $wpdb->prepare(
-                "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $target_id
-            ) );
-        }
+        // Content owner already resolved during self-vote check
+        $content_owner = $self_check_author;
 
         if ( $existing ) {
             if ( (int) $existing->vote_type === $vote_type ) {
@@ -1059,6 +1145,7 @@ class Cnw_Social_Bridge_REST_API {
                 ) );
                 $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_votes', array( 'id' => $existing->id ) );
                 if ( $content_owner ) $this->recalc_user_reputation( $content_owner );
+                $this->recalc_user_reputation( $user_id );
                 return array( 'success' => true, 'action' => 'removed', 'id' => (int) $existing->id );
             } else {
                 // Different vote — update: reverse old reputation, apply new
@@ -1073,10 +1160,14 @@ class Cnw_Social_Bridge_REST_API {
                 );
                 // Award new vote reputation to content owner
                 if ( $content_owner && $content_owner !== $user_id ) {
-                    $rep_points = $vote_type === 1 ? 2 : -1;
+                    $rep_points = $vote_type === 1 ? 10 : -1;
                     $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
                     $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
                     $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', (int) $existing->id, $rep_desc );
+                }
+                // Award +1 to the voter for giving an upvote
+                if ( $vote_type === 1 ) {
+                    $this->award_reputation( $user_id, 1, 'gave_upvote', 'vote', (int) $existing->id, 'Gave an upvote' );
                 }
                 return array( 'success' => true, 'action' => 'updated', 'id' => (int) $existing->id );
             }
@@ -1098,12 +1189,17 @@ class Cnw_Social_Bridge_REST_API {
 
         $vote_id = (int) $wpdb->insert_id;
 
-        // Award reputation to content owner (+2 for upvote, -1 for downvote)
+        // Award reputation to content owner (+10 for upvote, -1 for downvote)
         if ( $content_owner && $content_owner !== $user_id ) {
-            $rep_points = $vote_type === 1 ? 2 : -1;
+            $rep_points = $vote_type === 1 ? 10 : -1;
             $rep_desc   = $vote_type === 1 ? 'Received an upvote' : 'Received a downvote';
             $rep_action = $vote_type === 1 ? 'received_upvote' : 'received_downvote';
             $this->award_reputation( $content_owner, $rep_points, $rep_action, 'vote', $vote_id, $rep_desc );
+        }
+
+        // Award +1 to the voter for giving an upvote
+        if ( $vote_type === 1 ) {
+            $this->award_reputation( $user_id, 1, 'gave_upvote', 'vote', $vote_id, 'Gave an upvote' );
         }
 
         // Notify on upvote only

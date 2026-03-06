@@ -255,6 +255,12 @@ export async function forgotPassword({ user_login }) {
   return res.json();
 }
 
+export async function markSolution(replyId) {
+  const url = await apiUrl(`/replies/${replyId}/solution`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
 export async function getUserReputation(userId) {
   return apiFetch(`/users/${userId}/reputation`);
 }

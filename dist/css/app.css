@@ -1012,6 +1012,18 @@
   flex-shrink: 0;
 }
 
+/* ── Helpful (heart) button ───────────────────────────────────── */
+.helpful-btn:hover {
+  color: #e74c3c;
+}
+.helpful-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.helpful-active {
+  color: #e74c3c !important;
+}
+
 /* ── Inline reply form (inside the bubble) ────────────────────── */
 .reply-inline-form {
   display: flex;

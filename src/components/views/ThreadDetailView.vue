@@ -53,13 +53,13 @@
 
         <!-- Stats row 1: Upvote/Downvote + Helpful + Views -->
         <div class="qcard-stats-row">
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
             <span>{{ localUpvotes }}</span>
             <span>Upvote</span>
           </button>
           <span class="stat-divider"></span>
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
             <span>{{ localDownvotes }}</span>
             <span>Downvote</span>
@@ -121,6 +121,7 @@
               :depth="0"
               :is-last="idx === topLevelReplies.length - 1"
               :thread-id="thread.id"
+              :thread-author-id="thread.author_id"
               @reply-submitted="refreshReplies"
             />
           </template>
@@ -289,7 +290,7 @@ export default {
   },
   methods: {
     async vote(type) {
-      if (!this.isLoggedIn) return;
+      if (!this.isLoggedIn || this.isOwner) return;
       const prev = this.userVote;
       const prevUp = this.localUpvotes;
       const prevDown = this.localDownvotes;

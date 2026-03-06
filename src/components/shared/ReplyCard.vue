@@ -38,16 +38,21 @@
 
       <!-- Vote buttons -->
       <div class="reply-helpful">
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
           <span>{{ localUpvotes }}</span>
           <span>Upvote</span>
         </button>
         <span class="reply-divider"></span>
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn || isOwner" :title="isOwner ? 'You cannot vote on your own content' : ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
           <span>{{ localDownvotes }}</span>
           <span>Downvote</span>
+        </button>
+        <span class="reply-divider"></span>
+        <button class="reply-stat-btn helpful-btn" :class="{ 'helpful-active': localIsSolution }" @click="toggleSolution" :disabled="!isLoggedIn || markingSolution">
+          <svg width="14" height="14" viewBox="0 0 24 24" :fill="localIsSolution ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>Helpful</span>
         </button>
       </div>
 
@@ -145,6 +150,7 @@
         :depth="depth + 1"
         :is-last="idx === nestedReplies.length - 1"
         :thread-id="threadId"
+        :thread-author-id="threadAuthorId"
         @reply-submitted="$emit('reply-submitted')"
       />
     </div>
@@ -152,7 +158,7 @@
 </template>
 
 <script>
-import { createReply, createVote, updateReply, deleteReply } from '@/api/index.js';
+import { createReply, createVote, updateReply, deleteReply, markSolution } from '@/api/index.js';
 
 export default {
   name: 'ReplyCard',
@@ -162,6 +168,7 @@ export default {
     depth: { type: Number, default: 0 },
     isLast: { type: Boolean, default: false },
     threadId: { type: [Number, String], default: 0 },
+    threadAuthorId: { type: [Number, String], default: 0 },
   },
   emits: ['reply-submitted'],
   data() {
@@ -179,6 +186,8 @@ export default {
       saving: false,
       showDeleteConfirm: false,
       deleting: false,
+      localIsSolution: !!(this.reply.is_solution && parseInt(this.reply.is_solution)),
+      markingSolution: false,
     };
   },
   computed: {
@@ -196,10 +205,26 @@ export default {
       const uid = window.cnwData?.currentUser?.id;
       return uid && String(this.reply.author_id) === String(uid);
     },
+    isThreadOwner() {
+      const uid = window.cnwData?.currentUser?.id;
+      return uid && String(this.threadAuthorId) === String(uid);
+    },
   },
   methods: {
+    async toggleSolution() {
+      if (this.markingSolution) return;
+      this.markingSolution = true;
+      try {
+        const res = await markSolution(this.reply.id);
+        if (res.success) {
+          this.localIsSolution = res.is_solution;
+          this.$emit('reply-submitted');
+        }
+      } catch { /* silent */ }
+      finally { this.markingSolution = false; }
+    },
     async vote(type) {
-      if (!this.isLoggedIn) return;
+      if (!this.isLoggedIn || this.isOwner) return;
       const prev = this.userVote;
       const prevUp = this.localUpvotes;
       const prevDown = this.localDownvotes;
@@ -487,6 +512,18 @@ export default {
   align-self: stretch;
   background: var(--primary);
   flex-shrink: 0;
+}
+
+/* ── Helpful (heart) button ───────────────────────────────────── */
+.helpful-btn:hover {
+  color: #e74c3c;
+}
+.helpful-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.helpful-active {
+  color: #e74c3c !important;
 }
 
 /* ── Inline reply form (inside the bubble) ────────────────────── */
