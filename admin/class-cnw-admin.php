@@ -697,6 +697,12 @@ class Cnw_Social_Bridge_Admin {
         $phone = sanitize_text_field( $_POST['cnw_phone'] ?? '' );
         update_user_meta( $id, 'cnw_phone', $phone );
 
+        // Save verified label & professional title
+        $verified_label = sanitize_text_field( $_POST['cnw_verified_label'] ?? '' );
+        update_user_meta( $id, 'cnw_verified_label', $verified_label );
+        $professional_title = sanitize_text_field( $_POST['cnw_professional_title'] ?? '' );
+        update_user_meta( $id, 'cnw_professional_title', $professional_title );
+
         // Save custom avatar
         $avatar_url = esc_url_raw( $_POST['cnw_avatar_url'] ?? '' );
         if ( $avatar_url ) {

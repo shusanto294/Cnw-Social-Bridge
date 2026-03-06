@@ -1765,13 +1765,15 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'not_found', 'User not found', array( 'status' => 404 ) );
         }
 
-        $first_name = get_user_meta( $user_id, 'first_name', true );
-        $last_name  = get_user_meta( $user_id, 'last_name', true );
-        $phone      = get_user_meta( $user_id, 'cnw_phone', true );
-        $bio        = get_user_meta( $user_id, 'description', true );
-        $anonymous  = (bool) get_user_meta( $user_id, 'cnw_anonymous', true );
-        $reputation = (int) get_user_meta( $user_id, 'cnw_reputation_total', true );
-        $avatar     = $this->get_user_avatar( $user_id, 150 );
+        $first_name         = get_user_meta( $user_id, 'first_name', true );
+        $last_name          = get_user_meta( $user_id, 'last_name', true );
+        $phone              = get_user_meta( $user_id, 'cnw_phone', true );
+        $bio                = get_user_meta( $user_id, 'description', true );
+        $anonymous          = (bool) get_user_meta( $user_id, 'cnw_anonymous', true );
+        $reputation         = (int) get_user_meta( $user_id, 'cnw_reputation_total', true );
+        $avatar             = $this->get_user_avatar( $user_id, 150 );
+        $verified_label     = get_user_meta( $user_id, 'cnw_verified_label', true );
+        $professional_title = get_user_meta( $user_id, 'cnw_professional_title', true );
 
         $helpful_count = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
@@ -1808,7 +1810,9 @@ class Cnw_Social_Bridge_REST_API {
             'helpful_count'   => $helpful_count,
             'thread_count'    => $thread_count,
             'reply_count'     => $reply_count,
-            'is_own'          => $is_own,
+            'verified_label'     => $verified_label,
+            'professional_title' => $professional_title,
+            'is_own'             => $is_own,
         );
     }
 
@@ -1907,6 +1911,12 @@ class Cnw_Social_Bridge_REST_API {
         }
         if ( isset( $body['bio'] ) ) {
             update_user_meta( $user_id, 'description', sanitize_textarea_field( $body['bio'] ) );
+        }
+        if ( isset( $body['verified_label'] ) ) {
+            update_user_meta( $user_id, 'cnw_verified_label', sanitize_text_field( $body['verified_label'] ) );
+        }
+        if ( isset( $body['professional_title'] ) ) {
+            update_user_meta( $user_id, 'cnw_professional_title', sanitize_text_field( $body['professional_title'] ) );
         }
 
         $this->log_activity( $user_id, 'profile_updated', 'Updated profile information', 0, 'No points for profile update' );

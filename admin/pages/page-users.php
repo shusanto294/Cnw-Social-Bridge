@@ -51,6 +51,14 @@ if ( $action === 'edit' && $id ) {
             <?php $phone = get_user_meta( $item->ID, 'cnw_phone', true ); ?>
             <tr><th><label for="cnw_phone">Phone</label></th>
                 <td><input type="tel" id="cnw_phone" name="cnw_phone" class="regular-text" value="<?php echo esc_attr( $phone ); ?>"></td></tr>
+            <?php $verified_label = get_user_meta( $item->ID, 'cnw_verified_label', true ); ?>
+            <tr><th><label for="cnw_verified_label">Verified Label</label></th>
+                <td><input type="text" id="cnw_verified_label" name="cnw_verified_label" class="regular-text" value="<?php echo esc_attr( $verified_label ?: 'Verified Social Worker' ); ?>">
+                <p class="description">Text shown next to the verified badge (e.g. "Verified Social Worker").</p></td></tr>
+            <?php $professional_title = get_user_meta( $item->ID, 'cnw_professional_title', true ); ?>
+            <tr><th><label for="cnw_professional_title">Professional Title</label></th>
+                <td><input type="text" id="cnw_professional_title" name="cnw_professional_title" class="regular-text" value="<?php echo esc_attr( $professional_title ?: 'Licensed Clinical Social Worker' ); ?>">
+                <p class="description">Professional title shown on the profile (e.g. "Licensed Clinical Social Worker").</p></td></tr>
             <?php $avatar_url = get_user_meta( $item->ID, 'cnw_avatar_url', true ); ?>
             <tr><th><label>Profile Photo</label></th>
                 <td>

@@ -289,12 +289,12 @@ export async function getUserReplies(userId, { page = 1 } = {}) {
   return apiFetch(`/users/${userId}/replies`, { page });
 }
 
-export async function updateUserProfile({ first_name, last_name, phone, bio }) {
+export async function updateUserProfile({ first_name, last_name, phone, bio, verified_label, professional_title }) {
   const url = await apiUrl('/users/me/profile');
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),
-    body: JSON.stringify({ first_name, last_name, phone, bio }),
+    body: JSON.stringify({ first_name, last_name, phone, bio, verified_label, professional_title }),
   });
   return res.json();
 }

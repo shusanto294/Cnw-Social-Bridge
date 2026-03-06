@@ -15,9 +15,9 @@
           <div class="profile-name-row">
             <h1 class="profile-name">{{ fullName }}</h1>
             <span class="cnw-social-worker-verified" title="Verified">&#10003;</span>
-            <span class="profile-verified-label">Verified Social Worker</span>
+            <span class="profile-verified-label">{{ user.verified_label || 'Verified Social Worker' }}</span>
           </div>
-          <p class="profile-title">Licensed Clinical Social Worker</p>
+          <p class="profile-title">{{ user.professional_title || 'Licensed Clinical Social Worker' }}</p>
           <p class="profile-helpful">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="#e53935"/></svg>
             {{ user.helpful_count || 0 }}&nbsp; Helpful answers
@@ -39,39 +39,63 @@
       <div class="profile-info-card">
         <div class="profile-info-header">
           <h3>Personal Info</h3>
-          <button v-if="isOwn && !editing" class="profile-edit-btn" @click="startEdit">
+          <button v-if="isOwn" class="profile-edit-btn" @click="startEdit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
           </button>
-          <div v-if="editing" class="profile-edit-actions">
-            <button class="profile-save-btn" :disabled="saving" @click="saveProfile">{{ saving ? 'Saving...' : 'Save' }}</button>
-            <button class="profile-cancel-btn" @click="cancelEdit">Cancel</button>
-          </div>
         </div>
         <div class="profile-info-grid">
           <div class="profile-info-field">
             <label>Full Name:</label>
-            <template v-if="editing">
-              <div class="profile-edit-name">
-                <input v-model="editForm.first_name" placeholder="First name" class="profile-input" />
-                <input v-model="editForm.last_name" placeholder="Last name" class="profile-input" />
-              </div>
-            </template>
-            <span v-else>{{ fullName }}</span>
+            <span>{{ fullName }}</span>
           </div>
           <div class="profile-info-field">
             <label>Email:</label>
-            <template v-if="editing">
-              <input :value="user.email || '---'" class="profile-input" disabled />
-            </template>
-            <span v-else>{{ user.email || '---' }}</span>
+            <span>{{ user.email || '---' }}</span>
           </div>
           <div class="profile-info-field">
             <label>Phone:</label>
-            <template v-if="editing">
+            <span>{{ user.phone || '---' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Profile Modal -->
+      <div v-if="editing" class="profile-modal-overlay" @click.self="cancelEdit">
+        <div class="profile-modal">
+          <div class="profile-modal-header">
+            <h3>Edit Personal Info</h3>
+            <button class="profile-modal-close" @click="cancelEdit">&times;</button>
+          </div>
+          <div class="profile-modal-body">
+            <div class="profile-modal-field">
+              <label>First Name</label>
+              <input v-model="editForm.first_name" placeholder="First name" class="profile-input" />
+            </div>
+            <div class="profile-modal-field">
+              <label>Last Name</label>
+              <input v-model="editForm.last_name" placeholder="Last name" class="profile-input" />
+            </div>
+            <div class="profile-modal-field">
+              <label>Email</label>
+              <input :value="user.email || '---'" class="profile-input" disabled />
+            </div>
+            <div class="profile-modal-field">
+              <label>Phone</label>
               <input v-model="editForm.phone" placeholder="Phone number" class="profile-input" />
-            </template>
-            <span v-else>{{ user.phone || '---' }}</span>
+            </div>
+            <div class="profile-modal-field">
+              <label>Verified Label</label>
+              <input v-model="editForm.verified_label" placeholder="e.g. Verified Social Worker" class="profile-input" />
+            </div>
+            <div class="profile-modal-field">
+              <label>Professional Title</label>
+              <input v-model="editForm.professional_title" placeholder="e.g. Licensed Clinical Social Worker" class="profile-input" />
+            </div>
+          </div>
+          <div class="profile-modal-footer">
+            <button class="profile-cancel-btn" @click="cancelEdit">Cancel</button>
+            <button class="profile-save-btn" :disabled="saving" @click="saveProfile">{{ saving ? 'Saving...' : 'Save' }}</button>
           </div>
         </div>
       </div>
@@ -240,7 +264,7 @@ export default {
       activityPages: 1,
       editing: false,
       saving: false,
-      editForm: { first_name: '', last_name: '', phone: '' },
+      editForm: { first_name: '', last_name: '', phone: '', verified_label: '', professional_title: '' },
       defaultAvatar: 'https://www.gravatar.com/avatar/?d=mp&s=150',
     };
   },
@@ -336,6 +360,8 @@ export default {
       this.editForm.first_name = this.user.first_name || '';
       this.editForm.last_name = this.user.last_name || '';
       this.editForm.phone = this.user.phone || '';
+      this.editForm.verified_label = this.user.verified_label || 'Verified Social Worker';
+      this.editForm.professional_title = this.user.professional_title || 'Licensed Clinical Social Worker';
       this.editing = true;
     },
     cancelEdit() {
@@ -348,6 +374,8 @@ export default {
         this.user.first_name = this.editForm.first_name;
         this.user.last_name = this.editForm.last_name;
         this.user.phone = this.editForm.phone;
+        this.user.verified_label = this.editForm.verified_label;
+        this.user.professional_title = this.editForm.professional_title;
         this.editing = false;
       } catch { /* silent */ }
       finally { this.saving = false; }
@@ -606,9 +634,75 @@ export default {
   outline: none;
   border-color: var(--primary);
 }
-.profile-edit-name {
+/* ── Edit Profile Modal ────────────────────────────────────── */
+.profile-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.profile-modal {
+  background: #fff;
+  border-radius: var(--radius, 8px);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.profile-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-s, 19.8px) var(--space-s, 19.8px) 0;
+}
+.profile-modal-header h3 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: var(--text-m, 16px);
+  color: #000;
+  margin: 0;
+}
+.profile-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.profile-modal-close:hover {
+  color: #000;
+}
+.profile-modal-body {
+  padding: var(--space-s, 19.8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 14px);
+}
+.profile-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xs, 4.95px);
+}
+.profile-modal-field label {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: var(--text-xs, 14px);
+  color: #999;
+}
+.profile-modal-footer {
+  display: flex;
+  justify-content: flex-end;
   gap: var(--space-2xs, 9.9px);
+  padding: 0 var(--space-s, 19.8px) var(--space-s, 19.8px);
 }
 
 /* ── Tabs ───────────────────────────────────────────────────── */
