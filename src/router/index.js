@@ -18,6 +18,7 @@ const routes = [
   { path: '/ask', component: AskQuestionView },
   { path: '/messages', component: MessagesView },
   { path: '/users', component: UsersView },
+  { path: '/users/:id', component: UserProfileView, props: true },
   { path: '/profile', component: UserProfileView },
   { path: '/tags', component: TagsView },
   { path: '/activity', component: ActivityView },

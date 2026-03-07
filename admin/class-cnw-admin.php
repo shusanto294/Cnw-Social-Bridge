@@ -33,6 +33,10 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_save_reputation',   array( $this, 'handle_save_reputation' ) );
         add_action( 'admin_post_cnw_delete_reputation',  array( $this, 'handle_delete_reputation' ) );
         add_action( 'admin_post_cnw_save_logo',         array( $this, 'handle_save_logo' ) );
+        add_action( 'admin_post_cnw_save_guidelines',   array( $this, 'handle_save_guidelines' ) );
+        add_action( 'admin_post_cnw_update_report',     array( $this, 'handle_update_report' ) );
+        add_action( 'admin_post_cnw_delete_report',     array( $this, 'handle_delete_report' ) );
+        add_action( 'admin_post_cnw_bulk_reports',      array( $this, 'handle_bulk_reports' ) );
 
         // Bulk action handlers
         add_action( 'admin_post_cnw_bulk_threads',     array( $this, 'handle_bulk_threads' ) );
@@ -65,6 +69,16 @@ class Cnw_Social_Bridge_Admin {
             30
         );
 
+        // Count open reports for menu badge
+        global $wpdb;
+        $open_reports = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_reports WHERE status = 'open'"
+        );
+        $reports_label = 'Reports';
+        if ( $open_reports > 0 ) {
+            $reports_label = sprintf( 'Reports <span class="awaiting-mod">%d</span>', $open_reports );
+        }
+
         $submenus = array(
             array( 'cnw-social-bridge', 'Dashboard',  'cnw-social-bridge', 'page_dashboard' ),
             array( 'cnw-social-bridge', 'Forum Users', 'cnw-users',         'page_users' ),
@@ -75,6 +89,8 @@ class Cnw_Social_Bridge_Admin {
             array( 'cnw-social-bridge', 'Replies',     'cnw-replies',       'page_replies' ),
             array( 'cnw-social-bridge', 'Messages',    'cnw-messages',      'page_messages' ),
             array( 'cnw-social-bridge', 'Reputation',  'cnw-reputation',    'page_reputation' ),
+            array( 'cnw-social-bridge', 'Guidelines',  'cnw-guidelines',    'page_guidelines' ),
+            array( 'cnw-social-bridge', $reports_label, 'cnw-reports',       'page_reports' ),
             array( 'cnw-social-bridge', 'Import / Export', 'cnw-import-export', 'page_import_export' ),
             array( 'cnw-social-bridge', 'Settings',    'cnw-settings',      'page_settings' ),
         );
@@ -785,6 +801,89 @@ class Cnw_Social_Bridge_Admin {
     }
 
     /* ------------------------------------------------------------------
+     * GUIDELINES handler
+     * ------------------------------------------------------------------ */
+
+    public function handle_save_guidelines() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_guidelines' );
+
+        $content = wp_kses_post( $_POST['cnw_guidelines_content'] ?? '' );
+        update_option( 'cnw_community_guidelines_html', $content );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-guidelines', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * REPORTS handlers
+     * ------------------------------------------------------------------ */
+
+    public function handle_update_report() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_update_report' );
+
+        global $wpdb;
+        $id     = intval( $_POST['id'] ?? 0 );
+        $status = sanitize_text_field( $_POST['status'] ?? 'open' );
+        $notes  = wp_kses_post( $_POST['admin_notes'] ?? '' );
+
+        if ( $id ) {
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_reports',
+                array( 'status' => $status, 'admin_notes' => $notes, 'updated_at' => current_time( 'mysql' ) ),
+                array( 'id' => $id )
+            );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-reports', 'msg' => 'updated' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_delete_report() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_delete_report' );
+
+        global $wpdb;
+        $id = intval( $_POST['id'] ?? 0 );
+        if ( $id ) {
+            $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_reports', array( 'id' => $id ) );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-reports', 'msg' => 'deleted' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_bulk_reports() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_bulk_reports' );
+
+        global $wpdb;
+        $action = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids    = array_map( 'intval', (array) ( $_POST['ids'] ?? array() ) );
+        $count  = 0;
+        $table  = $wpdb->prefix . 'cnw_social_worker_reports';
+
+        if ( ! empty( $ids ) ) {
+            if ( $action === 'delete' ) {
+                foreach ( $ids as $id ) {
+                    $wpdb->delete( $table, array( 'id' => $id ) );
+                    $count++;
+                }
+            } elseif ( in_array( $action, array( 'mark_open', 'mark_in_progress', 'mark_resolved', 'mark_closed' ), true ) ) {
+                $status = str_replace( 'mark_', '', $action );
+                foreach ( $ids as $id ) {
+                    $wpdb->update( $table, array( 'status' => $status, 'updated_at' => current_time( 'mysql' ) ), array( 'id' => $id ) );
+                    $count++;
+                }
+            }
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-reports', 'msg' => 'bulk_done', 'count' => $count ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
      * EXPORT / IMPORT handlers
      * ------------------------------------------------------------------ */
 
@@ -1380,6 +1479,8 @@ class Cnw_Social_Bridge_Admin {
     public function page_votes()       { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-votes.php'; }
     public function page_reputation()  { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-reputation.php'; }
     public function page_users()          { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-users.php'; }
+    public function page_guidelines()     { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-guidelines.php'; }
+    public function page_reports()        { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-reports.php'; }
     public function page_import_export()  { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-import-export.php'; }
     public function page_settings()       { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-settings.php'; }
 }

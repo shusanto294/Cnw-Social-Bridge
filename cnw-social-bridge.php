@@ -246,6 +246,26 @@ class Cnw_Social_Bridge {
         ) $charset_collate;";
         dbDelta( $sql_notifications );
 
+        $sql_reports = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_reports (
+            id           bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id      bigint(20) unsigned NOT NULL,
+            type         varchar(50)         NOT NULL,
+            subject      varchar(255)        NOT NULL,
+            description  longtext            NOT NULL,
+            link         varchar(500)        DEFAULT NULL,
+            priority     varchar(20)         DEFAULT 'medium',
+            status       varchar(20)         DEFAULT 'open',
+            admin_notes  longtext            DEFAULT NULL,
+            created_at   datetime            DEFAULT CURRENT_TIMESTAMP,
+            updated_at   datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id    (user_id),
+            KEY status     (status),
+            KEY priority   (priority),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+        dbDelta( $sql_reports );
+
         $this->create_user_roles();
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );

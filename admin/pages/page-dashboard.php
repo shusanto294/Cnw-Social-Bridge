@@ -8,14 +8,15 @@ global $wpdb;
 $p = $wpdb->prefix . 'cnw_social_worker_';
 
 $counts = array(
-    'users'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->users}" ),
-    'threads'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}threads" ),
-    'replies'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}replies" ),
-    'messages'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}messages" ),
-    'tags'       => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}tags" ),
-    'categories' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}categories" ),
-    'votes'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}votes" ),
-    'reputation' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}reputation" ),
+    'users'        => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->users}" ),
+    'threads'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}threads" ),
+    'replies'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}replies" ),
+    'messages'     => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}messages" ),
+    'tags'         => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}tags" ),
+    'categories'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}categories" ),
+    'votes'        => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}votes" ),
+    'reputation'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}reputation" ),
+    'open_reports' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$p}reports WHERE status = 'open'" ),
 );
 
 $cards = array(
@@ -25,8 +26,8 @@ $cards = array(
     array( 'Categories',  'categories', 'cnw-categories', 'dashicons-category' ),
     array( 'Votes',       'votes',      'cnw-votes',      'dashicons-thumbs-up' ),
     array( 'Replies',     'replies',    'cnw-replies',    'dashicons-admin-comments' ),
-    array( 'Messages',    'messages',   'cnw-messages',   'dashicons-email-alt' ),
     array( 'Reputation',  'reputation', 'cnw-reputation',  'dashicons-awards' ),
+    array( 'Open Reports','open_reports','cnw-reports&status=open', 'dashicons-flag' ),
 );
 ?>
 
@@ -37,8 +38,10 @@ $cards = array(
     </div>
 
     <div class="cnw-dashboard-grid">
-        <?php foreach ( $cards as $c ) : ?>
-        <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $c[2] ) ); ?>" class="cnw-dash-card">
+        <?php foreach ( $cards as $c ) :
+            $is_alert = ( $c[1] === 'open_reports' && $counts['open_reports'] > 0 );
+        ?>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $c[2] ) ); ?>" class="cnw-dash-card<?php echo $is_alert ? ' cnw-dash-card-alert' : ''; ?>">
             <span class="dashicons <?php echo esc_attr( $c[3] ); ?> cnw-dash-icon"></span>
             <div>
                 <span class="cnw-dash-count"><?php echo number_format( $counts[ $c[1] ] ); ?></span>
@@ -77,3 +80,15 @@ $cards = array(
         </table>
     </div>
 </div>
+
+<style>
+.cnw-dash-card-alert {
+    border-left: 4px solid #d63638 !important;
+}
+.cnw-dash-card-alert .cnw-dash-icon {
+    color: #d63638 !important;
+}
+.cnw-dash-card-alert .cnw-dash-count {
+    color: #d63638 !important;
+}
+</style>

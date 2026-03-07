@@ -370,7 +370,7 @@ export default {
   },
   computed: {
     userId() {
-      return window.cnwData?.currentUser?.id || 0;
+      return this.$route?.params?.id ? Number(this.$route.params.id) : (window.cnwData?.currentUser?.id || 0);
     },
     isOwn() {
       return this.user.is_own || false;
@@ -397,6 +397,10 @@ export default {
     },
   },
   watch: {
+    '$route.params.id'() {
+      this.activeTab = 'answers';
+      this.loadProfile();
+    },
     activeTab(tab) {
       if (tab === 'answers' && this.replies.length === 0) this.fetchReplies(1);
       if (tab === 'questions' && this.threads.length === 0) this.fetchThreads(1);

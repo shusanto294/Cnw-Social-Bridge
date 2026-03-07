@@ -278,6 +278,12 @@ export async function register({ username, email, password, first_name, last_nam
   return data;
 }
 
+export async function getUsers({ page = 1, per_page = 20, search = '' } = {}) {
+  const params = { page, per_page };
+  if (search) params.search = search;
+  return apiFetch('/users', params);
+}
+
 export async function getUser(userId) {
   return apiFetch(`/users/${userId}`);
 }
@@ -320,6 +326,44 @@ export async function uploadAvatar(file) {
     body: formData,
   });
   return res.json();
+}
+
+export async function getConversations() {
+  return apiFetch('/conversations');
+}
+
+export async function getConversation(userId, { page = 1 } = {}) {
+  return apiFetch(`/conversations/${userId}`, { page });
+}
+
+export async function sendMessage({ recipient_id, content }) {
+  const url = await apiUrl('/messages');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ recipient_id, content }),
+  });
+  return res.json();
+}
+
+export async function markConversationRead(userId) {
+  const url = await apiUrl(`/conversations/${userId}/read`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function submitReport({ type, subject, link, description, priority }) {
+  const url = await apiUrl('/reports');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ type, subject, link, description, priority }),
+  });
+  return res.json();
+}
+
+export async function getGuidelines() {
+  return apiFetch('/guidelines');
 }
 
 export async function login({ username, password }) {

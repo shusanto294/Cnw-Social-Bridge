@@ -599,6 +599,14 @@ export default {
   cursor: pointer;
   transition: background 0.12s;
 }
+
+.notif-item img{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .notif-item:hover {
   background: var(--bg, #f5f5f5);
 }
@@ -606,7 +614,10 @@ export default {
   background: rgba(58, 169, 218, 0.06);
 }
 .notif-item-avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
 }
 .notif-item-body {

@@ -63,6 +63,17 @@ class Cnw_Social_Bridge_REST_API {
             array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_message' ), 'permission_callback' => array( $this, 'can_manage' ) ),
         ) );
 
+        // ── User-facing conversations ────────────────────────────────
+        register_rest_route( $ns, '/conversations', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_conversations' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+        register_rest_route( $ns, '/conversations/(?P<user_id>\d+)', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_conversation' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+        register_rest_route( $ns, '/conversations/(?P<user_id>\d+)/read', array(
+            'methods' => 'POST', 'callback' => array( $this, 'mark_conversation_read' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+
         // ── Categories ───────────────────────────────────────────────
         register_rest_route( $ns, '/categories', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_categories' ),  'permission_callback' => '__return_true' ),
@@ -142,6 +153,16 @@ class Cnw_Social_Bridge_REST_API {
             'methods' => 'GET', 'callback' => array( $this, 'get_hot_questions' ), 'permission_callback' => '__return_true',
         ) );
 
+        // ── Reports ─────────────────────────────────────────────────────
+        register_rest_route( $ns, '/reports', array(
+            'methods' => 'POST', 'callback' => array( $this, 'create_report' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+
+        // ── Guidelines (stored as WP option) ────────────────────────────
+        register_rest_route( $ns, '/guidelines', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_guidelines' ), 'permission_callback' => '__return_true',
+        ) );
+
         // ── Login ───────────────────────────────────────────────────────
         register_rest_route( $ns, '/login', array(
             'methods' => 'POST', 'callback' => array( $this, 'handle_login' ), 'permission_callback' => '__return_true',
@@ -160,6 +181,9 @@ class Cnw_Social_Bridge_REST_API {
         // ── Register ────────────────────────────────────────────────────
         register_rest_route( $ns, '/register', array(
             'methods' => 'POST', 'callback' => array( $this, 'handle_register' ), 'permission_callback' => '__return_true',
+        ) );
+        register_rest_route( $ns, '/users', array(
+            'methods' => 'GET', 'callback' => array( $this, 'search_users' ), 'permission_callback' => '__return_true',
         ) );
         register_rest_route( $ns, '/users/(?P<id>\d+)', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_user' ), 'permission_callback' => '__return_true',
@@ -1022,6 +1046,114 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     /* ==================================================================
+     * CONVERSATIONS (user-facing)
+     * ================================================================== */
+
+    public function get_conversations( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $me    = get_current_user_id();
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT
+                CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END AS other_user_id,
+                u.display_name AS other_name,
+                um_avatar.meta_value AS other_avatar,
+                um_label.meta_value AS other_verified_label,
+                m.content AS last_message,
+                m.created_at AS last_date,
+                m.sender_id AS last_sender_id,
+                (SELECT COUNT(*) FROM {$table} m2
+                 WHERE m2.sender_id = CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
+                   AND m2.recipient_id = %d AND m2.is_read = 0) AS unread_count
+             FROM {$table} m
+             INNER JOIN (
+                SELECT
+                    CASE WHEN sender_id = %d THEN recipient_id ELSE sender_id END AS partner_id,
+                    MAX(id) AS max_id
+                FROM {$table}
+                WHERE sender_id = %d OR recipient_id = %d
+                GROUP BY partner_id
+             ) latest ON m.id = latest.max_id
+             LEFT JOIN {$wpdb->users} u ON u.ID = CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
+             LEFT JOIN {$wpdb->usermeta} um_avatar ON um_avatar.user_id = u.ID AND um_avatar.meta_key = 'cnw_avatar_url'
+             LEFT JOIN {$wpdb->usermeta} um_label ON um_label.user_id = u.ID AND um_label.meta_key = 'cnw_verified_label'
+             ORDER BY m.created_at DESC",
+            $me, $me, $me, $me, $me, $me, $me
+        ) );
+
+        foreach ( $rows as &$row ) {
+            if ( empty( $row->other_avatar ) ) {
+                $row->other_avatar = get_avatar_url( $row->other_user_id, array( 'size' => 80 ) );
+            }
+        }
+
+        return $rows;
+    }
+
+    public function get_conversation( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $me      = get_current_user_id();
+        $other   = intval( $request['user_id'] );
+        $table   = $wpdb->prefix . 'cnw_social_worker_messages';
+        $page    = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 50;
+        $offset  = ( $page - 1 ) * $per_page;
+
+        $messages = $wpdb->get_results( $wpdb->prepare(
+            "SELECT m.*, s.display_name AS sender_name,
+                    um_avatar.meta_value AS sender_avatar,
+                    um_label.meta_value AS sender_verified_label
+             FROM {$table} m
+             LEFT JOIN {$wpdb->users} s ON s.ID = m.sender_id
+             LEFT JOIN {$wpdb->usermeta} um_avatar ON um_avatar.user_id = m.sender_id AND um_avatar.meta_key = 'cnw_avatar_url'
+             LEFT JOIN {$wpdb->usermeta} um_label ON um_label.user_id = m.sender_id AND um_label.meta_key = 'cnw_verified_label'
+             WHERE (m.sender_id = %d AND m.recipient_id = %d)
+                OR (m.sender_id = %d AND m.recipient_id = %d)
+             ORDER BY m.created_at ASC
+             LIMIT %d OFFSET %d",
+            $me, $other, $other, $me, $per_page, $offset
+        ) );
+
+        foreach ( $messages as &$msg ) {
+            if ( empty( $msg->sender_avatar ) ) {
+                $msg->sender_avatar = get_avatar_url( $msg->sender_id, array( 'size' => 80 ) );
+            }
+        }
+
+        $other_user = get_userdata( $other );
+        $other_avatar = get_user_meta( $other, 'cnw_avatar_url', true ) ?: get_avatar_url( $other, array( 'size' => 80 ) );
+        $other_label  = get_user_meta( $other, 'cnw_verified_label', true );
+
+        return array(
+            'messages'   => $messages,
+            'other_user' => array(
+                'id'             => $other,
+                'name'           => $other_user ? $other_user->display_name : 'Unknown',
+                'avatar'         => $other_avatar,
+                'verified_label' => $other_label,
+            ),
+        );
+    }
+
+    public function mark_conversation_read( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+
+        $wpdb->query( $wpdb->prepare(
+            "UPDATE {$table} SET is_read = 1 WHERE sender_id = %d AND recipient_id = %d AND is_read = 0",
+            $other, $me
+        ) );
+
+        return array( 'success' => true );
+    }
+
+    /* ==================================================================
      * CATEGORIES
      * ================================================================== */
 
@@ -1777,6 +1909,71 @@ class Cnw_Social_Bridge_REST_API {
         return $threads;
     }
 
+    public function search_users( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $search   = sanitize_text_field( $request->get_param( 'search' ) );
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = intval( $request->get_param( 'per_page' ) ?: 20 );
+
+        // Exclude anonymous users
+        $anon_ids = $wpdb->get_col(
+            "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'cnw_anonymous' AND meta_value = '1'"
+        );
+
+        $args = array(
+            'number'  => $per_page,
+            'paged'   => $page,
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+        );
+
+        $exclude = $anon_ids;
+        $current = get_current_user_id();
+        if ( $current ) {
+            $exclude[] = $current;
+        }
+        if ( ! empty( $exclude ) ) {
+            $args['exclude'] = $exclude;
+        }
+
+        if ( ! empty( $search ) && strlen( $search ) >= 2 ) {
+            $args['search']         = '*' . $search . '*';
+            $args['search_columns'] = array( 'user_login', 'display_name', 'user_email' );
+        }
+
+        $query = new WP_User_Query( $args );
+        $users = array();
+
+        foreach ( $query->get_results() as $u ) {
+            $avatar = get_user_meta( $u->ID, 'cnw_avatar_url', true ) ?: get_avatar_url( $u->ID, array( 'size' => 80 ) );
+            $reputation = (int) get_user_meta( $u->ID, 'cnw_reputation_total', true );
+
+            $thread_count = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE author_id = %d", $u->ID
+            ) );
+            $reply_count = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $u->ID
+            ) );
+
+            $users[] = array(
+                'id'                 => $u->ID,
+                'name'               => $u->display_name,
+                'avatar'             => $avatar,
+                'verified_label'     => get_user_meta( $u->ID, 'cnw_verified_label', true ),
+                'professional_title' => get_user_meta( $u->ID, 'cnw_professional_title', true ),
+                'reputation'         => $reputation,
+                'thread_count'       => $thread_count,
+                'reply_count'        => $reply_count,
+                'user_registered'    => $u->user_registered,
+            );
+        }
+
+        $total = $query->get_total();
+
+        return array( 'users' => $users, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
     public function get_user( WP_REST_Request $request ) {
         global $wpdb;
 
@@ -2162,6 +2359,52 @@ class Cnw_Social_Bridge_REST_API {
      * LOGIN
      * ================================================================== */
 
+    /* ==================================================================
+     * REPORTS
+     * ================================================================== */
+
+    public function create_report( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $params = $request->get_json_params();
+
+        if ( empty( $params['type'] ) || empty( $params['subject'] ) || empty( $params['description'] ) ) {
+            return new WP_Error( 'missing_fields', 'Type, subject and description are required.', array( 'status' => 400 ) );
+        }
+
+        $result = $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_reports',
+            array(
+                'user_id'     => get_current_user_id(),
+                'type'        => sanitize_text_field( $params['type'] ),
+                'subject'     => sanitize_text_field( $params['subject'] ),
+                'description' => wp_kses_post( $params['description'] ),
+                'link'        => isset( $params['link'] ) ? esc_url_raw( $params['link'] ) : null,
+                'priority'    => sanitize_text_field( $params['priority'] ?? 'medium' ),
+                'status'      => 'open',
+            )
+        );
+
+        if ( false === $result ) {
+            return new WP_Error( 'db_error', 'Failed to submit report.', array( 'status' => 500 ) );
+        }
+
+        return array( 'success' => true, 'id' => $wpdb->insert_id );
+    }
+
+    /* ==================================================================
+     * GUIDELINES
+     * ================================================================== */
+
+    public function get_guidelines( WP_REST_Request $request ) {
+        $html = get_option( 'cnw_community_guidelines_html', '' );
+        return array( 'html' => $html );
+    }
+
+    /* ==================================================================
+     * REGISTRATION
+     * ================================================================== */
+
     public function handle_register( WP_REST_Request $request ) {
         $first_name = sanitize_text_field( $request->get_param( 'first_name' ) );
         $last_name  = sanitize_text_field( $request->get_param( 'last_name' ) );
@@ -2202,6 +2445,9 @@ class Cnw_Social_Bridge_REST_API {
         if ( is_wp_error( $user_id ) ) {
             return new WP_Error( 'registration_failed', $user_id->get_error_message(), array( 'status' => 400 ) );
         }
+
+        update_user_meta( $user_id, 'cnw_verified_label', 'Verified Social Worker' );
+        update_user_meta( $user_id, 'cnw_professional_title', 'Licensed Clinical Social Worker' );
 
         $this->log_activity( $user_id, 'registered', 'Registered a new account', 0, 'No points for registration' );
 
