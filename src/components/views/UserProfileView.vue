@@ -365,7 +365,7 @@ export default {
       editing: false,
       saving: false,
       editForm: { first_name: '', last_name: '', phone: '', verified_label: '', professional_title: '' },
-      defaultAvatar: 'https://www.gravatar.com/avatar/?d=mp&s=150',
+      defaultAvatar: window.cnwData?.defaultAvatar || '',
     };
   },
   computed: {

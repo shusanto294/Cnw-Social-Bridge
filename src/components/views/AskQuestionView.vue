@@ -225,7 +225,7 @@ export default {
       return this.title.trim().length > 0 && this.content.trim().length > 0;
     },
     currentUserAvatar() {
-      return window.cnwData?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=34';
+      return window.cnwData?.currentUser?.avatar || window.cnwData?.defaultAvatar || '';
     },
     filteredCategories() {
       const q = this.categorySearch.trim().toLowerCase();

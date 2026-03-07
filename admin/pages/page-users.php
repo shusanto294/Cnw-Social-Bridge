@@ -21,18 +21,83 @@ if ( $action === 'edit' && $id ) {
     $item = get_userdata( $id );
     if ( ! $item ) { $action = 'list'; }
 }
+
+$forum_roles = array(
+    'cnw_forum_member' => 'Forum Member',
+    'cnw_moderator'    => 'Moderator',
+    'cnw_forum_admin'  => 'Forum Admin',
+);
 ?>
 
 <div class="wrap cnw-admin-wrap">
     <div class="cnw-admin-header">
         <h1 class="cnw-admin-title"><?php esc_html_e( 'Forum Users', 'cnw-social-bridge' ); ?></h1>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-users&action=add' ) ); ?>" class="page-title-action">Add New User</a>
     </div>
 
     <?php if ( $msg === 'saved' ) : ?><div class="notice notice-success is-dismissible"><p>User saved.</p></div><?php endif; ?>
+    <?php if ( $msg === 'password_updated' ) : ?><div class="notice notice-success is-dismissible"><p>Password updated successfully.</p></div><?php endif; ?>
+    <?php if ( $msg === 'created' ) : ?><div class="notice notice-success is-dismissible"><p>New user created successfully.</p></div><?php endif; ?>
     <?php if ( $msg === 'deleted' ) : ?><div class="notice notice-warning is-dismissible"><p>User deleted.</p></div><?php endif; ?>
     <?php if ( $msg === 'bulk_deleted' && $count ) : ?><div class="notice notice-warning is-dismissible"><p><?php echo esc_html( $count ); ?> user(s) deleted.</p></div><?php endif; ?>
+    <?php if ( $msg === 'error_create' ) : ?><div class="notice notice-error is-dismissible"><p>Error creating user. The username or email may already exist.</p></div><?php endif; ?>
+    <?php if ( $msg === 'error_password' ) : ?><div class="notice notice-error is-dismissible"><p>Passwords do not match.</p></div><?php endif; ?>
 
-<?php if ( $action === 'edit' && $item ) : ?>
+<?php if ( $action === 'add' ) : ?>
+    <h2>Add New User</h2>
+    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-crud-form">
+        <?php wp_nonce_field( 'cnw_create_user' ); ?>
+        <input type="hidden" name="action" value="cnw_create_user">
+
+        <table class="form-table">
+            <tr><th><label for="display_name">Display Name</label></th>
+                <td><input type="text" id="display_name" name="display_name" class="regular-text" required></td></tr>
+            <tr><th><label for="user_email">Email</label></th>
+                <td><input type="email" id="user_email" name="user_email" class="regular-text" required></td></tr>
+            <tr><th><label for="first_name">First Name</label></th>
+                <td><input type="text" id="first_name" name="first_name" class="regular-text"></td></tr>
+            <tr><th><label for="last_name">Last Name</label></th>
+                <td><input type="text" id="last_name" name="last_name" class="regular-text"></td></tr>
+            <tr><th><label for="cnw_phone">Phone</label></th>
+                <td><input type="tel" id="cnw_phone" name="cnw_phone" class="regular-text"></td></tr>
+            <tr><th><label for="cnw_verified_label">Verified Label</label></th>
+                <td><input type="text" id="cnw_verified_label" name="cnw_verified_label" class="regular-text" value="Verified Social Worker">
+                <p class="description">Text shown next to the verified badge (e.g. "Verified Social Worker").</p></td></tr>
+            <tr><th><label for="cnw_professional_title">Professional Title</label></th>
+                <td><input type="text" id="cnw_professional_title" name="cnw_professional_title" class="regular-text" value="Licensed Clinical Social Worker">
+                <p class="description">Professional title shown on the profile (e.g. "Licensed Clinical Social Worker").</p></td></tr>
+            <tr><th><label>Profile Photo</label></th>
+                <td>
+                    <div style="margin-bottom:10px;">
+                        <img id="cnw-avatar-preview" src="<?php echo esc_url( CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR ); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
+                    </div>
+                    <input type="hidden" id="cnw_avatar_url" name="cnw_avatar_url" value="">
+                    <button type="button" id="cnw-avatar-upload" class="button">Choose Photo</button>
+                    <button type="button" id="cnw-avatar-remove" class="button" style="margin-left:5px;display:none;">Remove Photo</button>
+                    <p class="description">Upload a custom profile photo or use the default Gravatar.</p>
+                </td></tr>
+            <tr><th><label for="role">Role</label></th>
+                <td><select id="role" name="role">
+                    <?php
+                    $roles = wp_roles()->get_names();
+                    foreach ( $roles as $role_key => $role_name ) : ?>
+                    <option value="<?php echo esc_attr( $role_key ); ?>" <?php selected( 'cnw_forum_member', $role_key ); ?>><?php echo esc_html( $role_name ); ?></option>
+                    <?php endforeach; ?>
+                </select></td></tr>
+            <tr><th><label for="user_login">Username</label></th>
+                <td><input type="text" id="user_login" name="user_login" class="regular-text" required></td></tr>
+            <tr><th><label for="user_pass">Password</label></th>
+                <td><input type="password" id="user_pass" name="user_pass" class="regular-text" required autocomplete="new-password">
+                <p class="description">Set the initial password for this user.</p></td></tr>
+            <tr><th><label for="user_pass_confirm">Confirm Password</label></th>
+                <td><input type="password" id="user_pass_confirm" name="user_pass_confirm" class="regular-text" required autocomplete="new-password"></td></tr>
+        </table>
+
+        <?php submit_button( 'Create User' ); ?>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-users' ) ); ?>" class="button">&larr; Back to list</a>
+    </form>
+
+<?php elseif ( $action === 'edit' && $item ) : ?>
     <h2>Edit User #<?php echo esc_html( $item->ID ); ?></h2>
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-crud-form">
         <?php wp_nonce_field( 'cnw_save_user' ); ?>
@@ -63,7 +128,7 @@ if ( $action === 'edit' && $id ) {
             <tr><th><label>Profile Photo</label></th>
                 <td>
                     <div style="margin-bottom:10px;">
-                        <img id="cnw-avatar-preview" src="<?php echo esc_url( $avatar_url ?: get_avatar_url( $item->ID, array( 'size' => 150 ) ) ); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
+                        <img id="cnw-avatar-preview" src="<?php echo esc_url( $avatar_url ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR ); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
                     </div>
                     <input type="hidden" id="cnw_avatar_url" name="cnw_avatar_url" value="<?php echo esc_attr( $avatar_url ); ?>">
                     <button type="button" id="cnw-avatar-upload" class="button">Choose Photo</button>
@@ -89,6 +154,15 @@ if ( $action === 'edit' && $id ) {
                 <td><?php echo esc_html( $item->user_registered ); ?></td></tr>
             <tr><th>Reputation</th>
                 <td><strong><?php echo number_format( (int) get_user_meta( $item->ID, 'cnw_reputation_total', true ) ); ?></strong></td></tr>
+        </table>
+
+        <h3>Set New Password</h3>
+        <p class="description" style="margin-bottom:10px;">Leave blank to keep the current password.</p>
+        <table class="form-table">
+            <tr><th><label for="new_password">New Password</label></th>
+                <td><input type="password" id="new_password" name="new_password" class="regular-text" autocomplete="new-password"></td></tr>
+            <tr><th><label for="new_password_confirm">Confirm New Password</label></th>
+                <td><input type="password" id="new_password_confirm" name="new_password_confirm" class="regular-text" autocomplete="new-password"></td></tr>
         </table>
 
         <?php submit_button( 'Update User' ); ?>

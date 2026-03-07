@@ -2623,17 +2623,22 @@ to   { opacity: 1; transform: translateY(0);
 }
 
 
+.cnw-social-worker-main{
+  background: transparent;
+  padding: 0;
+}
 .cnw-msg {
   display: flex;
   gap: 0;
-  min-height: 500px;
-  max-height: calc(100vh - 200px);
+  height: 100%;
+  /* min-height: 794px; */
+  /* max-height: calc(100vh - 200px); */
 }
 
 /* ── Chat list panel ─────────────────────── */
 .cnw-msg-list {
-  width: 320px;
-  min-width: 280px;
+  width: 377px;
+  min-width: 377px;
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
@@ -2641,12 +2646,13 @@ to   { opacity: 1; transform: translateY(0);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: var(--space-l) var(--space-m);
+  row-gap: var(--space-s);
 }
 .cnw-msg-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px 10px;
 }
 .cnw-msg-list-title {
   font-size: 18px;
@@ -2703,13 +2709,18 @@ to   { opacity: 1; transform: translateY(0);
   display: flex;
   gap: 8px;
   padding: 8px 18px 12px;
-  border-bottom: 1px solid var(--border);
 }
 .cnw-msg-contact-avatar {
+  position: relative;
   cursor: pointer;
   border-radius: 50%;
   border: 2px solid transparent;
   transition: border-color 0.15s;
+}
+.cnw-msg-contact-status {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 .cnw-msg-contact-avatar.active,
 .cnw-msg-contact-avatar:hover {
@@ -2717,30 +2728,44 @@ to   { opacity: 1; transform: translateY(0);
 }
 .cnw-msg-contact-avatar img {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   object-fit: cover;
   border-radius: 50%;
 }
 
 /* Conversations list */
 .cnw-msg-conversations {
-  flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-s);
 }
 .cnw-msg-conv-card {
   display: flex;
-  gap: 12px;
-  padding: 14px 18px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #fff;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.cnw-msg-conv-card:hover { background: #f8f9fa;
+.cnw-msg-conv-card:hover {
+  background: #f8f9fa;
+  box-shadow: var(--shadow-sm);
 }
 .cnw-msg-conv-card.active {
   background: var(--green-light);
-  border-left-color: var(--green);
+  border-color: var(--green);
+}
+.cnw-msg-conv-menu {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  padding: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 .cnw-msg-conv-avatar-wrap { position: relative; flex-shrink: 0;
 }
@@ -2773,12 +2798,6 @@ to   { opacity: 1; transform: translateY(0);
 .cnw-msg-conv-status-label {
   font-size: 11px;
   color: var(--text-light);
-}
-.cnw-msg-conv-menu {
-  background: none;
-  border: none;
-  color: var(--text-light);
-  padding: 2px;
 }
 .cnw-msg-conv-name {
   font-size: 14px;
@@ -3062,12 +3081,21 @@ to   { opacity: 1; transform: translateY(0);
   gap: 14px;
   align-items: center;
 }
+.cnw-user-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
 .cnw-user-avatar {
   width: 60px;
   height: 60px;
   border: 2px solid var(--teal-light);
   object-fit: cover;
   border-radius: 50%;
+}
+.cnw-user-status-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 .cnw-user-card-info { flex: 1; min-width: 0;
 }

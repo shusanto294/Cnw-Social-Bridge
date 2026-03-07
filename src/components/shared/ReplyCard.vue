@@ -220,11 +220,11 @@ export default {
       return !!(this.reply.is_anonymous && parseInt(this.reply.is_anonymous));
     },
     avatarUrl() {
-      return this.reply.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=30`;
+      return this.reply.author_avatar || window.cnwData?.defaultAvatar || '';
     },
     currentUserAvatar() {
       const d = window.cnwData;
-      return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
+      return d?.currentUser?.avatar || window.cnwData?.defaultAvatar || '';
     },
     isCurrentUserAnonymous() {
       return !!(window.cnwData?.currentUser?.anonymous);

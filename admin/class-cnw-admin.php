@@ -46,6 +46,7 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_bulk_categories',  array( $this, 'handle_bulk_categories' ) );
         add_action( 'admin_post_cnw_bulk_votes',       array( $this, 'handle_bulk_votes' ) );
         add_action( 'admin_post_cnw_bulk_reputation',  array( $this, 'handle_bulk_reputation' ) );
+        add_action( 'admin_post_cnw_create_user',          array( $this, 'handle_create_user' ) );
         add_action( 'admin_post_cnw_save_user',           array( $this, 'handle_save_user' ) );
         add_action( 'admin_post_cnw_delete_user',       array( $this, 'handle_delete_user' ) );
         add_action( 'admin_post_cnw_bulk_users',         array( $this, 'handle_bulk_users' ) );
@@ -221,7 +222,7 @@ class Cnw_Social_Bridge_Admin {
                     $('#cnw-avatar-remove').on('click',function(e){
                         e.preventDefault();
                         $('#cnw_avatar_url').val('');
-                        $('#cnw-avatar-preview').attr('src','" . esc_url( get_avatar_url( intval( $_GET['id'] ?? 0 ), array( 'size' => 150 ) ) ) . "');
+                        $('#cnw-avatar-preview').attr('src','" . esc_url( CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR ) . "');
                         $(this).hide();
                     });
                 });
@@ -688,6 +689,56 @@ class Cnw_Social_Bridge_Admin {
      * USER handlers
      * ------------------------------------------------------------------ */
 
+    public function handle_create_user() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_create_user' );
+
+        $user_login   = sanitize_user( $_POST['user_login'] ?? '' );
+        $user_email   = sanitize_email( $_POST['user_email'] ?? '' );
+        $display_name = sanitize_text_field( $_POST['display_name'] ?? '' );
+        $first_name   = sanitize_text_field( $_POST['first_name'] ?? '' );
+        $last_name    = sanitize_text_field( $_POST['last_name'] ?? '' );
+        $password     = $_POST['user_pass'] ?? '';
+        $password_confirm = $_POST['user_pass_confirm'] ?? '';
+        $role         = sanitize_text_field( $_POST['role'] ?? 'cnw_forum_member' );
+
+        if ( $password !== $password_confirm ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'add', 'msg' => 'error_password' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $user_id = wp_insert_user( array(
+            'user_login'   => $user_login,
+            'user_email'   => $user_email,
+            'user_pass'    => $password,
+            'display_name' => $display_name,
+            'first_name'   => $first_name,
+            'last_name'    => $last_name,
+            'role'         => $role,
+        ) );
+
+        if ( is_wp_error( $user_id ) ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'add', 'msg' => 'error_create' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        // Save CNW meta fields
+        $phone = sanitize_text_field( $_POST['cnw_phone'] ?? '' );
+        if ( $phone ) update_user_meta( $user_id, 'cnw_phone', $phone );
+
+        $verified_label = sanitize_text_field( $_POST['cnw_verified_label'] ?? '' );
+        if ( $verified_label ) update_user_meta( $user_id, 'cnw_verified_label', $verified_label );
+
+        $professional_title = sanitize_text_field( $_POST['cnw_professional_title'] ?? '' );
+        if ( $professional_title ) update_user_meta( $user_id, 'cnw_professional_title', $professional_title );
+
+        $avatar_url = esc_url_raw( $_POST['cnw_avatar_url'] ?? '' );
+        if ( $avatar_url ) update_user_meta( $user_id, 'cnw_avatar_url', $avatar_url );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $user_id, 'msg' => 'created' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
     public function handle_save_user() {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
         check_admin_referer( 'cnw_save_user' );
@@ -728,7 +779,21 @@ class Cnw_Social_Bridge_Admin {
             delete_user_meta( $id, 'cnw_avatar_url' );
         }
 
-        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $id, 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        // Password reset
+        $new_password = $_POST['new_password'] ?? '';
+        $new_password_confirm = $_POST['new_password_confirm'] ?? '';
+        $redirect_msg = 'saved';
+
+        if ( ! empty( $new_password ) ) {
+            if ( $new_password !== $new_password_confirm ) {
+                wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $id, 'msg' => 'error_password' ), admin_url( 'admin.php' ) ) );
+                exit;
+            }
+            wp_set_password( $new_password, $id );
+            $redirect_msg = 'password_updated';
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $id, 'msg' => $redirect_msg ), admin_url( 'admin.php' ) ) );
         exit;
     }
 

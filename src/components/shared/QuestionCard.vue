@@ -232,11 +232,11 @@ export default {
   },
   computed: {
     avatarUrl() {
-      return this.thread.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=34`;
+      return this.thread.author_avatar || window.cnwData?.defaultAvatar || '';
     },
     currentUserAvatar() {
       const d = window.cnwData;
-      return d?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
+      return d?.currentUser?.avatar || window.cnwData?.defaultAvatar || '';
     },
     isCurrentUserAnonymous() {
       return !!(window.cnwData?.currentUser?.anonymous);

@@ -13,6 +13,29 @@ class Cnw_Social_Bridge_REST_API {
 
     public function __construct() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+        add_action( 'rest_api_init', array( $this, 'record_last_active' ) );
+    }
+
+    /**
+     * Record a last-active timestamp for the current user on every REST request.
+     */
+    public function record_last_active() {
+        $user_id = get_current_user_id();
+        if ( $user_id ) {
+            update_user_meta( $user_id, 'cnw_last_active', current_time( 'mysql', true ) );
+        }
+    }
+
+    /**
+     * Check if a user was active within the last 5 minutes.
+     */
+    private function is_user_online( $user_id ) {
+        $last = get_user_meta( $user_id, 'cnw_last_active', true );
+        if ( ! $last ) {
+            return false;
+        }
+        $diff = time() - strtotime( $last );
+        return $diff < 60; // 1 minute
     }
 
     /* ------------------------------------------------------------------
@@ -393,7 +416,7 @@ class Cnw_Social_Bridge_REST_API {
             ) );
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
-                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+                $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
                 $thread->author_reputation = 0;
             } else {
                 $thread->author_avatar     = $this->get_user_avatar( (int) $thread->author_id, 80 );
@@ -449,7 +472,7 @@ class Cnw_Social_Bridge_REST_API {
 
         if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
             $thread->author_name       = 'Anonymous';
-            $thread->author_avatar     = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+            $thread->author_avatar     = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             $thread->author_reputation = 0;
         } else {
             $thread->author_avatar     = $this->get_user_avatar( (int) $thread->author_id, 80 );
@@ -649,7 +672,7 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( $replies as &$reply ) {
             if ( ! empty( $reply->is_anonymous ) && (int) $reply->is_anonymous === 1 ) {
                 $reply->author_name       = 'Anonymous';
-                $reply->author_avatar     = get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
+                $reply->author_avatar     = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
                 $reply->author_id         = 0;
                 $reply->author_reputation = 0;
             } else {
@@ -1085,8 +1108,9 @@ class Cnw_Social_Bridge_REST_API {
 
         foreach ( $rows as &$row ) {
             if ( empty( $row->other_avatar ) ) {
-                $row->other_avatar = get_avatar_url( $row->other_user_id, array( 'size' => 80 ) );
+                $row->other_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             }
+            $row->is_online = $this->is_user_online( $row->other_user_id );
         }
 
         return $rows;
@@ -1119,12 +1143,12 @@ class Cnw_Social_Bridge_REST_API {
 
         foreach ( $messages as &$msg ) {
             if ( empty( $msg->sender_avatar ) ) {
-                $msg->sender_avatar = get_avatar_url( $msg->sender_id, array( 'size' => 80 ) );
+                $msg->sender_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             }
         }
 
         $other_user = get_userdata( $other );
-        $other_avatar = get_user_meta( $other, 'cnw_avatar_url', true ) ?: get_avatar_url( $other, array( 'size' => 80 ) );
+        $other_avatar = get_user_meta( $other, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
         $other_label  = get_user_meta( $other, 'cnw_verified_label', true );
 
         return array(
@@ -1862,7 +1886,7 @@ class Cnw_Social_Bridge_REST_API {
             ) );
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
-                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+                $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             } else {
                 $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
             }
@@ -1900,7 +1924,7 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( $threads as &$thread ) {
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
-                $thread->author_avatar = get_avatar_url( 0, array( 'size' => 80, 'default' => 'mystery' ) );
+                $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             } else {
                 $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
             }
@@ -1946,7 +1970,7 @@ class Cnw_Social_Bridge_REST_API {
         $users = array();
 
         foreach ( $query->get_results() as $u ) {
-            $avatar = get_user_meta( $u->ID, 'cnw_avatar_url', true ) ?: get_avatar_url( $u->ID, array( 'size' => 80 ) );
+            $avatar = get_user_meta( $u->ID, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             $reputation = (int) get_user_meta( $u->ID, 'cnw_reputation_total', true );
 
             $thread_count = (int) $wpdb->get_var( $wpdb->prepare(
@@ -1966,6 +1990,7 @@ class Cnw_Social_Bridge_REST_API {
                 'thread_count'       => $thread_count,
                 'reply_count'        => $reply_count,
                 'user_registered'    => $u->user_registered,
+                'is_online'          => $this->is_user_online( $u->ID ),
             );
         }
 
@@ -2157,7 +2182,7 @@ class Cnw_Social_Bridge_REST_API {
         if ( $custom ) {
             return $custom;
         }
-        return get_avatar_url( $user_id, array( 'size' => $size ) );
+        return CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
     }
 
     public function upload_avatar( WP_REST_Request $request ) {
@@ -2238,7 +2263,7 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( $notifications as &$n ) {
             $n->actor_avatar = $n->actor_id
                 ? $this->get_user_avatar( (int) $n->actor_id, 40 )
-                : get_avatar_url( 0, array( 'size' => 40, 'default' => 'mystery' ) );
+                : CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
         }
 
         $total = (int) $wpdb->get_var( $wpdb->prepare(

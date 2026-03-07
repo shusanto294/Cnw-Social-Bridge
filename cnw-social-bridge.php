@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.1.0' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
 
 // ── Includes ─────────────────────────────────────────────────────────────────
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/class-cnw-admin.php';
@@ -359,12 +360,13 @@ class Cnw_Social_Bridge {
             'nonce'       => wp_create_nonce( 'wp_rest' ),
             'logoUrl'       => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
             'mobileLogoUrl' => esc_url( get_option( 'cnw_social_mobile_logo_url', '' ) ),
+            'defaultAvatar' => CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
             'currentUser' => array(
                 'id'         => get_current_user_id(),
                 'name'       => $current_user->display_name,
                 'first_name' => get_user_meta( get_current_user_id(), 'first_name', true ),
                 'last_name'  => get_user_meta( get_current_user_id(), 'last_name', true ),
-                'avatar'     => get_user_meta( get_current_user_id(), 'cnw_avatar_url', true ) ?: get_avatar_url( get_current_user_id(), array( 'size' => 80 ) ),
+                'avatar'     => get_user_meta( get_current_user_id(), 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
                 'reputation' => (int) get_user_meta( get_current_user_id(), 'cnw_reputation_total', true ),
                 'anonymous'  => (bool) get_user_meta( get_current_user_id(), 'cnw_anonymous', true ),
             ),

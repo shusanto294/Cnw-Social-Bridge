@@ -34,13 +34,16 @@
       <!-- Recent contacts row -->
       <div v-if="conversations.length" class="cnw-msg-contacts-row">
         <div
-          v-for="conv in conversations.slice(0, 6)"
+          v-for="conv in conversations.slice(0, 5)"
           :key="'avatar-' + conv.other_user_id"
           class="cnw-msg-contact-avatar"
           :class="{ active: activeUserId === Number(conv.other_user_id) }"
           @click="openConversation(conv)"
         >
-          <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="40" height="40" />
+          <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="50" height="50" />
+          <svg class="cnw-msg-contact-status" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
+            <circle cx="4" cy="4" r="4" :fill="conv.is_online ? '#82E71D' : '#B0B0B0'" />
+          </svg>
         </div>
       </div>
 
@@ -56,16 +59,16 @@
           :class="{ active: activeUserId === Number(conv.other_user_id) }"
           @click="openConversation(conv)"
         >
+          <button class="cnw-msg-conv-menu" @click.stop>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
           <div class="cnw-msg-conv-avatar-wrap">
             <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="44" height="44" />
-            <span class="cnw-msg-status-dot" :class="conv.unread_count > 0 ? 'online' : 'offline'"></span>
+            <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
           </div>
           <div class="cnw-msg-conv-body">
             <div class="cnw-msg-conv-top">
-              <span class="cnw-msg-conv-status-label">{{ conv.unread_count > 0 ? 'Online' : 'Offline' }}</span>
-              <button class="cnw-msg-conv-menu" @click.stop>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-              </button>
+              <span class="cnw-msg-conv-status-label">{{ conv.is_online ? 'Online' : 'Offline' }}</span>
             </div>
             <div class="cnw-msg-conv-name">{{ conv.other_name }}</div>
             <p class="cnw-msg-conv-preview">{{ truncate(conv.last_message, 60) }}</p>
@@ -297,17 +300,24 @@ export default {
 </script>
 
 <style>
+
+.cnw-social-worker-main{
+  background: transparent;
+  padding: 0;
+}
+
 .cnw-msg {
   display: flex;
   gap: 0;
-  min-height: 500px;
-  max-height: calc(100vh - 200px);
+  height: 100%;
+  /* min-height: 794px; */
+  /* max-height: calc(100vh - 200px); */
 }
 
 /* ── Chat list panel ─────────────────────── */
 .cnw-msg-list {
-  width: 320px;
-  min-width: 280px;
+  width: 377px;
+  min-width: 377px;
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
@@ -315,12 +325,13 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: var(--space-l) var(--space-m);
+  row-gap: var(--space-s);
 }
 .cnw-msg-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px 10px;
 }
 .cnw-msg-list-title {
   font-size: 18px;
@@ -373,13 +384,18 @@ export default {
   display: flex;
   gap: 8px;
   padding: 8px 18px 12px;
-  border-bottom: 1px solid var(--border);
 }
 .cnw-msg-contact-avatar {
+  position: relative;
   cursor: pointer;
   border-radius: 50%;
   border: 2px solid transparent;
   transition: border-color 0.15s;
+}
+.cnw-msg-contact-status {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 .cnw-msg-contact-avatar.active,
 .cnw-msg-contact-avatar:hover {
@@ -387,29 +403,44 @@ export default {
 }
 .cnw-msg-contact-avatar img {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   object-fit: cover;
   border-radius: 50%;
 }
 
 /* Conversations list */
 .cnw-msg-conversations {
-  flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-s);
 }
 .cnw-msg-conv-card {
   display: flex;
-  gap: 12px;
-  padding: 14px 18px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #fff;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.cnw-msg-conv-card:hover { background: #f8f9fa; }
+.cnw-msg-conv-card:hover {
+  background: #f8f9fa;
+  box-shadow: var(--shadow-sm);
+}
 .cnw-msg-conv-card.active {
   background: var(--green-light);
-  border-left-color: var(--green);
+  border-color: var(--green);
+}
+.cnw-msg-conv-menu {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  padding: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 .cnw-msg-conv-avatar-wrap { position: relative; flex-shrink: 0; }
 
@@ -440,12 +471,6 @@ export default {
 .cnw-msg-conv-status-label {
   font-size: 11px;
   color: var(--text-light);
-}
-.cnw-msg-conv-menu {
-  background: none;
-  border: none;
-  color: var(--text-light);
-  padding: 2px;
 }
 .cnw-msg-conv-name {
   font-size: 14px;

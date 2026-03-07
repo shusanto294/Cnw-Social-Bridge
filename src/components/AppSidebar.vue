@@ -210,7 +210,7 @@ export default {
 data() {
     return {
       currentUser: window.cnwData?.currentUser || { name: '', first_name: '', last_name: '', avatar: '' },
-      defaultAvatar: 'https://www.gravatar.com/avatar/?d=mp&s=72',
+      defaultAvatar: window.cnwData?.defaultAvatar || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
   },

@@ -247,10 +247,10 @@ export default {
   },
   computed: {
     avatarUrl() {
-      return this.thread?.author_avatar || `https://www.gravatar.com/avatar/?d=mp&s=34`;
+      return this.thread?.author_avatar || window.cnwData?.defaultAvatar || '';
     },
     currentUserAvatar() {
-      return window.cnwData?.currentUser?.avatar || 'https://www.gravatar.com/avatar/?d=mp&s=30';
+      return window.cnwData?.currentUser?.avatar || window.cnwData?.defaultAvatar || '';
     },
     isCurrentUserAnonymous() {
       return !!(window.cnwData?.currentUser?.anonymous);
