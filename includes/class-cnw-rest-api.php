@@ -97,6 +97,12 @@ class Cnw_Social_Bridge_REST_API {
             'methods' => 'POST', 'callback' => array( $this, 'mark_conversation_read' ), 'permission_callback' => array( $this, 'can_send_message' ),
         ) );
 
+        // ── Typing indicator ──────────────────────────────────────────
+        register_rest_route( $ns, '/typing/(?P<user_id>\d+)', array(
+            array( 'methods' => 'POST', 'callback' => array( $this, 'set_typing' ), 'permission_callback' => array( $this, 'can_send_message' ) ),
+            array( 'methods' => 'GET',  'callback' => array( $this, 'get_typing' ),  'permission_callback' => array( $this, 'can_send_message' ) ),
+        ) );
+
         // ── Categories ───────────────────────────────────────────────
         register_rest_route( $ns, '/categories', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_categories' ),  'permission_callback' => '__return_true' ),
@@ -1175,6 +1181,33 @@ class Cnw_Social_Bridge_REST_API {
         ) );
 
         return array( 'success' => true );
+    }
+
+    /**
+     * Set typing status for the current user in a conversation.
+     * Stores a transient that expires after 5 seconds.
+     */
+    public function set_typing( WP_REST_Request $request ) {
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $key   = 'cnw_typing_' . $me . '_' . $other;
+
+        set_transient( $key, time(), 5 );
+
+        return array( 'success' => true );
+    }
+
+    /**
+     * Check if the other user is currently typing to the current user.
+     */
+    public function get_typing( WP_REST_Request $request ) {
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $key   = 'cnw_typing_' . $other . '_' . $me;
+
+        $typing_at = get_transient( $key );
+
+        return array( 'is_typing' => $typing_at !== false );
     }
 
     /* ==================================================================

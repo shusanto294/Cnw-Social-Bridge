@@ -352,6 +352,16 @@ export async function markConversationRead(userId) {
   return res.json();
 }
 
+export async function setTyping(userId) {
+  const url = await apiUrl(`/typing/${userId}`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function getTyping(userId) {
+  return apiFetch(`/typing/${userId}`);
+}
+
 export async function submitReport({ type, subject, link, description, priority }) {
   const url = await apiUrl('/reports');
   const res = await fetch(url, {

@@ -69,9 +69,16 @@
           @click="openConversation(conv)"
         >
 
-          <div class="cnw-msg-conv-avatar-wrap">
-            <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="44" height="44" />
-            <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
+          <div class="cnw-msg-conv-avatar-col">
+            <div class="cnw-msg-conv-avatar-wrap">
+              <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="44" height="44" />
+              <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
+            </div>
+            <div class="cnw-msg-avatar-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
           <div class="cnw-msg-conv-body">
             <div class="cnw-msg-conv-top">
@@ -129,40 +136,58 @@
             class="cnw-msg-bubble-wrap"
             :class="{ mine: Number(msg.sender_id) === currentUserId }"
           >
-
-            <div class="cnw-msg-bubble">
-              <div class="cnw-msg-bubble-iamge">
-                <img
-                  v-if="Number(msg.sender_id) !== currentUserId"
-                  :src="msg.sender_avatar"
-                  :alt="msg.sender_name"
-                  class="cnw-social-worker-avatar cnw-msg-bubble-avatar"
-                  width="36"
-                  height="36"
-                />
-              </div>
-              <div class="cnw-msg-bubble-text">
-                <div class="cnw-msg-bubble-header">
-                  <span class="cnw-msg-bubble-status">{{ Number(msg.sender_id) === currentUserId ? '' : 'Online' }}</span>
-                  <span class="cnw-msg-bubble-name">{{ msg.sender_name }}</span>
+            <div class="cnw-msg-bubble-card">
+              <template v-if="Number(msg.sender_id) !== currentUserId">
+                <div class="cnw-msg-conv-avatar-wrap">
+                  <img
+                    :src="msg.sender_avatar"
+                    :alt="msg.sender_name"
+                    class="cnw-social-worker-avatar"
+                    width="34"
+                    height="34"
+                  />
+                  <span class="cnw-msg-status-dot online"></span>
                 </div>
-                <p class="cnw-msg-bubble-text">{{ msg.content }}</p>
-                <span class="cnw-msg-bubble-time">{{ formatTime(msg.created_at) }}</span>
+              </template>
+              <div class="cnw-msg-conv-body">
+                <template v-if="Number(msg.sender_id) !== currentUserId">
+                  <div class="cnw-msg-conv-top">
+                    <span class="cnw-msg-conv-status-label">Online</span>
+                  </div>
+                  <div class="cnw-msg-conv-name">{{ msg.sender_name }}</div>
+                </template>
+                <p class="cnw-msg-conv-preview">{{ msg.content }}</p>
+                <div class="cnw-msg-conv-meta">
+                  <span class="cnw-msg-conv-time">{{ formatTime(msg.created_at) }}</span>
+                  <span v-if="Number(msg.sender_id) !== currentUserId" class="cnw-msg-conv-read-badge read">Read</span>
+                </div>
               </div>
             </div>
+          </div>
+
+          <!-- Typing indicator -->
+          <div v-if="otherUserTyping" class="cnw-msg-typing-indicator">
+            <div class="cnw-msg-typing-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span class="cnw-msg-typing-label">{{ otherUser.name }} is typing</span>
           </div>
         </div>
 
         <!-- Input -->
         <div class="cnw-msg-input-bar">
-          <input
+          <textarea
             v-model="newMessage"
-            @keyup.enter="sendMsg"
-            type="text"
+            @keydown.enter.exact.prevent="sendMsg"
+            @input="onTyping"
             placeholder="Write Message:"
             class="cnw-msg-input"
-          />
-          <button class="cnw-msg-send-btn" :disabled="!newMessage.trim() || sending" @click="sendMsg">Send</button>
+            name="message"
+          ></textarea>
+          <!-- <button class="cnw-msg-send-btn" :disabled="!newMessage.trim() || sending" @click="sendMsg">Send</button> -->
+          <button class="cnw-msg-send-btn" @click="sendMsg">Send</button>
         </div>
       </template>
 
@@ -175,7 +200,7 @@
 </template>
 
 <script>
-import { getConversations, getConversation, sendMessage, markConversationRead, getUser } from '@/api';
+import { getConversations, getConversation, sendMessage, markConversationRead, getUser, setTyping, getTyping } from '@/api';
 
 export default {
   name: 'MessagesView',
@@ -195,6 +220,9 @@ export default {
       searchTimeout: null,
       currentUserId: window.cnwData?.currentUser?.id || 0,
       pollInterval: null,
+      otherUserTyping: false,
+      typingTimeout: null,
+      typingPollInterval: null,
     };
   },
   async mounted() {
@@ -204,10 +232,14 @@ export default {
       if (e.detail) this.startConversation(e.detail);
     };
     window.addEventListener('cnw-start-chat', this._startChatHandler);
+    this.syncHeightWithSidebar();
   },
   beforeUnmount() {
     if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.typingPollInterval) clearInterval(this.typingPollInterval);
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
     window.removeEventListener('cnw-start-chat', this._startChatHandler);
+    if (this._sidebarObserver) this._sidebarObserver.disconnect();
   },
   methods: {
     async loadConversations() {
@@ -231,6 +263,7 @@ export default {
         await markConversationRead(this.activeUserId);
         conv.unread_count = 0;
       }
+      this.startTypingPoll();
     },
     async startConversation(user) {
       this.showNewChat = false;
@@ -244,6 +277,7 @@ export default {
         verified_label: user.verified_label || '',
       };
       await this.loadMessages();
+      this.startTypingPoll();
     },
     async loadMessages() {
       this.loadingMessages = true;
@@ -282,6 +316,29 @@ export default {
         if (Array.isArray(data)) this.conversations = data;
       } catch { /* silent */ }
     },
+    onTyping() {
+      if (!this.activeUserId) return;
+      if (this.typingTimeout) return; // throttle: only send once every 3s
+      setTyping(this.activeUserId).catch(() => {});
+      this.typingTimeout = setTimeout(() => { this.typingTimeout = null; }, 3000);
+    },
+    startTypingPoll() {
+      if (this.typingPollInterval) clearInterval(this.typingPollInterval);
+      this.otherUserTyping = false;
+      this.typingPollInterval = setInterval(() => this.checkTyping(), 3000);
+    },
+    async checkTyping() {
+      if (!this.activeUserId) return;
+      try {
+        const data = await getTyping(this.activeUserId);
+        this.otherUserTyping = !!data.is_typing;
+        if (this.otherUserTyping) {
+          this.$nextTick(() => this.scrollToBottom());
+        }
+      } catch {
+        this.otherUserTyping = false;
+      }
+    },
     scrollToBottom() {
       const el = this.$refs.messagesContainer;
       if (el) el.scrollTop = el.scrollHeight;
@@ -317,6 +374,18 @@ export default {
       if (!str) return '';
       return str.length > len ? str.substring(0, len) + '..' : str;
     },
+    syncHeightWithSidebar() {
+      const sidebar = document.querySelector('.cnw-social-worker-sidebar');
+      const msgEl = this.$el;
+      if (!sidebar || !msgEl) return;
+      const applyHeight = () => {
+        const h = sidebar.offsetHeight;
+        if (h > 0) msgEl.style.maxHeight = h + 'px';
+      };
+      applyHeight();
+      this._sidebarObserver = new ResizeObserver(applyHeight);
+      this._sidebarObserver.observe(sidebar);
+    },
   },
 };
 </script>
@@ -332,8 +401,7 @@ export default {
   display: flex;
   gap: 0;
   height: 100%;
-  /* min-height: 794px; */
-  /* max-height: calc(100vh - 200px); */
+  overflow: hidden;
 }
 
 /* ── Chat list panel ─────────────────────── */
@@ -433,6 +501,9 @@ export default {
   display: flex;
   flex-direction: column;
   row-gap: var(--space-s);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .cnw-msg-conv-card {
   display: flex;
@@ -463,6 +534,28 @@ export default {
   padding: 2px;
   flex-shrink: 0;
   margin-top: 2px;
+}
+.cnw-msg-conv-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.cnw-msg-avatar-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 5px;
+}
+.cnw-msg-avatar-dots span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #414141;
+}
+.cnw-msg-conv-card.active .cnw-msg-avatar-dots span {
+  background: #fff;
 }
 .cnw-msg-conv-avatar-wrap { position: relative; flex-shrink: 0; }
 
@@ -536,13 +629,16 @@ export default {
   flex-direction: column;
   overflow: hidden;
   margin-left: 16px;
+  padding: var(--space-l);
 }
 .cnw-msg-detail-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-s);
+  border-bottom: 1px solid var(--primary);
+  margin-bottom: var(--space-s);
+
 }
 .cnw-msg-detail-header img {
   width: 44px;
@@ -567,97 +663,71 @@ export default {
 .cnw-msg-detail-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 .cnw-msg-bubble-wrap {
   display: flex;
-  gap: 10px;
   max-width: 75%;
 }
 .cnw-msg-bubble-wrap.mine {
   margin-left: auto;
-  flex-direction: row-reverse;
 }
-.cnw-msg-bubble-avatar {
-  flex-shrink: 0;
-  margin-top: 4px;
-  width: 36px;
-  height: 36px;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.cnw-msg-bubble {
-  background: var(--secondary);
-  color: #fff;
-  border-radius: 12px;
-  padding: 12px 16px;
-  position: relative;
-}
-.cnw-msg-bubble-wrap.mine .cnw-msg-bubble {
-  background: var(--primary);
-}
-.cnw-msg-bubble-header {
+.cnw-msg-bubble-card {
   display: flex;
-  flex-direction: column;
-  margin-bottom: 4px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--secondary);
+  background: var(--secondary);
+  width: 100%;
 }
-.cnw-msg-bubble-status {
-  font-size: 11px;
-  opacity: 0.8;
+.cnw-msg-bubble-card * {
+  color: var(--light);
 }
-.cnw-msg-bubble-name {
-  font-size: 13px;
-  font-weight: 600;
+.cnw-msg-bubble-wrap.mine .cnw-msg-bubble-card {
+  background: var(--primary);
+  border-color: var(--primary);
 }
-.cnw-msg-bubble-wrap.mine .cnw-msg-bubble-header { display: none; }
-.cnw-msg-bubble-text {
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0;
-}
-.cnw-msg-bubble-time {
-  display: block;
-  font-size: 11px;
-  opacity: 0.75;
-  text-align: right;
-  margin-top: 6px;
+.cnw-msg-bubble-card .cnw-msg-conv-preview {
+  white-space: normal;
 }
 
 /* Input bar */
 .cnw-msg-input-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border);
+  position: relative;
+  margin-top: var(--space-s);
 }
 .cnw-msg-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid var(--border);
+  border: none;
+  outline: none;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-family: inherit;
-  outline: none;
   resize: none;
+  background: #F7F7F7;
+  height: 137px;
 }
-.cnw-msg-input:focus { border-color: var(--teal); }
+.cnw-msg-input:focus { border: none; outline: none; }
 .cnw-msg-send-btn {
-  align-self: flex-end;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
   padding: 8px 24px;
-  background: var(--green);
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 2px;
+  font-size: var(--text-xs);
+  font-weight: 300;
   cursor: pointer;
   transition: background 0.15s;
 }
-.cnw-msg-send-btn:hover { background: var(--green-dark); }
+.cnw-msg-send-btn:hover { background: var(--secondary); }
 .cnw-msg-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Empty & loading states */
@@ -685,6 +755,49 @@ export default {
   text-align: center;
   color: var(--text-light);
   font-size: 13px;
+}
+
+/* Typing indicator */
+.cnw-msg-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+.cnw-msg-typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cnw-msg-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #999;
+  animation: cnw-typing-bounce 1.4s infinite ease-in-out both;
+}
+.cnw-msg-typing-dots span:nth-child(1) { animation-delay: 0s; }
+.cnw-msg-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.cnw-msg-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cnw-typing-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.cnw-msg-typing-label {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Hide scrollbars but keep scrolling */
+.cnw-msg-conversations,
+.cnw-msg-detail-messages {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.cnw-msg-conversations::-webkit-scrollbar,
+.cnw-msg-detail-messages::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 /* Responsive */
