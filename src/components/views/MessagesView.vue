@@ -5,7 +5,18 @@
       <div class="cnw-msg-list-header">
         <h2 class="cnw-msg-list-title">Chats</h2>
         <button class="cnw-msg-compose-btn" @click="showNewChat = !showNewChat" title="New message">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <g clip-path="url(#clip0_20106_16335)">
+              <path d="M13.0938 6.94365L13.0844 6.93428L9.05317 2.8999C9.05317 2.8999 4.14067 7.8124 1.77192 10.2312C1.47817 10.5312 1.25317 10.9499 1.12192 11.3562C0.734418 12.5437 0.412543 13.7562 0.0531678 14.953C-0.0437072 15.2749 -0.0249572 15.5593 0.228168 15.7968C0.465668 16.0218 0.734418 16.0343 1.04067 15.9405C2.18442 15.5968 3.33442 15.2718 4.48129 14.9437C5.08442 14.7718 5.59067 14.453 6.03442 14.0062C8.29067 11.7405 13.0938 6.94365 13.0938 6.94365Z" fill="#414141"/>
+              <path d="M15.4466 1.93125L14.0685 0.553125C13.331 -0.184375 12.1403 -0.184375 11.4028 0.553125L9.84033 2.11563L13.8841 6.15938L15.4466 4.59688C16.1841 3.8625 16.1841 2.66875 15.4466 1.93125Z" fill="#414141"/>
+              <path d="M7.20625 14.3062H15.1531C15.6219 14.3062 16 14.6843 16 15.153C16 15.6218 15.6219 15.9999 15.1531 15.9999H7.20625C6.7375 15.9999 6.35938 15.6218 6.35938 15.153C6.3625 14.6843 6.74063 14.3062 7.20625 14.3062Z" fill="#414141"/>
+            </g>
+            <defs>
+              <clipPath id="clip0_20106_16335">
+                <rect width="16" height="16" fill="white"/>
+              </clipPath>
+            </defs>
+          </svg>
         </button>
       </div>
 
@@ -41,9 +52,7 @@
           @click="openConversation(conv)"
         >
           <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="50" height="50" />
-          <svg class="cnw-msg-contact-status" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <circle cx="4" cy="4" r="4" :fill="conv.is_online ? '#82E71D' : '#B0B0B0'" />
-          </svg>
+          <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
         </div>
       </div>
 
@@ -59,9 +68,7 @@
           :class="{ active: activeUserId === Number(conv.other_user_id) }"
           @click="openConversation(conv)"
         >
-          <button class="cnw-msg-conv-menu" @click.stop>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-          </button>
+
           <div class="cnw-msg-conv-avatar-wrap">
             <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="44" height="44" />
             <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
@@ -96,7 +103,17 @@
           <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar" width="44" height="44" />
           <div>
             <div class="cnw-msg-detail-label" v-if="otherUser.verified_label">
-              <span class="cnw-social-worker-verified">&#10003;</span>
+              <!-- <span class="cnw-social-worker-verified">&#10003;</span> -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <g clip-path="url(#clip0_20103_14626)">
+                  <path d="M7 0.4375C3.3775 0.4375 0.4375 3.3775 0.4375 7C0.4375 10.6225 3.3775 13.5625 7 13.5625C10.6225 13.5625 13.5625 10.6225 13.5625 7C13.5625 3.3775 10.6225 0.4375 7 0.4375ZM10.2812 5.8275L7.21875 9.3275C7.04812 9.52437 6.8075 9.625 6.5625 9.625C6.37 9.625 6.1775 9.56375 6.01562 9.4325L3.82812 7.6825C3.41434 7.35048 3.38153 6.71685 3.79378 6.34611C4.11801 6.05452 4.61983 6.07587 4.96038 6.3483L6.29226 7.41379C6.38225 7.48576 6.51293 7.47421 6.58892 7.38758L8.96875 4.6725C9.28375 4.30938 9.83937 4.27437 10.2025 4.59375C10.5656 4.90875 10.6006 5.46438 10.2812 5.8275Z" fill="#2C96FF"/>
+                </g>
+                <defs>
+                  <clipPath id="clip0_20103_14626">
+                    <rect width="14" height="14" fill="white"/>
+                  </clipPath>
+                </defs>
+              </svg>
               <span>{{ otherUser.verified_label }}</span>
             </div>
             <div class="cnw-msg-detail-name">{{ otherUser.name }}</div>
@@ -112,21 +129,26 @@
             class="cnw-msg-bubble-wrap"
             :class="{ mine: Number(msg.sender_id) === currentUserId }"
           >
-            <img
-              v-if="Number(msg.sender_id) !== currentUserId"
-              :src="msg.sender_avatar"
-              :alt="msg.sender_name"
-              class="cnw-social-worker-avatar cnw-msg-bubble-avatar"
-              width="36"
-              height="36"
-            />
+
             <div class="cnw-msg-bubble">
-              <div class="cnw-msg-bubble-header">
-                <span class="cnw-msg-bubble-status">{{ Number(msg.sender_id) === currentUserId ? '' : 'Online' }}</span>
-                <span class="cnw-msg-bubble-name">{{ msg.sender_name }}</span>
+              <div class="cnw-msg-bubble-iamge">
+                <img
+                  v-if="Number(msg.sender_id) !== currentUserId"
+                  :src="msg.sender_avatar"
+                  :alt="msg.sender_name"
+                  class="cnw-social-worker-avatar cnw-msg-bubble-avatar"
+                  width="36"
+                  height="36"
+                />
               </div>
-              <p class="cnw-msg-bubble-text">{{ msg.content }}</p>
-              <span class="cnw-msg-bubble-time">{{ formatTime(msg.created_at) }}</span>
+              <div class="cnw-msg-bubble-text">
+                <div class="cnw-msg-bubble-header">
+                  <span class="cnw-msg-bubble-status">{{ Number(msg.sender_id) === currentUserId ? '' : 'Online' }}</span>
+                  <span class="cnw-msg-bubble-name">{{ msg.sender_name }}</span>
+                </div>
+                <p class="cnw-msg-bubble-text">{{ msg.content }}</p>
+                <span class="cnw-msg-bubble-time">{{ formatTime(msg.created_at) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -321,7 +343,6 @@ export default {
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -335,7 +356,7 @@ export default {
 }
 .cnw-msg-list-title {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-dark);
 }
 .cnw-msg-compose-btn {
@@ -382,20 +403,18 @@ export default {
 /* Contacts row */
 .cnw-msg-contacts-row {
   display: flex;
-  gap: 8px;
-  padding: 8px 18px 12px;
+  justify-content: space-between;
 }
 .cnw-msg-contact-avatar {
   position: relative;
   cursor: pointer;
   border-radius: 50%;
-  border: 2px solid transparent;
   transition: border-color 0.15s;
 }
 .cnw-msg-contact-status {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 2px;
+  right: 2px;
 }
 .cnw-msg-contact-avatar.active,
 .cnw-msg-contact-avatar:hover {
@@ -422,7 +441,7 @@ export default {
   padding: 14px;
   cursor: pointer;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--primary);
   background: #fff;
   transition: background 0.15s, box-shadow 0.15s;
 }
@@ -431,8 +450,11 @@ export default {
   box-shadow: var(--shadow-sm);
 }
 .cnw-msg-conv-card.active {
-  background: var(--green-light);
-  border-color: var(--green);
+  background: var(--primary);
+}
+
+.cnw-msg-conv-card.active *{
+  color: var(--light);
 }
 .cnw-msg-conv-menu {
   background: none;
@@ -445,20 +467,25 @@ export default {
 .cnw-msg-conv-avatar-wrap { position: relative; flex-shrink: 0; }
 
 .cnw-msg-conv-avatar-wrap img{
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
 }
 .cnw-msg-status-dot {
   position: absolute;
-  bottom: 1px;
-  right: 1px;
-  width: 10px;
-  height: 10px;
+  top: 0px;
+  right: 0px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 2px solid #fff;
 }
+
+.cnw-msg-contacts-row .cnw-msg-status-dot {
+  top: 3px;
+  right: 3px;
+}
+
 .cnw-msg-status-dot.online { background: var(--green); }
 .cnw-msg-status-dot.offline { background: #aaa; }
 
@@ -469,40 +496,35 @@ export default {
   align-items: center;
 }
 .cnw-msg-conv-status-label {
-  font-size: 11px;
-  color: var(--text-light);
+  font-size: var(--text-xs);
+  color: #999999;
+  font-weight: 300;
 }
 .cnw-msg-conv-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
+  font-size: var(--text-m);
+  font-weight: 300;
+  color: #414141;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cnw-msg-conv-preview {
-  font-size: 12px;
-  color: var(--text-med);
-  margin: 3px 0;
+  font-size: var(--text-xs);
+  color: #999999;
+  margin: 10px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cnw-msg-conv-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
+  column-gap: 14px;
+  font-size: var(--text-xs);
+  color: #999999;
+  font-weight: 300;
 }
-.cnw-msg-conv-time {
-  font-size: 11px;
-  color: var(--text-light);
-}
-.cnw-msg-conv-read-badge {
-  font-size: 11px;
-  font-weight: 600;
-}
-.cnw-msg-conv-read-badge.read { color: var(--text-light); }
-.cnw-msg-conv-read-badge.unread { color: var(--green); }
+
 
 /* ── Chat detail panel ───────────────────── */
 .cnw-msg-detail {
@@ -510,7 +532,6 @@ export default {
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -569,14 +590,14 @@ export default {
   border-radius: 50%;
 }
 .cnw-msg-bubble {
-  background: var(--green);
+  background: var(--secondary);
   color: #fff;
   border-radius: 12px;
   padding: 12px 16px;
   position: relative;
 }
 .cnw-msg-bubble-wrap.mine .cnw-msg-bubble {
-  background: var(--teal);
+  background: var(--primary);
 }
 .cnw-msg-bubble-header {
   display: flex;

@@ -330,7 +330,7 @@ class Cnw_Social_Bridge {
         // Google Fonts — Poppins
         wp_enqueue_style(
             'cnw-poppins',
-            'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
+            'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
             array(),
             null
         );
