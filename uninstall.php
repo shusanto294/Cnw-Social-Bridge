@@ -47,6 +47,12 @@ $options = array(
     'cnw_social_mobile_logo_url',
     'cnw_community_guidelines',
     'cnw_community_guidelines_html',
+    'cnw_pusher_host',
+    'cnw_pusher_port',
+    'cnw_pusher_cluster',
+    'cnw_pusher_app_id',
+    'cnw_pusher_key',
+    'cnw_pusher_secret',
 );
 
 foreach ( $options as $option ) {
@@ -65,6 +71,7 @@ $meta_keys = array(
     'cnw_reputation_total',
     'cnw_verified_label',
     'cnw_professional_title',
+    'cnw_is_online',
 );
 
 foreach ( $meta_keys as $key ) {

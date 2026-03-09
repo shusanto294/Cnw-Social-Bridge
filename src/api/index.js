@@ -328,16 +328,18 @@ export async function uploadAvatar(file) {
   return res.json();
 }
 
-export async function getConversations() {
-  return apiFetch('/conversations');
+export async function getConversations({ page = 1 } = {}) {
+  return apiFetch('/conversations', { page });
 }
 
 export async function getUnreadMessageCount() {
   return apiFetch('/messages/unread-count');
 }
 
-export async function getConversation(userId, { page = 1 } = {}) {
-  return apiFetch(`/conversations/${userId}`, { page });
+export async function getConversation(userId, { before = 0 } = {}) {
+  const params = {};
+  if (before) params.before = before;
+  return apiFetch(`/conversations/${userId}`, params);
 }
 
 export async function sendMessage({ recipient_id, content }) {

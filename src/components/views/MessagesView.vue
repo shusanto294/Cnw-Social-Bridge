@@ -1,5 +1,5 @@
 <template>
-  <div class="cnw-msg">
+  <div class="cnw-msg" :class="{ 'mobile-show-detail': mobileShowDetail }">
     <!-- Left: Chat list -->
     <div class="cnw-msg-list">
       <div class="cnw-msg-list-header">
@@ -60,7 +60,7 @@
       <div v-if="loadingList" class="cnw-msg-loading">Loading chats...</div>
 
       <!-- Conversation list -->
-      <div v-else class="cnw-msg-conversations">
+      <div v-else class="cnw-msg-conversations" ref="conversationsList" @scroll="onConversationsScroll">
         <div
           v-for="conv in conversations"
           :key="conv.other_user_id"
@@ -100,6 +100,7 @@
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           <p>No conversations yet</p>
         </div>
+        <div v-if="loadingMoreConvs" class="cnw-msg-loading-older">Loading more...</div>
       </div>
     </div>
 
@@ -108,6 +109,9 @@
       <template v-if="activeUserId">
         <!-- Chat header -->
         <div class="cnw-msg-detail-header">
+          <button class="cnw-msg-back-btn" @click="backToList" title="Back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
           <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar" width="44" height="44" />
           <div>
             <div class="cnw-msg-detail-label" v-if="otherUser.verified_label">
@@ -129,7 +133,8 @@
         </div>
 
         <!-- Messages -->
-        <div class="cnw-msg-detail-messages" ref="messagesContainer">
+        <div class="cnw-msg-detail-messages" ref="messagesContainer" @scroll="onMessagesScroll">
+          <div v-if="loadingOlder" class="cnw-msg-loading-older">Loading older messages...</div>
           <div v-if="loadingMessages" class="cnw-msg-loading">Loading messages...</div>
           <div
             v-for="msg in messages"
@@ -228,6 +233,12 @@ export default {
       typingTimeout: null,
       typingClearTimeout: null,
       pusherChannel: null,
+      hasMoreMessages: false,
+      loadingOlder: false,
+      convPage: 1,
+      hasMoreConvs: false,
+      loadingMoreConvs: false,
+      mobileShowDetail: false,
     };
   },
   async mounted() {
@@ -360,11 +371,32 @@ export default {
     },
     async loadConversations() {
       this.loadingList = true;
+      this.convPage = 1;
       try {
-        const data = await getConversations();
-        this.conversations = Array.isArray(data) ? data : [];
+        const data = await getConversations({ page: 1 });
+        this.conversations = data.conversations || [];
+        this.hasMoreConvs = !!data.has_more;
       } catch { this.conversations = []; }
       this.loadingList = false;
+    },
+    onConversationsScroll() {
+      const el = this.$refs.conversationsList;
+      if (!el || !this.hasMoreConvs || this.loadingMoreConvs) return;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
+        this.loadMoreConversations();
+      }
+    },
+    async loadMoreConversations() {
+      if (this.loadingMoreConvs) return;
+      this.loadingMoreConvs = true;
+      this.convPage++;
+      try {
+        const data = await getConversations({ page: this.convPage });
+        const more = data.conversations || [];
+        this.conversations = [...this.conversations, ...more];
+        this.hasMoreConvs = !!data.has_more;
+      } catch { /* silent */ }
+      this.loadingMoreConvs = false;
     },
     async openConversation(conv) {
       this.activeUserId = Number(conv.other_user_id);
@@ -376,6 +408,7 @@ export default {
         is_online: !!conv.is_online,
       };
       this.otherUserTyping = false;
+      this.mobileShowDetail = true;
       await this.loadMessages();
       if (conv.unread_count > 0) {
         await markConversationRead(this.activeUserId);
@@ -395,19 +428,51 @@ export default {
         verified_label: user.verified_label || '',
       };
       this.otherUserTyping = false;
+      this.mobileShowDetail = true;
       await this.loadMessages();
+    },
+    backToList() {
+      this.mobileShowDetail = false;
     },
     async loadMessages() {
       this.loadingMessages = true;
+      this.hasMoreMessages = false;
       try {
         const data = await getConversation(this.activeUserId);
         this.messages = data.messages || [];
+        this.hasMoreMessages = !!data.has_more;
         if (data.other_user) {
           this.otherUser = data.other_user;
         }
       } catch { this.messages = []; }
       this.loadingMessages = false;
       this.$nextTick(() => this.scrollToBottom());
+    },
+    onMessagesScroll() {
+      const container = this.$refs.messagesContainer;
+      if (!container || !this.hasMoreMessages || this.loadingOlder) return;
+      if (container.scrollTop <= 40) {
+        this.loadOlderMessages();
+      }
+    },
+    async loadOlderMessages() {
+      if (!this.messages.length || this.loadingOlder) return;
+      this.loadingOlder = true;
+      const oldestId = this.messages[0].id;
+      const container = this.$refs.messagesContainer;
+      const prevHeight = container.scrollHeight;
+      try {
+        const data = await getConversation(this.activeUserId, { before: oldestId });
+        const older = data.messages || [];
+        this.hasMoreMessages = !!data.has_more;
+        if (older.length) {
+          this.messages = [...older, ...this.messages];
+          this.$nextTick(() => {
+            container.scrollTop = container.scrollHeight - prevHeight;
+          });
+        }
+      } catch { /* silent */ }
+      this.loadingOlder = false;
     },
     async sendMsg() {
       if (!this.newMessage.trim() || this.sending) return;
@@ -782,7 +847,19 @@ main.cnw-social-worker-main.messages-view
   padding-bottom: var(--space-s);
   border-bottom: 1px solid var(--primary);
   margin-bottom: var(--space-s);
-
+}
+.cnw-msg-back-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-dark);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cnw-msg-back-btn:hover {
+  background: rgba(0,0,0,0.06);
 }
 .cnw-msg-detail-header img {
   width: 44px;
@@ -900,6 +977,12 @@ main.cnw-social-worker-main.messages-view
   color: var(--text-light);
   font-size: 13px;
 }
+.cnw-msg-loading-older {
+  padding: 10px 20px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 12px;
+}
 
 /* Typing indicator */
 .cnw-msg-typing-indicator {
@@ -947,7 +1030,10 @@ main.cnw-social-worker-main.messages-view
 /* Responsive */
 @media (max-width: 768px) {
   .cnw-msg { flex-direction: column; max-height: none; }
-  .cnw-msg-list { width: 100%; min-width: 0; max-height: 350px; }
-  .cnw-msg-detail { margin-left: 0; margin-top: 12px; min-height: 400px; }
+  .cnw-msg-list { width: 100%; min-width: 0; }
+  .cnw-msg-detail { margin-left: 0; min-height: 400px; display: none; }
+  .cnw-msg.mobile-show-detail .cnw-msg-list { display: none; }
+  .cnw-msg.mobile-show-detail .cnw-msg-detail { display: flex; }
+  .cnw-msg-back-btn { display: flex; align-items: center; justify-content: center; }
 }
 </style>

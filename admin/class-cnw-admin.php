@@ -983,7 +983,7 @@ class Cnw_Social_Bridge_Admin {
         $tables = array(
             'threads', 'replies', 'messages', 'categories', 'tags',
             'thread_tags', 'user_followed_tags', 'votes', 'reputation',
-            'saved_threads', 'notifications', 'activity',
+            'saved_threads', 'notifications', 'activity', 'reports',
         );
 
         $table_data = array();
@@ -1009,6 +1009,7 @@ class Cnw_Social_Bridge_Admin {
         foreach ( $table_data['user_followed_tags'] as $r )     { $user_ids[ (int) $r['user_id'] ] = true; }
         foreach ( $table_data['saved_threads'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; }
         foreach ( $table_data['notifications'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; if ( ! empty( $r['actor_id'] ) ) $user_ids[ (int) $r['actor_id'] ] = true; }
+        foreach ( $table_data['reports'] as $r )               { if ( ! empty( $r['user_id'] ) ) $user_ids[ (int) $r['user_id'] ] = true; }
         unset( $user_ids[0] );
 
         // Build users array with all CNW meta.
@@ -1034,9 +1035,17 @@ class Cnw_Social_Bridge_Admin {
 
         // Plugin settings.
         $settings = array(
-            'cnw_social_logo_url'        => get_option( 'cnw_social_logo_url', '' ),
-            'cnw_social_mobile_logo_url' => get_option( 'cnw_social_mobile_logo_url', '' ),
-            'cnw_social_bridge_version'  => get_option( 'cnw_social_bridge_version', '' ),
+            'cnw_social_logo_url'              => get_option( 'cnw_social_logo_url', '' ),
+            'cnw_social_mobile_logo_url'       => get_option( 'cnw_social_mobile_logo_url', '' ),
+            'cnw_social_bridge_version'        => get_option( 'cnw_social_bridge_version', '' ),
+            'cnw_pusher_host'                  => get_option( 'cnw_pusher_host', '' ),
+            'cnw_pusher_port'                  => get_option( 'cnw_pusher_port', '443' ),
+            'cnw_pusher_cluster'               => get_option( 'cnw_pusher_cluster', 'mt1' ),
+            'cnw_pusher_app_id'                => get_option( 'cnw_pusher_app_id', '' ),
+            'cnw_pusher_key'                   => get_option( 'cnw_pusher_key', '' ),
+            'cnw_pusher_secret'                => get_option( 'cnw_pusher_secret', '' ),
+            'cnw_community_guidelines'         => get_option( 'cnw_community_guidelines', '' ),
+            'cnw_community_guidelines_html'    => get_option( 'cnw_community_guidelines_html', '' ),
         );
 
         // Build ZIP.
@@ -1487,10 +1496,34 @@ class Cnw_Social_Bridge_Admin {
                 }
                 break;
 
+            case 'reports':
+                $reports = $read_json( 'reports' );
+                foreach ( $reports as $row ) {
+                    $wpdb->insert( $p . 'reports', array(
+                        'user_id'     => $ru( $row['user_id'] ?? 0 ) ?: 0,
+                        'type'        => $row['type'] ?? '',
+                        'subject'     => $row['subject'] ?? '',
+                        'description' => $row['description'] ?? '',
+                        'link'        => $row['link'] ?? null,
+                        'priority'    => $row['priority'] ?? 'medium',
+                        'status'      => $row['status'] ?? 'open',
+                        'admin_notes' => $row['admin_notes'] ?? null,
+                        'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
+                        'updated_at'  => $row['updated_at'] ?? current_time( 'mysql' ),
+                    ) );
+                    $count++;
+                }
+                break;
+
             case 'settings':
                 $settings = $read_json( 'settings' );
                 if ( ! empty( $settings ) && is_array( $settings ) ) {
-                    $allowed = array( 'cnw_social_logo_url', 'cnw_social_mobile_logo_url' );
+                    $allowed = array(
+                        'cnw_social_logo_url', 'cnw_social_mobile_logo_url',
+                        'cnw_pusher_host', 'cnw_pusher_port', 'cnw_pusher_cluster',
+                        'cnw_pusher_app_id', 'cnw_pusher_key', 'cnw_pusher_secret',
+                        'cnw_community_guidelines', 'cnw_community_guidelines_html',
+                    );
                     foreach ( $allowed as $key ) {
                         if ( isset( $settings[ $key ] ) && $settings[ $key ] !== '' ) {
                             update_option( $key, sanitize_text_field( $settings[ $key ] ) );

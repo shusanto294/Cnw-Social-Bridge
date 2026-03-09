@@ -93,7 +93,7 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
          FROM $table m
          LEFT JOIN {$wpdb->users} s ON m.sender_id = s.ID
          LEFT JOIN {$wpdb->users} r ON m.recipient_id = r.ID
-         $where ORDER BY m.created_at DESC LIMIT %d OFFSET %d";
+         $where ORDER BY m.id DESC LIMIT %d OFFSET %d";
     $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
     $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
 

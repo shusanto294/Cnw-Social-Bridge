@@ -2892,6 +2892,19 @@ main.cnw-social-worker-main.messages-view
   border-bottom: 1px solid var(--primary);
   margin-bottom: var(--space-s);
 }
+.cnw-msg-back-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-dark);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cnw-msg-back-btn:hover {
+  background: rgba(0,0,0,0.06);
+}
 .cnw-msg-detail-header img {
   width: 44px;
   height: 44px;
@@ -3011,6 +3024,12 @@ main.cnw-social-worker-main.messages-view
   color: var(--text-light);
   font-size: 13px;
 }
+.cnw-msg-loading-older {
+  padding: 10px 20px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 12px;
+}
 
 /* Typing indicator */
 .cnw-msg-typing-indicator {
@@ -3064,9 +3083,15 @@ main.cnw-social-worker-main.messages-view
 @media (max-width: 768px) {
 .cnw-msg { flex-direction: column; max-height: none;
 }
-.cnw-msg-list { width: 100%; min-width: 0; max-height: 350px;
+.cnw-msg-list { width: 100%; min-width: 0;
 }
-.cnw-msg-detail { margin-left: 0; margin-top: 12px; min-height: 400px;
+.cnw-msg-detail { margin-left: 0; min-height: 400px; display: none;
+}
+.cnw-msg.mobile-show-detail .cnw-msg-list { display: none;
+}
+.cnw-msg.mobile-show-detail .cnw-msg-detail { display: flex;
+}
+.cnw-msg-back-btn { display: flex; align-items: center; justify-content: center;
 }
 }
 

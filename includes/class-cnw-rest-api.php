@@ -1098,8 +1098,19 @@ class Cnw_Social_Bridge_REST_API {
     public function get_conversations( WP_REST_Request $request ) {
         global $wpdb;
 
-        $me    = get_current_user_id();
-        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $me       = get_current_user_id();
+        $table    = $wpdb->prefix . 'cnw_social_worker_messages';
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 10;
+        $offset   = ( $page - 1 ) * $per_page;
+
+        // Count total conversations
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(DISTINCT CASE WHEN sender_id = %d THEN recipient_id ELSE sender_id END)
+             FROM {$table}
+             WHERE sender_id = %d OR recipient_id = %d",
+            $me, $me, $me
+        ) );
 
         $rows = $wpdb->get_results( $wpdb->prepare(
             "SELECT
@@ -1126,8 +1137,9 @@ class Cnw_Social_Bridge_REST_API {
              LEFT JOIN {$wpdb->users} u ON u.ID = CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
              LEFT JOIN {$wpdb->usermeta} um_avatar ON um_avatar.user_id = u.ID AND um_avatar.meta_key = 'cnw_avatar_url'
              LEFT JOIN {$wpdb->usermeta} um_label ON um_label.user_id = u.ID AND um_label.meta_key = 'cnw_verified_label'
-             ORDER BY m.created_at DESC",
-            $me, $me, $me, $me, $me, $me, $me
+             ORDER BY m.created_at DESC
+             LIMIT %d OFFSET %d",
+            $me, $me, $me, $me, $me, $me, $me, $per_page, $offset
         ) );
 
         foreach ( $rows as &$row ) {
@@ -1137,7 +1149,10 @@ class Cnw_Social_Bridge_REST_API {
             $row->is_online = $this->is_user_online( $row->other_user_id );
         }
 
-        return $rows;
+        return array(
+            'conversations' => $rows,
+            'has_more'      => ( $page * $per_page ) < $total,
+        );
     }
 
     /**
@@ -1157,13 +1172,24 @@ class Cnw_Social_Bridge_REST_API {
     public function get_conversation( WP_REST_Request $request ) {
         global $wpdb;
 
-        $me      = get_current_user_id();
-        $other   = intval( $request['user_id'] );
-        $table   = $wpdb->prefix . 'cnw_social_worker_messages';
-        $page    = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
-        $per_page = 50;
-        $offset  = ( $page - 1 ) * $per_page;
+        $me       = get_current_user_id();
+        $other    = intval( $request['user_id'] );
+        $table    = $wpdb->prefix . 'cnw_social_worker_messages';
+        $before   = intval( $request->get_param( 'before' ) ?: 0 );
+        $per_page = 20;
 
+        $before_clause = $before ? $wpdb->prepare( ' AND m.id < %d', $before ) : '';
+
+        // Total count for this conversation
+        $total = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table} m
+             WHERE ((m.sender_id = %d AND m.recipient_id = %d)
+                OR (m.sender_id = %d AND m.recipient_id = %d))
+             {$before_clause}",
+            $me, $other, $other, $me
+        ) );
+
+        // Fetch latest N messages (DESC), then reverse to chronological order
         $messages = $wpdb->get_results( $wpdb->prepare(
             "SELECT m.*, s.display_name AS sender_name,
                     um_avatar.meta_value AS sender_avatar,
@@ -1172,12 +1198,15 @@ class Cnw_Social_Bridge_REST_API {
              LEFT JOIN {$wpdb->users} s ON s.ID = m.sender_id
              LEFT JOIN {$wpdb->usermeta} um_avatar ON um_avatar.user_id = m.sender_id AND um_avatar.meta_key = 'cnw_avatar_url'
              LEFT JOIN {$wpdb->usermeta} um_label ON um_label.user_id = m.sender_id AND um_label.meta_key = 'cnw_verified_label'
-             WHERE (m.sender_id = %d AND m.recipient_id = %d)
-                OR (m.sender_id = %d AND m.recipient_id = %d)
-             ORDER BY m.created_at ASC
-             LIMIT %d OFFSET %d",
-            $me, $other, $other, $me, $per_page, $offset
+             WHERE ((m.sender_id = %d AND m.recipient_id = %d)
+                OR (m.sender_id = %d AND m.recipient_id = %d))
+             {$before_clause}
+             ORDER BY m.id DESC
+             LIMIT %d",
+            $me, $other, $other, $me, $per_page
         ) );
+
+        $messages = array_reverse( $messages );
 
         foreach ( $messages as &$msg ) {
             if ( empty( $msg->sender_avatar ) ) {
@@ -1185,12 +1214,15 @@ class Cnw_Social_Bridge_REST_API {
             }
         }
 
-        $other_user = get_userdata( $other );
+        $other_user   = get_userdata( $other );
         $other_avatar = get_user_meta( $other, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
         $other_label  = get_user_meta( $other, 'cnw_verified_label', true );
 
+        $has_more = $total > $per_page;
+
         return array(
             'messages'   => $messages,
+            'has_more'   => $has_more,
             'other_user' => array(
                 'id'             => $other,
                 'name'           => $other_user ? $other_user->display_name : 'Unknown',
