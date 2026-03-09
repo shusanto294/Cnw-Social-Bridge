@@ -109,6 +109,7 @@
             </svg>
           </span>
           <span>Message</span>
+          <span v-if="unreadMessageCount > 0" class="nav-badge">{{ unreadMessageCount }}</span>
         </router-link>
 
         <router-link to="/users" class="sidebar-nav-item" active-class="is-active">
@@ -203,15 +204,17 @@
 </template>
 
 <script>
-import { logout } from '@/api/index.js';
+import { logout, getUnreadMessageCount } from '@/api/index.js';
+import { getUserChannel } from '@/pusher';
 
 export default {
   name: 'AppSidebar',
-data() {
+  data() {
     return {
       currentUser: window.cnwData?.currentUser || { name: '', first_name: '', last_name: '', avatar: '' },
       defaultAvatar: window.cnwData?.defaultAvatar || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+      unreadMessageCount: 0,
     };
   },
   mounted() {
@@ -219,10 +222,34 @@ data() {
     this._onAnonUpdated = (e) => { this.currentUser = Object.assign({}, this.currentUser, { anonymous: e.detail }); };
     window.addEventListener('cnw-avatar-updated', this._onAvatarUpdated);
     window.addEventListener('cnw-anonymous-updated', this._onAnonUpdated);
+
+    // Shared helper to refresh the unread count from the server
+    this._refreshUnread = () => {
+      getUnreadMessageCount().then((res) => { this.unreadMessageCount = res.count || 0; }).catch(() => {});
+    };
+
+    // Fetch initial unread message count
+    if (this.isLoggedIn) {
+      this._refreshUnread();
+    }
+
+    // Listen for Pusher events to update badge in real-time
+    const channel = getUserChannel();
+    if (channel) {
+      channel.bind('new-message', () => {
+        // Small delay so the server has written the row before we count
+        setTimeout(this._refreshUnread, 300);
+      });
+      channel.bind('messages-read', this._refreshUnread);
+    }
+
+    // Listen for local event when user reads messages in MessagesView
+    window.addEventListener('cnw-messages-read', this._refreshUnread);
   },
   beforeUnmount() {
     window.removeEventListener('cnw-avatar-updated', this._onAvatarUpdated);
     window.removeEventListener('cnw-anonymous-updated', this._onAnonUpdated);
+    window.removeEventListener('cnw-messages-read', this._refreshUnread);
   },
   computed: {
     displayName() {

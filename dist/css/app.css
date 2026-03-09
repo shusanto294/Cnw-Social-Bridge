@@ -2761,6 +2761,12 @@ main.cnw-social-worker-main.messages-view
 .cnw-msg-conv-card.active *{
   color: var(--light);
 }
+.cnw-msg-conv-card.unread {
+  background: var(--secondary);
+}
+.cnw-msg-conv-card.unread * {
+  color: #fff;
+}
 .cnw-msg-conv-menu {
   background: none;
   border: none;
@@ -2783,10 +2789,23 @@ main.cnw-social-worker-main.messages-view
   margin-top: 5px;
 }
 .cnw-msg-avatar-dots span {
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: #414141;
+  background: var(--teal);
+  animation: cnw-dot-wave 1.2s ease-in-out infinite;
+}
+.cnw-msg-avatar-dots span:nth-child(1) { animation-delay: 0s;
+}
+.cnw-msg-avatar-dots span:nth-child(2) { animation-delay: 0.2s;
+}
+.cnw-msg-avatar-dots span:nth-child(3) { animation-delay: 0.4s;
+}
+@keyframes cnw-dot-wave {
+0%, 60%, 100% { transform: translateY(0); opacity: 0.4;
+}
+30% { transform: translateY(-6px); opacity: 1;
+}
 }
 .cnw-msg-conv-card.active .cnw-msg-avatar-dots span {
   background: #fff;

@@ -332,6 +332,10 @@ export async function getConversations() {
   return apiFetch('/conversations');
 }
 
+export async function getUnreadMessageCount() {
+  return apiFetch('/messages/unread-count');
+}
+
 export async function getConversation(userId, { page = 1 } = {}) {
   return apiFetch(`/conversations/${userId}`, { page });
 }
@@ -360,6 +364,16 @@ export async function setTyping(userId) {
 
 export async function getTyping(userId) {
   return apiFetch(`/typing/${userId}`);
+}
+
+export async function broadcastStatus(status) {
+  const url = await apiUrl('/pusher/status');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ status }),
+  });
+  return res.json();
 }
 
 export async function submitReport({ type, subject, link, description, priority }) {

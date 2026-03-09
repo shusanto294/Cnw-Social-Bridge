@@ -1,4 +1,5 @@
 import Pusher from 'pusher-js';
+import { broadcastStatus } from '@/api';
 
 let pusherInstance = null;
 let userChannel = null;
@@ -48,15 +49,28 @@ export function getPusher() {
   pusherInstance.connection.bind('connected', () => {
     pusherConnected = true;
     console.log('[CNW] Pusher connected');
+    broadcastStatus('online').catch(() => {});
   });
 
   pusherInstance.connection.bind('failed', () => {
     pusherConnected = false;
-    console.warn('[CNW] Pusher connection failed — falling back to polling');
+    console.warn('[CNW] Pusher connection failed');
   });
 
   pusherInstance.connection.bind('disconnected', () => {
     pusherConnected = false;
+  });
+
+  // Broadcast offline when leaving the page
+  window.addEventListener('beforeunload', () => {
+    const url = (window.cnwData?.restUrl || '') + '/pusher/status';
+    const nonce = window.cnwData?.nonce || '';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+      body: JSON.stringify({ status: 'offline' }),
+      keepalive: true,
+    }).catch(() => {});
   });
 
   return pusherInstance;

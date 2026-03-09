@@ -13,29 +13,13 @@ class Cnw_Social_Bridge_REST_API {
 
     public function __construct() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
-        add_action( 'rest_api_init', array( $this, 'record_last_active' ) );
     }
 
     /**
-     * Record a last-active timestamp for the current user on every REST request.
-     */
-    public function record_last_active() {
-        $user_id = get_current_user_id();
-        if ( $user_id ) {
-            update_user_meta( $user_id, 'cnw_last_active', current_time( 'mysql', true ) );
-        }
-    }
-
-    /**
-     * Check if a user was active within the last 5 minutes.
+     * Check if a user is currently online via Pusher.
      */
     private function is_user_online( $user_id ) {
-        $last = get_user_meta( $user_id, 'cnw_last_active', true );
-        if ( ! $last ) {
-            return false;
-        }
-        $diff = time() - strtotime( $last );
-        return $diff < 60; // 1 minute
+        return (bool) get_user_meta( $user_id, 'cnw_is_online', true );
     }
 
     /* ------------------------------------------------------------------
@@ -96,6 +80,9 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/conversations/(?P<user_id>\d+)/read', array(
             'methods' => 'POST', 'callback' => array( $this, 'mark_conversation_read' ), 'permission_callback' => array( $this, 'can_send_message' ),
         ) );
+        register_rest_route( $ns, '/messages/unread-count', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_unread_message_count' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
 
         // ── Typing indicator ──────────────────────────────────────────
         register_rest_route( $ns, '/typing/(?P<user_id>\d+)', array(
@@ -106,6 +93,11 @@ class Cnw_Social_Bridge_REST_API {
         // ── Pusher auth ─────────────────────────────────────────────────
         register_rest_route( $ns, '/pusher/auth', array(
             'methods' => 'POST', 'callback' => array( $this, 'pusher_auth' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+
+        // ── Pusher status broadcast ─────────────────────────────────────
+        register_rest_route( $ns, '/pusher/status', array(
+            'methods' => 'POST', 'callback' => array( $this, 'pusher_broadcast_status' ), 'permission_callback' => array( $this, 'can_send_message' ),
         ) );
 
         // ── Categories ───────────────────────────────────────────────
@@ -1118,6 +1110,7 @@ class Cnw_Social_Bridge_REST_API {
                 m.content AS last_message,
                 m.created_at AS last_date,
                 m.sender_id AS last_sender_id,
+                m.is_read AS last_is_read,
                 (SELECT COUNT(*) FROM {$table} m2
                  WHERE m2.sender_id = CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
                    AND m2.recipient_id = %d AND m2.is_read = 0) AS unread_count
@@ -1145,6 +1138,20 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         return $rows;
+    }
+
+    /**
+     * Return total unread message count for the current user.
+     */
+    public function get_unread_message_count() {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table} WHERE recipient_id = %d AND is_read = 0",
+            $me
+        ) );
+        return array( 'count' => $count );
     }
 
     public function get_conversation( WP_REST_Request $request ) {
@@ -1200,10 +1207,19 @@ class Cnw_Social_Bridge_REST_API {
         $other = intval( $request['user_id'] );
         $table = $wpdb->prefix . 'cnw_social_worker_messages';
 
-        $wpdb->query( $wpdb->prepare(
+        $updated = $wpdb->query( $wpdb->prepare(
             "UPDATE {$table} SET is_read = 1 WHERE sender_id = %d AND recipient_id = %d AND is_read = 0",
             $other, $me
         ) );
+
+        // Notify the sender that their messages have been read
+        if ( $updated > 0 ) {
+            Cnw_Social_Bridge_Pusher::trigger(
+                'private-user-' . $other,
+                'messages-read',
+                array( 'reader_id' => $me )
+            );
+        }
 
         return array( 'success' => true );
     }
@@ -1270,6 +1286,46 @@ class Cnw_Social_Bridge_REST_API {
 
         // authorizeChannel returns a JSON string — decode for WP_REST_Response
         return new WP_REST_Response( json_decode( $auth, true ), 200 );
+    }
+
+    /**
+     * Broadcast online/offline status to all conversation partners via Pusher.
+     */
+    public function pusher_broadcast_status( WP_REST_Request $request ) {
+        global $wpdb;
+
+        $params = $request->get_json_params();
+        $status = sanitize_text_field( $params['status'] ?? 'online' );
+        $me     = get_current_user_id();
+
+        // Persist the online flag so initial page loads can read it
+        update_user_meta( $me, 'cnw_is_online', $status === 'online' ? 1 : 0 );
+
+        $table  = $wpdb->prefix . 'cnw_social_worker_messages';
+
+        // Get all unique conversation partner IDs
+        $partners = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT CASE WHEN sender_id = %d THEN recipient_id ELSE sender_id END AS partner_id
+             FROM {$table}
+             WHERE sender_id = %d OR recipient_id = %d",
+            $me, $me, $me
+        ) );
+
+        $payload = array(
+            'user_id' => $me,
+            'status'  => $status,
+        );
+
+        // Broadcast to each partner's private channel
+        foreach ( $partners as $partner_id ) {
+            Cnw_Social_Bridge_Pusher::trigger(
+                'private-user-' . (int) $partner_id,
+                'user-status',
+                $payload
+            );
+        }
+
+        return array( 'success' => true );
     }
 
     /* ==================================================================

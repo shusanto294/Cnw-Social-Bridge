@@ -65,7 +65,7 @@
           v-for="conv in conversations"
           :key="conv.other_user_id"
           class="cnw-msg-conv-card"
-          :class="{ active: activeUserId === Number(conv.other_user_id) }"
+          :class="{ active: activeUserId === Number(conv.other_user_id), unread: conv.unread_count > 0 }"
           @click="openConversation(conv)"
         >
 
@@ -74,7 +74,7 @@
               <img :src="conv.other_avatar" :alt="conv.other_name" class="cnw-social-worker-avatar" width="44" height="44" />
               <span class="cnw-msg-status-dot" :class="conv.is_online ? 'online' : 'offline'"></span>
             </div>
-            <div class="cnw-msg-avatar-dots">
+            <div class="cnw-msg-avatar-dots" v-if="typingUserId === Number(conv.other_user_id)">
               <span></span>
               <span></span>
               <span></span>
@@ -88,8 +88,9 @@
             <p class="cnw-msg-conv-preview">{{ truncate(conv.last_message, 60) }}</p>
             <div class="cnw-msg-conv-meta">
               <span class="cnw-msg-conv-time">{{ formatTime(conv.last_date) }}</span>
-              <span class="cnw-msg-conv-read-badge" :class="conv.unread_count > 0 ? 'unread' : 'read'">
-                {{ conv.unread_count > 0 ? 'Unread' : 'Read' }}
+              <span v-if="conv.unread_count > 0" class="cnw-msg-conv-read-badge unread">Unread</span>
+              <span v-else-if="Number(conv.last_sender_id) === currentUserId" class="cnw-msg-conv-read-badge" :class="parseInt(conv.last_is_read) ? 'read' : 'unread'">
+                {{ parseInt(conv.last_is_read) ? 'Read' : 'Sent' }}
               </span>
             </div>
           </div>
@@ -146,20 +147,22 @@
                     width="34"
                     height="34"
                   />
-                  <span class="cnw-msg-status-dot online"></span>
+                  <span class="cnw-msg-status-dot" :class="otherUser.is_online ? 'online' : 'offline'"></span>
                 </div>
               </template>
               <div class="cnw-msg-conv-body">
                 <template v-if="Number(msg.sender_id) !== currentUserId">
                   <div class="cnw-msg-conv-top">
-                    <span class="cnw-msg-conv-status-label">Online</span>
+                    <span class="cnw-msg-conv-status-label">{{ otherUser.is_online ? 'Online' : 'Offline' }}</span>
                   </div>
                   <div class="cnw-msg-conv-name">{{ msg.sender_name }}</div>
                 </template>
                 <p class="cnw-msg-conv-preview">{{ msg.content }}</p>
                 <div class="cnw-msg-conv-meta">
                   <span class="cnw-msg-conv-time">{{ formatTime(msg.created_at) }}</span>
-                  <span v-if="Number(msg.sender_id) !== currentUserId" class="cnw-msg-conv-read-badge read">Read</span>
+                  <span v-if="Number(msg.sender_id) === currentUserId" class="cnw-msg-conv-read-badge" :class="parseInt(msg.is_read) ? 'read' : 'unread'">
+                    {{ parseInt(msg.is_read) ? 'Read' : 'Sent' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -221,6 +224,7 @@ export default {
       searchTimeout: null,
       currentUserId: window.cnwData?.currentUser?.id || 0,
       otherUserTyping: false,
+      typingUserId: null,
       typingTimeout: null,
       typingClearTimeout: null,
       pusherChannel: null,
@@ -241,6 +245,8 @@ export default {
     if (this.pusherChannel) {
       this.pusherChannel.unbind('new-message', this._onPusherMessage);
       this.pusherChannel.unbind('client-typing', this._onPusherTyping);
+      this.pusherChannel.unbind('user-status', this._onPusherStatus);
+      this.pusherChannel.unbind('messages-read', this._onPusherRead);
     }
     window.removeEventListener('cnw-start-chat', this._startChatHandler);
     if (this._sidebarObserver) this._sidebarObserver.disconnect();
@@ -265,23 +271,62 @@ export default {
             this.$nextTick(() => this.scrollToBottom());
           }
           this.otherUserTyping = false;
-          markConversationRead(this.activeUserId).catch(() => {});
+          markConversationRead(this.activeUserId).then(() => {
+            window.dispatchEvent(new CustomEvent('cnw-messages-read'));
+          }).catch(() => {});
         }
       };
 
       this._onPusherTyping = (data) => {
-        if (this.activeUserId && Number(data.user_id) === this.activeUserId) {
+        const userId = Number(data.user_id);
+        this.typingUserId = userId;
+        if (this.activeUserId && userId === this.activeUserId) {
           this.otherUserTyping = true;
           this.$nextTick(() => this.scrollToBottom());
-          if (this.typingClearTimeout) clearTimeout(this.typingClearTimeout);
-          this.typingClearTimeout = setTimeout(() => {
-            this.otherUserTyping = false;
-          }, 4000);
+        }
+        if (this.typingClearTimeout) clearTimeout(this.typingClearTimeout);
+        this.typingClearTimeout = setTimeout(() => {
+          this.otherUserTyping = false;
+          this.typingUserId = null;
+        }, 4000);
+      };
+
+      this._onPusherStatus = (data) => {
+        const userId = Number(data.user_id);
+        const isOnline = data.status === 'online';
+        // Update in conversation list
+        this.conversations.forEach(conv => {
+          if (Number(conv.other_user_id) === userId) {
+            conv.is_online = isOnline;
+          }
+        });
+        // Update active chat header
+        if (this.activeUserId === userId) {
+          this.otherUser = { ...this.otherUser, is_online: isOnline };
+        }
+      };
+
+      this._onPusherRead = (data) => {
+        const readerId = Number(data.reader_id);
+        // Update message bubbles
+        if (this.activeUserId === readerId) {
+          this.messages.forEach(m => {
+            if (Number(m.sender_id) === this.currentUserId) {
+              m.is_read = 1;
+            }
+          });
+        }
+        // Update conversation card badge
+        const conv = this.conversations.find(c => Number(c.other_user_id) === readerId);
+        if (conv && Number(conv.last_sender_id) === this.currentUserId) {
+          conv.last_is_read = 1;
         }
       };
 
       channel.bind('new-message', this._onPusherMessage);
       channel.bind('client-typing', this._onPusherTyping);
+      channel.bind('user-status', this._onPusherStatus);
+      channel.bind('messages-read', this._onPusherRead);
     },
     updateConversationFromMessage(data) {
       const senderId = Number(data.sender_id);
@@ -289,6 +334,8 @@ export default {
       if (existing) {
         existing.last_message = data.content;
         existing.last_date = data.created_at;
+        existing.last_sender_id = senderId;
+        existing.last_is_read = this.activeUserId === senderId ? 1 : 0;
         if (this.activeUserId !== senderId) {
           existing.unread_count = (parseInt(existing.unread_count) || 0) + 1;
         }
@@ -326,12 +373,14 @@ export default {
         name: conv.other_name,
         avatar: conv.other_avatar,
         verified_label: conv.other_verified_label || '',
+        is_online: !!conv.is_online,
       };
       this.otherUserTyping = false;
       await this.loadMessages();
       if (conv.unread_count > 0) {
         await markConversationRead(this.activeUserId);
         conv.unread_count = 0;
+        window.dispatchEvent(new CustomEvent('cnw-messages-read'));
       }
     },
     async startConversation(user) {
@@ -374,6 +423,7 @@ export default {
             sender_name: window.cnwData?.currentUser?.name || '',
             sender_avatar: window.cnwData?.currentUser?.avatar || '',
             content,
+            is_read: 0,
             created_at: new Date().toISOString(),
           });
           this.$nextTick(() => this.scrollToBottom());
@@ -388,6 +438,8 @@ export default {
       if (existing) {
         existing.last_message = content;
         existing.last_date = new Date().toISOString();
+        existing.last_sender_id = this.currentUserId;
+        existing.last_is_read = 0;
         const idx = this.conversations.indexOf(existing);
         if (idx > 0) {
           this.conversations.splice(idx, 1);
@@ -401,6 +453,8 @@ export default {
           other_verified_label: this.otherUser.verified_label,
           last_message: content,
           last_date: new Date().toISOString(),
+          last_sender_id: this.currentUserId,
+          last_is_read: 0,
           unread_count: 0,
           is_online: true,
         });
@@ -603,6 +657,12 @@ main.cnw-social-worker-main.messages-view
 .cnw-msg-conv-card.active *{
   color: var(--light);
 }
+.cnw-msg-conv-card.unread {
+  background: var(--secondary);
+}
+.cnw-msg-conv-card.unread * {
+  color: #fff;
+}
 .cnw-msg-conv-menu {
   background: none;
   border: none;
@@ -625,10 +685,18 @@ main.cnw-social-worker-main.messages-view
   margin-top: 5px;
 }
 .cnw-msg-avatar-dots span {
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: #414141;
+  background: var(--teal);
+  animation: cnw-dot-wave 1.2s ease-in-out infinite;
+}
+.cnw-msg-avatar-dots span:nth-child(1) { animation-delay: 0s; }
+.cnw-msg-avatar-dots span:nth-child(2) { animation-delay: 0.2s; }
+.cnw-msg-avatar-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cnw-dot-wave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
 }
 .cnw-msg-conv-card.active .cnw-msg-avatar-dots span {
   background: #fff;
