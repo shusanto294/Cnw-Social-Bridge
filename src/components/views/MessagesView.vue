@@ -200,7 +200,8 @@
 </template>
 
 <script>
-import { getConversations, getConversation, sendMessage, markConversationRead, getUser, setTyping, getTyping } from '@/api';
+import { getConversations, getConversation, sendMessage, markConversationRead, setTyping } from '@/api';
+import { getUserChannel } from '@/pusher';
 
 export default {
   name: 'MessagesView',
@@ -219,15 +220,15 @@ export default {
       searchResults: [],
       searchTimeout: null,
       currentUserId: window.cnwData?.currentUser?.id || 0,
-      pollInterval: null,
       otherUserTyping: false,
       typingTimeout: null,
-      typingPollInterval: null,
+      typingClearTimeout: null,
+      pusherChannel: null,
     };
   },
   async mounted() {
     await this.loadConversations();
-    this.pollInterval = setInterval(() => this.pollMessages(), 10000);
+    this.initPusher();
     this._startChatHandler = (e) => {
       if (e.detail) this.startConversation(e.detail);
     };
@@ -235,13 +236,81 @@ export default {
     this.syncHeightWithSidebar();
   },
   beforeUnmount() {
-    if (this.pollInterval) clearInterval(this.pollInterval);
-    if (this.typingPollInterval) clearInterval(this.typingPollInterval);
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    if (this.typingClearTimeout) clearTimeout(this.typingClearTimeout);
+    if (this.pusherChannel) {
+      this.pusherChannel.unbind('new-message', this._onPusherMessage);
+      this.pusherChannel.unbind('client-typing', this._onPusherTyping);
+    }
     window.removeEventListener('cnw-start-chat', this._startChatHandler);
     if (this._sidebarObserver) this._sidebarObserver.disconnect();
   },
   methods: {
+    initPusher() {
+      const channel = getUserChannel();
+      if (!channel) return;
+      this.pusherChannel = channel;
+
+      this._onPusherMessage = (data) => {
+        const senderId = Number(data.sender_id);
+
+        // Update conversation list locally
+        this.updateConversationFromMessage(data);
+
+        // If from the active conversation, append it live
+        if (this.activeUserId && senderId === this.activeUserId) {
+          const exists = this.messages.some(m => Number(m.id) === Number(data.id));
+          if (!exists) {
+            this.messages.push(data);
+            this.$nextTick(() => this.scrollToBottom());
+          }
+          this.otherUserTyping = false;
+          markConversationRead(this.activeUserId).catch(() => {});
+        }
+      };
+
+      this._onPusherTyping = (data) => {
+        if (this.activeUserId && Number(data.user_id) === this.activeUserId) {
+          this.otherUserTyping = true;
+          this.$nextTick(() => this.scrollToBottom());
+          if (this.typingClearTimeout) clearTimeout(this.typingClearTimeout);
+          this.typingClearTimeout = setTimeout(() => {
+            this.otherUserTyping = false;
+          }, 4000);
+        }
+      };
+
+      channel.bind('new-message', this._onPusherMessage);
+      channel.bind('client-typing', this._onPusherTyping);
+    },
+    updateConversationFromMessage(data) {
+      const senderId = Number(data.sender_id);
+      const existing = this.conversations.find(c => Number(c.other_user_id) === senderId);
+      if (existing) {
+        existing.last_message = data.content;
+        existing.last_date = data.created_at;
+        if (this.activeUserId !== senderId) {
+          existing.unread_count = (parseInt(existing.unread_count) || 0) + 1;
+        }
+        // Move to top
+        const idx = this.conversations.indexOf(existing);
+        if (idx > 0) {
+          this.conversations.splice(idx, 1);
+          this.conversations.unshift(existing);
+        }
+      } else {
+        // New conversation from someone not in the list
+        this.conversations.unshift({
+          other_user_id: senderId,
+          other_name: data.sender_name,
+          other_avatar: data.sender_avatar,
+          last_message: data.content,
+          last_date: data.created_at,
+          unread_count: 1,
+          is_online: true,
+        });
+      }
+    },
     async loadConversations() {
       this.loadingList = true;
       try {
@@ -258,12 +327,12 @@ export default {
         avatar: conv.other_avatar,
         verified_label: conv.other_verified_label || '',
       };
+      this.otherUserTyping = false;
       await this.loadMessages();
       if (conv.unread_count > 0) {
         await markConversationRead(this.activeUserId);
         conv.unread_count = 0;
       }
-      this.startTypingPoll();
     },
     async startConversation(user) {
       this.showNewChat = false;
@@ -276,8 +345,8 @@ export default {
         avatar: user.avatar,
         verified_label: user.verified_label || '',
       };
+      this.otherUserTyping = false;
       await this.loadMessages();
-      this.startTypingPoll();
     },
     async loadMessages() {
       this.loadingMessages = true;
@@ -294,50 +363,54 @@ export default {
     async sendMsg() {
       if (!this.newMessage.trim() || this.sending) return;
       this.sending = true;
+      const content = this.newMessage.trim();
+      this.newMessage = '';
       try {
-        await sendMessage({ recipient_id: this.activeUserId, content: this.newMessage.trim() });
-        this.newMessage = '';
-        await this.loadMessages();
-        await this.loadConversations();
+        const result = await sendMessage({ recipient_id: this.activeUserId, content });
+        if (result.id) {
+          this.messages.push({
+            id: result.id,
+            sender_id: this.currentUserId,
+            sender_name: window.cnwData?.currentUser?.name || '',
+            sender_avatar: window.cnwData?.currentUser?.avatar || '',
+            content,
+            created_at: new Date().toISOString(),
+          });
+          this.$nextTick(() => this.scrollToBottom());
+          // Update own conversation list locally
+          this.updateOwnConversation(content);
+        }
       } catch { /* silent */ }
       this.sending = false;
     },
-    async pollMessages() {
-      if (!this.activeUserId) return;
-      try {
-        const data = await getConversation(this.activeUserId);
-        if (data.messages && data.messages.length !== this.messages.length) {
-          this.messages = data.messages;
-          this.$nextTick(() => this.scrollToBottom());
+    updateOwnConversation(content) {
+      const existing = this.conversations.find(c => Number(c.other_user_id) === this.activeUserId);
+      if (existing) {
+        existing.last_message = content;
+        existing.last_date = new Date().toISOString();
+        const idx = this.conversations.indexOf(existing);
+        if (idx > 0) {
+          this.conversations.splice(idx, 1);
+          this.conversations.unshift(existing);
         }
-      } catch { /* silent */ }
-      try {
-        const data = await getConversations();
-        if (Array.isArray(data)) this.conversations = data;
-      } catch { /* silent */ }
+      } else {
+        this.conversations.unshift({
+          other_user_id: this.activeUserId,
+          other_name: this.otherUser.name,
+          other_avatar: this.otherUser.avatar,
+          other_verified_label: this.otherUser.verified_label,
+          last_message: content,
+          last_date: new Date().toISOString(),
+          unread_count: 0,
+          is_online: true,
+        });
+      }
     },
     onTyping() {
       if (!this.activeUserId) return;
-      if (this.typingTimeout) return; // throttle: only send once every 3s
+      if (this.typingTimeout) return;
       setTyping(this.activeUserId).catch(() => {});
       this.typingTimeout = setTimeout(() => { this.typingTimeout = null; }, 3000);
-    },
-    startTypingPoll() {
-      if (this.typingPollInterval) clearInterval(this.typingPollInterval);
-      this.otherUserTyping = false;
-      this.typingPollInterval = setInterval(() => this.checkTyping(), 3000);
-    },
-    async checkTyping() {
-      if (!this.activeUserId) return;
-      try {
-        const data = await getTyping(this.activeUserId);
-        this.otherUserTyping = !!data.is_typing;
-        if (this.otherUserTyping) {
-          this.$nextTick(() => this.scrollToBottom());
-        }
-      } catch {
-        this.otherUserTyping = false;
-      }
     },
     scrollToBottom() {
       const el = this.$refs.messagesContainer;
@@ -392,10 +465,13 @@ export default {
 
 <style>
 
-.cnw-social-worker-main{
+
+main.cnw-social-worker-main.messages-view
+{
   background: transparent;
   padding: 0;
 }
+
 
 .cnw-msg {
   display: flex;

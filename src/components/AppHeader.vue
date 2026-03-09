@@ -197,6 +197,7 @@
 
 <script>
 import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead, login, forgotPassword, register } from '@/api/index.js';
+import { getUserChannel } from '@/pusher';
 
 export default {
   name: 'AppHeader',
@@ -213,6 +214,7 @@ export default {
       mobileLogoUrl: window.cnwData?.mobileLogoUrl || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       pollTimer: null,
+      pusherChannel: null,
       showLoginModal: false,
       modalView: 'login',
       loginUsername: '',
@@ -233,16 +235,42 @@ export default {
   mounted() {
     if (this.isLoggedIn) {
       this.fetchUnreadCount();
-      // Poll every 30 seconds
-      this.pollTimer = setInterval(() => this.fetchUnreadCount(), 30000);
+      this.initPusherNotifications();
     }
     document.addEventListener('click', this.onOutsideClick);
   },
   beforeUnmount() {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.pusherChannel) {
+      this.pusherChannel.unbind('new-notification', this._onPusherNotification);
+    }
     document.removeEventListener('click', this.onOutsideClick);
   },
   methods: {
+    initPusherNotifications() {
+      const channel = getUserChannel();
+      if (!channel) return;
+      this.pusherChannel = channel;
+
+      this._onPusherNotification = (data) => {
+        this.unreadCount++;
+        // If dropdown is open, prepend the new notification
+        if (this.showDropdown) {
+          this.notifications.unshift({
+            id: data.id,
+            type: data.type,
+            message: data.message,
+            actor_avatar: data.actor_avatar,
+            created_at: data.created_at,
+            is_read: '0',
+            reference_type: data.reference_type,
+            reference_id: data.reference_id,
+          });
+        }
+      };
+
+      channel.bind('new-notification', this._onPusherNotification);
+    },
     toggleMobileSidebar() {
       document.body.classList.toggle('cnw-mobile-sidebar-open');
     },

@@ -33,6 +33,7 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_save_reputation',   array( $this, 'handle_save_reputation' ) );
         add_action( 'admin_post_cnw_delete_reputation',  array( $this, 'handle_delete_reputation' ) );
         add_action( 'admin_post_cnw_save_logo',         array( $this, 'handle_save_logo' ) );
+        add_action( 'admin_post_cnw_save_pusher',       array( $this, 'handle_save_pusher' ) );
         add_action( 'admin_post_cnw_save_guidelines',   array( $this, 'handle_save_guidelines' ) );
         add_action( 'admin_post_cnw_update_report',     array( $this, 'handle_update_report' ) );
         add_action( 'admin_post_cnw_delete_report',     array( $this, 'handle_delete_report' ) );
@@ -860,6 +861,25 @@ class Cnw_Social_Bridge_Admin {
 
         $mobile_logo_url = isset( $_POST['cnw_mobile_logo_url'] ) ? esc_url_raw( $_POST['cnw_mobile_logo_url'] ) : '';
         update_option( 'cnw_social_mobile_logo_url', $mobile_logo_url );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-settings', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * PUSHER handler
+     * ------------------------------------------------------------------ */
+
+    public function handle_save_pusher() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_pusher' );
+
+        update_option( 'cnw_pusher_app_id',  sanitize_text_field( $_POST['cnw_pusher_app_id']  ?? '' ) );
+        update_option( 'cnw_pusher_key',     sanitize_text_field( $_POST['cnw_pusher_key']     ?? '' ) );
+        update_option( 'cnw_pusher_secret',  sanitize_text_field( $_POST['cnw_pusher_secret']  ?? '' ) );
+        update_option( 'cnw_pusher_host',    sanitize_text_field( $_POST['cnw_pusher_host']    ?? '' ) );
+        update_option( 'cnw_pusher_port',    sanitize_text_field( $_POST['cnw_pusher_port']    ?? '443' ) );
+        update_option( 'cnw_pusher_cluster', sanitize_text_field( $_POST['cnw_pusher_cluster'] ?? 'mt1' ) );
 
         wp_redirect( add_query_arg( array( 'page' => 'cnw-settings', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
         exit;

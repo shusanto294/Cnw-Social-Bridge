@@ -4,7 +4,7 @@
     <div class="cnw-social-worker-layout">
       <div v-if="isLoggedIn" class="cnw-sidebar-mobile-overlay" @click="closeMobileSidebar"></div>
       <AppSidebar v-if="isLoggedIn" />
-      <main class="cnw-social-worker-main">
+      <main :class="['cnw-social-worker-main', routeComponentClass]">
         <router-view />
       </main>
       <AppRightSidebar v-if="!hideRightSidebar" />
@@ -30,6 +30,11 @@ export default {
   computed: {
     hideRightSidebar() {
       return this.$route.path !== '/';
+    },
+    routeComponentClass() {
+      const name = this.$route.matched?.[0]?.components?.default?.name;
+      if (!name) return '';
+      return name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
     },
   },
   watch: {

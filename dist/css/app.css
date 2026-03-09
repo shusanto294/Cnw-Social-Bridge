@@ -2623,7 +2623,8 @@ to   { opacity: 1; transform: translateY(0);
 }
 
 
-.cnw-social-worker-main{
+main.cnw-social-worker-main.messages-view
+{
   background: transparent;
   padding: 0;
 }

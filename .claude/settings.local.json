@@ -19,7 +19,8 @@
       "Bash(__NEW_LINE_62f6b157f6168d15__:*)",
       "Bash(python3:*)",
       "Bash(grep:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(composer:*)"
     ]
   }
 }

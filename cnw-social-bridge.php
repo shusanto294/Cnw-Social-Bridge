@@ -19,9 +19,15 @@ define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
 
+// ── Composer autoload (Pusher SDK etc.) ──────────────────────────────────────
+if ( file_exists( CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+    require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'vendor/autoload.php';
+}
+
 // ── Includes ─────────────────────────────────────────────────────────────────
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/class-cnw-admin.php';
 require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-rest-api.php';
+require_once CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'includes/class-cnw-pusher.php';
 
 // ── Core plugin class ────────────────────────────────────────────────────────
 
@@ -361,6 +367,10 @@ class Cnw_Social_Bridge {
             'logoUrl'       => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
             'mobileLogoUrl' => esc_url( get_option( 'cnw_social_mobile_logo_url', '' ) ),
             'defaultAvatar' => CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
+            'pusherKey'     => get_option( 'cnw_pusher_key', '' ),
+            'pusherCluster' => get_option( 'cnw_pusher_cluster', 'mt1' ),
+            'pusherHost'    => get_option( 'cnw_pusher_host', '' ),
+            'pusherPort'    => (int) get_option( 'cnw_pusher_port', 443 ),
             'currentUser' => array(
                 'id'         => get_current_user_id(),
                 'name'       => $current_user->display_name,

@@ -116,16 +116,16 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
         <table class="wp-list-table widefat fixed striped">
             <thead><tr>
                 <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
-                <th style="width:40px">ID</th><th style="width:120px">From</th><th style="width:120px">To</th><th>Subject</th><th style="width:60px">Read</th><th style="width:150px">Created</th><th style="width:130px">Actions</th>
+                <th style="width:40px">ID</th><th style="width:160px">From</th><th style="width:160px">To</th><th style="width:30%">Message</th><th style="width:60px">Read</th><th style="width:150px">Created</th><th style="width:130px">Actions</th>
             </tr></thead>
             <tbody>
             <?php if ( $rows ) : foreach ( $rows as $row ) : ?>
                 <tr>
                     <td class="cnw-cb-col"><input type="checkbox" name="bulk_ids[]" value="<?php echo esc_attr( $row->id ); ?>" class="cnw-bulk-cb"></td>
                     <td><?php echo esc_html( $row->id ); ?></td>
-                    <td><?php echo esc_html( $row->sender_name ); ?></td>
-                    <td><?php echo esc_html( $row->recipient_name ); ?></td>
-                    <td><?php echo esc_html( $row->subject ); ?></td>
+                    <td><?php echo esc_html( $row->sender_name . ' (#' . $row->sender_id . ')' ); ?></td>
+                    <td><?php echo esc_html( $row->recipient_name . ' (#' . $row->recipient_id . ')' ); ?></td>
+                    <td><?php echo esc_html( $row->content ); ?></td>
                     <td><?php echo $row->is_read ? '<span style="color:green">Yes</span>' : '<span style="color:#999">No</span>'; ?></td>
                     <td><?php echo esc_html( $row->created_at ); ?></td>
                     <td>

@@ -103,6 +103,11 @@ class Cnw_Social_Bridge_REST_API {
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_typing' ),  'permission_callback' => array( $this, 'can_send_message' ) ),
         ) );
 
+        // ── Pusher auth ─────────────────────────────────────────────────
+        register_rest_route( $ns, '/pusher/auth', array(
+            'methods' => 'POST', 'callback' => array( $this, 'pusher_auth' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+
         // ── Categories ───────────────────────────────────────────────
         register_rest_route( $ns, '/categories', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_categories' ),  'permission_callback' => '__return_true' ),
@@ -1034,7 +1039,27 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create message', array( 'status' => 500 ) );
         }
 
-        return array( 'success' => true, 'id' => $wpdb->insert_id );
+        $msg_id      = $wpdb->insert_id;
+        $sender_id   = get_current_user_id();
+        $recipient_id = intval( $params['recipient_id'] );
+        $sender      = get_userdata( $sender_id );
+        $sender_avatar = get_user_meta( $sender_id, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
+
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $recipient_id,
+            'new-message',
+            array(
+                'id'            => $msg_id,
+                'sender_id'     => $sender_id,
+                'sender_name'   => $sender ? $sender->display_name : 'Unknown',
+                'sender_avatar' => $sender_avatar,
+                'recipient_id'  => $recipient_id,
+                'content'       => wp_kses_post( $params['content'] ),
+                'created_at'    => current_time( 'mysql' ),
+            )
+        );
+
+        return array( 'success' => true, 'id' => $msg_id );
     }
 
     public function update_message( WP_REST_Request $request ) {
@@ -1185,7 +1210,7 @@ class Cnw_Social_Bridge_REST_API {
 
     /**
      * Set typing status for the current user in a conversation.
-     * Stores a transient that expires after 5 seconds.
+     * Stores a transient that expires after 5 seconds and broadcasts via Pusher.
      */
     public function set_typing( WP_REST_Request $request ) {
         $me    = get_current_user_id();
@@ -1193,6 +1218,16 @@ class Cnw_Social_Bridge_REST_API {
         $key   = 'cnw_typing_' . $me . '_' . $other;
 
         set_transient( $key, time(), 5 );
+
+        $user = get_userdata( $me );
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'client-typing',
+            array(
+                'user_id' => $me,
+                'name'    => $user ? $user->display_name : 'Unknown',
+            )
+        );
 
         return array( 'success' => true );
     }
@@ -1208,6 +1243,33 @@ class Cnw_Social_Bridge_REST_API {
         $typing_at = get_transient( $key );
 
         return array( 'is_typing' => $typing_at !== false );
+    }
+
+    /**
+     * Authenticate a Pusher private channel subscription.
+     * Users can only subscribe to their own private-user-{id} channel.
+     */
+    public function pusher_auth( WP_REST_Request $request ) {
+        $params       = $request->get_params();
+        $socket_id    = sanitize_text_field( $params['socket_id'] ?? '' );
+        $channel_name = sanitize_text_field( $params['channel_name'] ?? '' );
+
+        if ( ! $socket_id || ! $channel_name ) {
+            return new WP_Error( 'missing_params', 'socket_id and channel_name required', array( 'status' => 400 ) );
+        }
+
+        $me = get_current_user_id();
+        if ( $channel_name !== 'private-user-' . $me ) {
+            return new WP_Error( 'forbidden', 'You can only subscribe to your own channel', array( 'status' => 403 ) );
+        }
+
+        $auth = Cnw_Social_Bridge_Pusher::auth( $channel_name, $socket_id );
+        if ( is_wp_error( $auth ) ) {
+            return $auth;
+        }
+
+        // authorizeChannel returns a JSON string — decode for WP_REST_Response
+        return new WP_REST_Response( json_decode( $auth, true ), 200 );
     }
 
     /* ==================================================================
@@ -2409,6 +2471,25 @@ class Cnw_Social_Bridge_REST_API {
                 'reference_type' => $ref_type,
                 'reference_id'   => (int) $ref_id,
                 'message'        => $message,
+            )
+        );
+
+        $actor = get_userdata( (int) $actor_id );
+        $actor_avatar = get_user_meta( (int) $actor_id, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
+
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . (int) $user_id,
+            'new-notification',
+            array(
+                'id'             => $wpdb->insert_id,
+                'type'           => $type,
+                'reference_type' => $ref_type,
+                'reference_id'   => (int) $ref_id,
+                'message'        => $message,
+                'actor_id'       => (int) $actor_id,
+                'actor_name'     => $actor ? $actor->display_name : 'Unknown',
+                'actor_avatar'   => $actor_avatar,
+                'created_at'     => current_time( 'mysql' ),
             )
         );
     }
