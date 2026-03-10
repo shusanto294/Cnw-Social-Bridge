@@ -386,3 +386,43 @@ export async function login({ username, password }) {
   if (!res.ok) throw new Error(data.message || 'Login failed');
   return data;
 }
+
+// ── Connections ──────────────────────────────────────────────
+
+export async function getConnections({ page = 1, search = '' } = {}) {
+  const params = { page };
+  if (search) params.search = search;
+  return apiFetch('/connections', params);
+}
+
+export async function getConnectionRequests() {
+  return apiFetch('/connections/requests');
+}
+
+export async function sendConnectionRequest(userId) {
+  const url = apiUrl(`/connections/${userId}`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function acceptConnection(userId) {
+  const url = apiUrl(`/connections/${userId}/accept`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function declineConnection(userId) {
+  const url = apiUrl(`/connections/${userId}/decline`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function removeConnection(userId) {
+  const url = apiUrl(`/connections/${userId}`);
+  const res = await fetch(url, { method: 'DELETE', headers: headers() });
+  return res.json();
+}
+
+export async function getConnectionStatus(userId) {
+  return apiFetch(`/connections/status/${userId}`);
+}

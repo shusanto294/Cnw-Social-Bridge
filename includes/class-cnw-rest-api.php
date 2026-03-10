@@ -237,6 +237,33 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/users/me/activity', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_user_activity' ), 'permission_callback' => 'is_user_logged_in',
         ) );
+
+        // ── Connections ────────────────────────────────────────────
+        register_rest_route( $ns, '/connections', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_connections' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/requests', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_connection_requests' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/(?P<user_id>\d+)', array(
+            array( 'methods' => 'POST',   'callback' => array( $this, 'send_connection_request' ), 'permission_callback' => 'is_user_logged_in' ),
+            array( 'methods' => 'DELETE',  'callback' => array( $this, 'remove_connection' ),       'permission_callback' => 'is_user_logged_in' ),
+        ) );
+        register_rest_route( $ns, '/connections/(?P<user_id>\d+)/accept', array(
+            'methods' => 'POST', 'callback' => array( $this, 'accept_connection' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/(?P<user_id>\d+)/decline', array(
+            'methods' => 'POST', 'callback' => array( $this, 'decline_connection' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/(?P<user_id>\d+)/block', array(
+            'methods' => 'POST', 'callback' => array( $this, 'block_user' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/(?P<user_id>\d+)/unblock', array(
+            'methods' => 'POST', 'callback' => array( $this, 'unblock_user' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/connections/status/(?P<user_id>\d+)', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_connection_status' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
     }
 
     /* ------------------------------------------------------------------
@@ -1015,6 +1042,13 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'recipient_id and content are required', array( 'status' => 400 ) );
         }
 
+        // Only connected users can message each other
+        $sender = get_current_user_id();
+        $recipient = intval( $params['recipient_id'] );
+        if ( ! current_user_can( 'manage_options' ) && ! $this->are_connected( $sender, $recipient ) ) {
+            return new WP_Error( 'not_connected', 'You must be connected with this user to send a message.', array( 'status' => 403 ) );
+        }
+
         $result = $wpdb->insert(
             $wpdb->prefix . 'cnw_social_worker_messages',
             array(
@@ -1100,6 +1134,7 @@ class Cnw_Social_Bridge_REST_API {
 
         $me       = get_current_user_id();
         $table    = $wpdb->prefix . 'cnw_social_worker_messages';
+        $conn_tbl = $wpdb->prefix . 'cnw_social_worker_connections';
         $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
         $per_page = 10;
         $offset   = ( $page - 1 ) * $per_page;
@@ -1146,7 +1181,9 @@ class Cnw_Social_Bridge_REST_API {
             if ( empty( $row->other_avatar ) ) {
                 $row->other_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             }
-            $row->is_online = $this->is_user_online( $row->other_user_id );
+            $row->is_online    = $this->is_user_online( $row->other_user_id );
+            $row->is_connected = $this->are_connected( $me, $row->other_user_id );
+            $row->blocked_by   = $this->get_blocked_by( $me, $row->other_user_id );
         }
 
         return array(
@@ -2152,6 +2189,27 @@ class Cnw_Social_Bridge_REST_API {
         $query = new WP_User_Query( $args );
         $users = array();
 
+        // Bulk-load connection statuses for current user
+        $conn_map = array();
+        if ( $current ) {
+            $conn_table = $wpdb->prefix . 'cnw_social_worker_connections';
+            $conn_rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT sender_id, receiver_id, status FROM $conn_table
+                 WHERE sender_id = %d OR receiver_id = %d",
+                $current, $current
+            ) );
+            foreach ( $conn_rows as $cr ) {
+                $other_id = ( (int) $cr->sender_id === $current ) ? (int) $cr->receiver_id : (int) $cr->sender_id;
+                if ( $cr->status === 'accepted' ) {
+                    $conn_map[ $other_id ] = 'connected';
+                } elseif ( $cr->status === 'blocked' ) {
+                    $conn_map[ $other_id ] = 'blocked';
+                } elseif ( $cr->status === 'pending' ) {
+                    $conn_map[ $other_id ] = ( (int) $cr->sender_id === $current ) ? 'pending_sent' : 'pending_received';
+                }
+            }
+        }
+
         foreach ( $query->get_results() as $u ) {
             $avatar = get_user_meta( $u->ID, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             $reputation = (int) get_user_meta( $u->ID, 'cnw_reputation_total', true );
@@ -2174,6 +2232,7 @@ class Cnw_Social_Bridge_REST_API {
                 'reply_count'        => $reply_count,
                 'user_registered'    => $u->user_registered,
                 'is_online'          => $this->is_user_online( $u->ID ),
+                'connection_status'  => $conn_map[ $u->ID ] ?? 'none',
             );
         }
 
@@ -2792,5 +2851,371 @@ class Cnw_Social_Bridge_REST_API {
             'total'      => $total,
             'pages'      => ceil( $total / $per_page ),
         );
+    }
+
+    /* ------------------------------------------------------------------
+     * Connections
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Check if two users are connected (accepted).
+     */
+    private function are_connected( $user_a, $user_b ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+        return (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM $table
+             WHERE status = 'accepted'
+               AND ((sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d))",
+            $user_a, $user_b, $user_b, $user_a
+        ) );
+    }
+
+    /**
+     * Check if there is a block between two users.
+     * Returns: null (no block), 'me' (I blocked them), 'them' (they blocked me).
+     */
+    private function get_blocked_by( $me, $other ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT sender_id FROM $table
+             WHERE status = 'blocked'
+               AND ((sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d))",
+            $me, $other, $other, $me
+        ) );
+        if ( ! $row ) return null;
+        return (int) $row->sender_id === $me ? 'me' : 'them';
+    }
+
+    /**
+     * Get connection status between current user and another user.
+     * Returns: none | pending_sent | pending_received | connected
+     */
+    public function get_connection_status( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT sender_id, receiver_id, status FROM $table
+             WHERE (sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d)",
+            $me, $other, $other, $me
+        ) );
+
+        if ( ! $row ) {
+            return array( 'status' => 'none' );
+        }
+        if ( $row->status === 'blocked' ) {
+            return array( 'status' => 'blocked' );
+        }
+        if ( $row->status === 'accepted' ) {
+            return array( 'status' => 'connected' );
+        }
+        // pending
+        if ( (int) $row->sender_id === $me ) {
+            return array( 'status' => 'pending_sent' );
+        }
+        return array( 'status' => 'pending_received' );
+    }
+
+    /**
+     * Send a connection request.
+     */
+    public function send_connection_request( WP_REST_Request $request ) {
+        global $wpdb;
+        $me       = get_current_user_id();
+        $other    = intval( $request['user_id'] );
+        $table    = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        if ( $me === $other ) {
+            return new WP_Error( 'invalid', 'Cannot connect to yourself', array( 'status' => 400 ) );
+        }
+
+        // Check if a row already exists
+        $existing = $wpdb->get_row( $wpdb->prepare(
+            "SELECT id, sender_id, status FROM $table
+             WHERE (sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d)",
+            $me, $other, $other, $me
+        ) );
+
+        if ( $existing ) {
+            if ( $existing->status === 'blocked' ) {
+                return new WP_Error( 'blocked', 'Unable to send connection request.', array( 'status' => 403 ) );
+            }
+            if ( $existing->status === 'accepted' ) {
+                return array( 'status' => 'connected' );
+            }
+            if ( $existing->status === 'pending' ) {
+                // If the other person sent us a request, auto-accept
+                if ( (int) $existing->sender_id === $other ) {
+                    $wpdb->update( $table, array( 'status' => 'accepted' ), array( 'id' => $existing->id ) );
+                    return array( 'status' => 'connected' );
+                }
+                return array( 'status' => 'pending_sent' );
+            }
+            // If declined previously, allow re-sending
+            $wpdb->update( $table,
+                array( 'sender_id' => $me, 'receiver_id' => $other, 'status' => 'pending' ),
+                array( 'id' => $existing->id )
+            );
+            return array( 'status' => 'pending_sent' );
+        }
+
+        $wpdb->insert( $table, array(
+            'sender_id'   => $me,
+            'receiver_id' => $other,
+            'status'      => 'pending',
+        ) );
+
+        // Send notification to receiver (with avatar via helper)
+        $sender_name = wp_get_current_user()->display_name;
+        $this->insert_notification( $other, $me, 'connection_request', 'user', $me, $sender_name . ' sent you a connection request.' );
+
+        return array( 'status' => 'pending_sent' );
+    }
+
+    /**
+     * Accept a connection request.
+     */
+    public function accept_connection( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $updated = $wpdb->update(
+            $table,
+            array( 'status' => 'accepted' ),
+            array( 'sender_id' => $other, 'receiver_id' => $me, 'status' => 'pending' )
+        );
+
+        if ( ! $updated ) {
+            return new WP_Error( 'not_found', 'No pending request from this user', array( 'status' => 404 ) );
+        }
+
+        // Notify the original sender (with avatar via helper)
+        $accepter_name = wp_get_current_user()->display_name;
+        $this->insert_notification( $other, $me, 'connection_accepted', 'user', $me, $accepter_name . ' accepted your connection request.' );
+
+        return array( 'status' => 'connected' );
+    }
+
+    /**
+     * Decline a connection request.
+     */
+    public function decline_connection( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $wpdb->delete( $table, array( 'sender_id' => $other, 'receiver_id' => $me, 'status' => 'pending' ) );
+
+        return array( 'status' => 'none' );
+    }
+
+    /**
+     * Remove a connection (unfriend) or cancel a sent request.
+     */
+    public function remove_connection( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM $table WHERE (sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d)",
+            $me, $other, $other, $me
+        ) );
+
+        // Notify the other user in real time
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'connection-removed',
+            array( 'remover_id' => $me )
+        );
+
+        return array( 'status' => 'none' );
+    }
+
+    /**
+     * Block a user — sets connection status to 'blocked'.
+     */
+    public function block_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        if ( $me === $other ) {
+            return new WP_Error( 'invalid', 'Cannot block yourself', array( 'status' => 400 ) );
+        }
+
+        // Check if the other user already blocked me — cannot override their block
+        $existing = $wpdb->get_row( $wpdb->prepare(
+            "SELECT sender_id, status FROM $table
+             WHERE status = 'blocked'
+               AND ((sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d))",
+            $me, $other, $other, $me
+        ) );
+
+        if ( $existing && (int) $existing->sender_id === $other ) {
+            return new WP_Error( 'blocked_by_other', 'This user has already blocked you.', array( 'status' => 403 ) );
+        }
+
+        // Delete any existing non-block row between the two users
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM $table WHERE status != 'blocked' AND ((sender_id = %d AND receiver_id = %d) OR (sender_id = %d AND receiver_id = %d))",
+            $me, $other, $other, $me
+        ) );
+
+        // Insert or update blocked row if not already blocked by me
+        if ( ! $existing ) {
+            $wpdb->insert( $table, array(
+                'sender_id'   => $me,
+                'receiver_id' => $other,
+                'status'      => 'blocked',
+            ) );
+        }
+
+        // Notify the blocked user in real time
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'connection-blocked',
+            array( 'blocker_id' => $me )
+        );
+
+        return array( 'status' => 'blocked' );
+    }
+
+    /**
+     * Unblock a user (only the blocker can unblock).
+     */
+    public function unblock_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $wpdb->query( $wpdb->prepare(
+            "DELETE FROM $table WHERE sender_id = %d AND receiver_id = %d AND status = 'blocked'",
+            $me, $other
+        ) );
+
+        // Notify the unblocked user in real time
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'connection-unblocked',
+            array( 'unblocker_id' => $me )
+        );
+
+        return array( 'status' => 'none' );
+    }
+
+    /**
+     * List my accepted connections.
+     */
+    public function get_connections( WP_REST_Request $request ) {
+        global $wpdb;
+        $me       = get_current_user_id();
+        $table    = $wpdb->prefix . 'cnw_social_worker_connections';
+        $page     = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 20;
+        $offset   = ( $page - 1 ) * $per_page;
+        $search   = sanitize_text_field( $request->get_param( 'search' ) );
+
+        $search_join  = '';
+        $search_where = '';
+        $search_params = array();
+        if ( ! empty( $search ) && strlen( $search ) >= 2 ) {
+            $like = '%' . $wpdb->esc_like( $search ) . '%';
+            $search_where = ' AND u.display_name LIKE %s';
+            $search_params[] = $like;
+        }
+
+        $base_params = array( $me, $me );
+        $count_sql = "SELECT COUNT(*)
+            FROM $table c
+            JOIN {$wpdb->users} u ON u.ID = IF(c.sender_id = %d, c.receiver_id, c.sender_id)
+            WHERE c.status = 'accepted' AND (c.sender_id = %d OR c.receiver_id = %d) $search_where";
+        $count_params = array( $me, $me, $me );
+        $total = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, array_merge( $count_params, $search_params ) ) );
+
+        $sql = "SELECT u.ID, u.display_name, u.user_registered, c.created_at AS connected_since
+            FROM $table c
+            JOIN {$wpdb->users} u ON u.ID = IF(c.sender_id = %d, c.receiver_id, c.sender_id)
+            WHERE c.status = 'accepted' AND (c.sender_id = %d OR c.receiver_id = %d) $search_where
+            ORDER BY u.display_name ASC
+            LIMIT %d OFFSET %d";
+        $sql_params = array_merge( array( $me, $me, $me ), $search_params, array( $per_page, $offset ) );
+        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $sql_params ) );
+
+        $users = array();
+        foreach ( $rows as $row ) {
+            $uid = (int) $row->ID;
+            $users[] = array(
+                'id'                 => $uid,
+                'name'               => $row->display_name,
+                'avatar'             => get_user_meta( $uid, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
+                'verified_label'     => get_user_meta( $uid, 'cnw_verified_label', true ),
+                'professional_title' => get_user_meta( $uid, 'cnw_professional_title', true ),
+                'reputation'         => (int) get_user_meta( $uid, 'cnw_reputation_total', true ),
+                'thread_count'       => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE author_id = %d", $uid
+                ) ),
+                'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
+                ) ),
+                'is_online'          => $this->is_user_online( $uid ),
+                'connected_since'    => $row->connected_since,
+                'connection_status'  => 'connected',
+            );
+        }
+
+        return array( 'users' => $users, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
+    /**
+     * List pending connection requests I received.
+     */
+    public function get_connection_requests( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $table = $wpdb->prefix . 'cnw_social_worker_connections';
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT c.id, c.sender_id, c.created_at, u.display_name
+             FROM $table c
+             JOIN {$wpdb->users} u ON u.ID = c.sender_id
+             WHERE c.receiver_id = %d AND c.status = 'pending'
+             ORDER BY c.created_at DESC",
+            $me
+        ) );
+
+        $requests = array();
+        foreach ( $rows as $row ) {
+            $uid = (int) $row->sender_id;
+            $requests[] = array(
+                'id'                 => (int) $row->id,
+                'user_id'            => $uid,
+                'name'               => $row->display_name,
+                'avatar'             => get_user_meta( $uid, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
+                'verified_label'     => get_user_meta( $uid, 'cnw_verified_label', true ),
+                'professional_title' => get_user_meta( $uid, 'cnw_professional_title', true ),
+                'reputation'         => (int) get_user_meta( $uid, 'cnw_reputation_total', true ),
+                'thread_count'       => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE author_id = %d", $uid
+                ) ),
+                'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
+                ) ),
+                'is_online'          => $this->is_user_online( $uid ),
+                'created_at'         => $row->created_at,
+            );
+        }
+
+        return array( 'requests' => $requests );
     }
 }

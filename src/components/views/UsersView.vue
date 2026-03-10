@@ -14,86 +14,215 @@
       </div>
     </div>
 
-    <div v-if="loading && page === 1" class="cnw-social-worker-loading">Loading members...</div>
+    <!-- Tabs -->
+    <div v-if="isLoggedIn" class="cnw-users-tabs">
+      <button
+        class="cnw-users-tab"
+        :class="{ active: tab === 'all' }"
+        @click="switchTab('all')"
+      >All Members</button>
+      <button
+        class="cnw-users-tab"
+        :class="{ active: tab === 'connections' }"
+        @click="switchTab('connections')"
+      >My Connections</button>
+      <button
+        class="cnw-users-tab"
+        :class="{ active: tab === 'requests' }"
+        @click="switchTab('requests')"
+      >
+        Requests
+        <span v-if="requestCount > 0" class="cnw-users-tab-badge">{{ requestCount }}</span>
+      </button>
+    </div>
 
-    <div v-else-if="!users.length && !loading" class="cnw-social-worker-empty">
-      <p v-if="search">No members found matching "{{ search }}"</p>
-      <p v-else>No community members yet.</p>
+    <div v-if="loading" class="cnw-social-worker-loading">Loading members...</div>
+
+    <div v-else-if="isTabEmpty" class="cnw-social-worker-empty">
+      <template v-if="tab === 'requests'">
+        <p>No pending connection requests.</p>
+      </template>
+      <template v-else-if="tab === 'connections'">
+        <p v-if="search">No connections found matching "{{ search }}"</p>
+        <p v-else>You have no connections yet. Browse All Members and connect!</p>
+      </template>
+      <template v-else>
+        <p v-if="search">No members found matching "{{ search }}"</p>
+        <p v-else>No community members yet.</p>
+      </template>
     </div>
 
     <template v-else>
-      <div class="cnw-users-grid">
-        <div
-          v-for="user in users"
-          :key="user.id"
-          class="cnw-user-card"
-          @click="viewProfile(user)"
-        >
-          <div class="cnw-user-card-top">
-            <div class="cnw-user-avatar-wrap">
-              <img :src="user.avatar" :alt="user.name" class="cnw-social-worker-avatar cnw-user-avatar" width="60" height="60" />
-              <svg class="cnw-user-status-icon" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <circle cx="4" cy="4" r="4" :fill="user.is_online ? '#82E71D' : '#B0B0B0'" />
-              </svg>
-            </div>
-            <div class="cnw-user-card-info">
-              <div class="cnw-user-name-row">
-                <span class="cnw-user-name">{{ user.name }}</span>
-                <span v-if="user.verified_label" class="cnw-social-worker-verified" title="Verified">&#10003;</span>
+      <!-- Requests tab: incoming requests -->
+      <template v-if="tab === 'requests'">
+        <div class="cnw-users-grid">
+          <div
+            v-for="req in requests"
+            :key="req.user_id"
+            class="cnw-user-card"
+            @click="viewProfile(req)"
+          >
+            <div class="cnw-user-card-top">
+              <div class="cnw-user-avatar-wrap">
+                <img :src="req.avatar" :alt="req.name" class="cnw-social-worker-avatar cnw-user-avatar" width="60" height="60" />
+                <svg class="cnw-user-status-icon" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <circle cx="4" cy="4" r="4" :fill="req.is_online ? '#82E71D' : '#B0B0B0'" />
+                </svg>
               </div>
-              <p v-if="user.professional_title" class="cnw-user-title">{{ user.professional_title }}</p>
-              <p v-else-if="user.verified_label" class="cnw-user-title">{{ user.verified_label }}</p>
+              <div class="cnw-user-card-info">
+                <div class="cnw-user-name-row">
+                  <span class="cnw-user-name">{{ req.name }}</span>
+                  <span v-if="req.verified_label" class="cnw-social-worker-verified" title="Verified">&#10003;</span>
+                </div>
+                <p v-if="req.professional_title" class="cnw-user-title">{{ req.professional_title }}</p>
+                <p v-else-if="req.verified_label" class="cnw-user-title">{{ req.verified_label }}</p>
+              </div>
             </div>
-          </div>
 
-          <div class="cnw-user-card-stats">
-            <div class="cnw-user-stat">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <span class="cnw-user-stat-val">{{ user.reputation || 0 }}</span>
-              <span class="cnw-user-stat-label">Points</span>
+            <div class="cnw-user-card-stats">
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span class="cnw-user-stat-val">{{ req.reputation || 0 }}</span>
+                <span class="cnw-user-stat-label">Points</span>
+              </div>
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="cnw-user-stat-val">{{ req.thread_count || 0 }}</span>
+                <span class="cnw-user-stat-label">Questions</span>
+              </div>
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span class="cnw-user-stat-val">{{ req.reply_count || 0 }}</span>
+                <span class="cnw-user-stat-label">Answers</span>
+              </div>
             </div>
-            <div class="cnw-user-stat">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <span class="cnw-user-stat-val">{{ user.thread_count || 0 }}</span>
-              <span class="cnw-user-stat-label">Questions</span>
-            </div>
-            <div class="cnw-user-stat">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <span class="cnw-user-stat-val">{{ user.reply_count || 0 }}</span>
-              <span class="cnw-user-stat-label">Answers</span>
-            </div>
-          </div>
 
-          <div class="cnw-user-card-actions">
-            <router-link :to="'/users/' + user.id" class="cnw-user-btn cnw-user-btn-profile" @click.stop>
-              View Profile
-            </router-link>
-            <button
-              v-if="user.id !== currentUserId"
-              class="cnw-user-btn cnw-user-btn-message"
-              @click.stop="messageUser(user)"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Message
-            </button>
+            <div class="cnw-user-card-actions">
+              <button
+                class="cnw-user-btn cnw-user-btn-accept"
+                :disabled="req._loading"
+                @click.stop="handleAccept(req)"
+              >Accept</button>
+              <button
+                class="cnw-user-btn cnw-user-btn-decline"
+                :disabled="req._loading"
+                @click.stop="handleDecline(req)"
+              >Decline</button>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
 
-      <!-- Pagination -->
-      <div v-if="pages > 1" class="cnw-users-pagination">
-        <button
-          class="cnw-users-page-btn"
-          :disabled="page <= 1"
-          @click="goPage(page - 1)"
-        >&laquo; Prev</button>
-        <span class="cnw-users-page-info">Page {{ page }} of {{ pages }}</span>
-        <button
-          class="cnw-users-page-btn"
-          :disabled="page >= pages"
-          @click="goPage(page + 1)"
-        >Next &raquo;</button>
-      </div>
+      <!-- All Members / My Connections -->
+      <template v-else>
+        <div class="cnw-users-grid">
+          <div
+            v-for="user in users"
+            :key="user.id"
+            class="cnw-user-card"
+            @click="viewProfile(user)"
+          >
+            <div class="cnw-user-card-top">
+              <div class="cnw-user-avatar-wrap">
+                <img :src="user.avatar" :alt="user.name" class="cnw-social-worker-avatar cnw-user-avatar" width="60" height="60" />
+                <svg class="cnw-user-status-icon" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <circle cx="4" cy="4" r="4" :fill="user.is_online ? '#82E71D' : '#B0B0B0'" />
+                </svg>
+              </div>
+              <div class="cnw-user-card-info">
+                <div class="cnw-user-name-row">
+                  <span class="cnw-user-name">{{ user.name }}</span>
+                  <span v-if="user.verified_label" class="cnw-social-worker-verified" title="Verified">&#10003;</span>
+                </div>
+                <p v-if="user.professional_title" class="cnw-user-title">{{ user.professional_title }}</p>
+                <p v-else-if="user.verified_label" class="cnw-user-title">{{ user.verified_label }}</p>
+              </div>
+            </div>
+
+            <div class="cnw-user-card-stats">
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span class="cnw-user-stat-val">{{ user.reputation || 0 }}</span>
+                <span class="cnw-user-stat-label">Points</span>
+              </div>
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="cnw-user-stat-val">{{ user.thread_count || 0 }}</span>
+                <span class="cnw-user-stat-label">Questions</span>
+              </div>
+              <div class="cnw-user-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span class="cnw-user-stat-val">{{ user.reply_count || 0 }}</span>
+                <span class="cnw-user-stat-label">Answers</span>
+              </div>
+            </div>
+
+            <div class="cnw-user-card-actions">
+              <router-link :to="'/users/' + user.id" class="cnw-user-btn cnw-user-btn-profile" @click.stop>
+                View Profile
+              </router-link>
+              <!-- Connection button -->
+              <template v-if="user.id !== currentUserId && isLoggedIn">
+                <button
+                  v-if="user.connection_status === 'connected'"
+                  class="cnw-user-btn cnw-user-btn-message"
+                  @click.stop="messageUser(user)"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Message
+                </button>
+                <button
+                  v-else-if="user.connection_status === 'pending_sent'"
+                  class="cnw-user-btn cnw-user-btn-pending"
+                  @click.stop="handleCancelRequest(user)"
+                  :disabled="user._loading"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  Pending
+                </button>
+                <button
+                  v-else-if="user.connection_status === 'pending_received'"
+                  class="cnw-user-btn cnw-user-btn-accept"
+                  @click.stop="handleAcceptFromCard(user)"
+                  :disabled="user._loading"
+                >Accept</button>
+                <button
+                  v-else
+                  class="cnw-user-btn cnw-user-btn-connect"
+                  @click.stop="handleConnect(user)"
+                  :disabled="user._loading"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                  Connect
+                </button>
+              </template>
+              <button
+                v-else-if="user.id !== currentUserId && !isLoggedIn"
+                class="cnw-user-btn cnw-user-btn-connect"
+                @click.stop="openLoginModal"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Connect
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="pages > 1" class="cnw-users-pagination">
+          <button
+            class="cnw-users-page-btn"
+            :disabled="page <= 1"
+            @click="goPage(page - 1)"
+          >&laquo; Prev</button>
+          <span class="cnw-users-page-info">Page {{ page }} of {{ pages }}</span>
+          <button
+            class="cnw-users-page-btn"
+            :disabled="page >= pages"
+            @click="goPage(page + 1)"
+          >Next &raquo;</button>
+        </div>
+      </template>
     </template>
 
     <!-- User detail modal -->
@@ -138,14 +267,34 @@
             <router-link :to="'/users/' + selectedUser.id" class="cnw-user-btn cnw-user-btn-profile" @click="selectedUser = null">
               Full Profile
             </router-link>
-            <button
-              v-if="selectedUser.id !== currentUserId"
-              class="cnw-user-btn cnw-user-btn-message"
-              @click="messageUser(selectedUser)"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Message
-            </button>
+            <template v-if="selectedUser.id !== currentUserId && isLoggedIn">
+              <button
+                v-if="selectedUser.connection_status === 'connected'"
+                class="cnw-user-btn cnw-user-btn-message"
+                @click="messageUser(selectedUser)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Message
+              </button>
+              <button
+                v-else-if="selectedUser.connection_status === 'pending_sent'"
+                class="cnw-user-btn cnw-user-btn-pending"
+                @click="handleCancelRequest(selectedUser)"
+              >Pending</button>
+              <button
+                v-else-if="selectedUser.connection_status === 'pending_received'"
+                class="cnw-user-btn cnw-user-btn-accept"
+                @click="handleAcceptFromCard(selectedUser)"
+              >Accept</button>
+              <button
+                v-else
+                class="cnw-user-btn cnw-user-btn-connect"
+                @click="handleConnect(selectedUser)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Connect
+              </button>
+            </template>
           </div>
         </template>
       </div>
@@ -154,40 +303,102 @@
 </template>
 
 <script>
-import { getUsers, getUser } from '@/api/index.js';
+import { getUsers, getUser, getConnections, getConnectionRequests, sendConnectionRequest, acceptConnection, declineConnection, removeConnection } from '@/api/index.js';
 
 export default {
   name: 'UsersView',
   data() {
     return {
       users: [],
+      requests: [],
+      requestCount: 0,
       loading: true,
       search: '',
       searchTimeout: null,
       page: 1,
       pages: 1,
       total: 0,
+      tab: 'all',
       selectedUser: null,
       modalUser: null,
       modalLoading: false,
       currentUserId: window.cnwData?.currentUser?.id || 0,
+      isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
   },
+  computed: {
+    isTabEmpty() {
+      if (this.tab === 'requests') return !this.requests.length;
+      return !this.users.length;
+    },
+  },
   created() {
-    this.fetchUsers();
+    // Read tab from query param (e.g. /users?tab=requests)
+    const qTab = this.$route && this.$route.query && this.$route.query.tab;
+    if (qTab && ['all', 'connections', 'requests'].includes(qTab) && this.isLoggedIn) {
+      this.tab = qTab;
+    }
+    if (this.tab === 'requests') {
+      this.fetchRequests();
+    } else {
+      this.fetchUsers();
+    }
+    if (this.isLoggedIn) {
+      this.fetchRequestCount();
+    }
+  },
+  watch: {
+    '$route.query.tab'(newTab) {
+      if (newTab && ['all', 'connections', 'requests'].includes(newTab) && this.isLoggedIn) {
+        this.switchTab(newTab);
+      }
+    },
   },
   methods: {
+    switchTab(t) {
+      if (this.tab === t) return;
+      this.tab = t;
+      this.search = '';
+      this.page = 1;
+      if (t === 'requests') {
+        this.fetchRequests();
+      } else {
+        this.fetchUsers();
+      }
+    },
     async fetchUsers() {
       this.loading = true;
       try {
-        const data = await getUsers({ page: this.page, search: this.search });
-        this.users = data.users || [];
+        let data;
+        if (this.tab === 'connections') {
+          data = await getConnections({ page: this.page, search: this.search });
+        } else {
+          data = await getUsers({ page: this.page, search: this.search });
+        }
+        this.users = (data.users || []).map(u => ({ ...u, _loading: false }));
         this.total = data.total || 0;
         this.pages = data.pages || 1;
       } catch {
         this.users = [];
       }
       this.loading = false;
+    },
+    async fetchRequests() {
+      this.loading = true;
+      try {
+        const data = await getConnectionRequests();
+        this.requests = (data.requests || []).map(r => ({ ...r, _loading: false }));
+        this.requestCount = this.requests.length;
+      } catch {
+        this.requests = [];
+      }
+      this.loading = false;
+    },
+    async fetchRequestCount() {
+      try {
+        const data = await getConnectionRequests();
+        this.requestCount = (data.requests || []).length;
+      } catch { /* silent */ }
     },
     onSearch() {
       clearTimeout(this.searchTimeout);
@@ -202,24 +413,70 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     async viewProfile(user) {
-      this.selectedUser = user;
+      const uid = user.id || user.user_id;
+      this.selectedUser = { ...user, id: uid };
       this.modalUser = null;
       this.modalLoading = true;
       try {
-        this.modalUser = await getUser(user.id);
+        this.modalUser = await getUser(uid);
       } catch { this.modalUser = null; }
       this.modalLoading = false;
     },
     messageUser(user) {
       this.selectedUser = null;
       const detail = { id: user.id, name: user.name, avatar: user.avatar, verified_label: user.verified_label || '' };
-      // Store pending chat so MessagesView can pick it up on mount
       window._cnwPendingChat = detail;
       this.$router.push('/messages');
-      // Also dispatch event in case MessagesView is already mounted
       this.$nextTick(() => {
         window.dispatchEvent(new CustomEvent('cnw-start-chat', { detail }));
       });
+    },
+    openLoginModal() {
+      window.dispatchEvent(new CustomEvent('cnw-open-login'));
+    },
+    async handleConnect(user) {
+      user._loading = true;
+      try {
+        const res = await sendConnectionRequest(user.id);
+        user.connection_status = res.status;
+      } catch { /* silent */ }
+      user._loading = false;
+    },
+    async handleCancelRequest(user) {
+      user._loading = true;
+      try {
+        await removeConnection(user.id);
+        user.connection_status = 'none';
+      } catch { /* silent */ }
+      user._loading = false;
+    },
+    async handleAcceptFromCard(user) {
+      user._loading = true;
+      try {
+        const res = await acceptConnection(user.id);
+        user.connection_status = res.status;
+      } catch { /* silent */ }
+      user._loading = false;
+    },
+    async handleAccept(req) {
+      req._loading = true;
+      try {
+        await acceptConnection(req.user_id);
+        this.requests = this.requests.filter(r => r.user_id !== req.user_id);
+        this.requestCount = this.requests.length;
+        window.dispatchEvent(new CustomEvent('cnw-connections-updated'));
+      } catch { /* silent */ }
+      req._loading = false;
+    },
+    async handleDecline(req) {
+      req._loading = true;
+      try {
+        await declineConnection(req.user_id);
+        this.requests = this.requests.filter(r => r.user_id !== req.user_id);
+        this.requestCount = this.requests.length;
+        window.dispatchEvent(new CustomEvent('cnw-connections-updated'));
+      } catch { /* silent */ }
+      req._loading = false;
     },
     formatDate(dateStr) {
       if (!dateStr) return '';
@@ -270,6 +527,45 @@ export default {
   background: #fff;
 }
 .cnw-users-search:focus { border-color: var(--teal); }
+
+/* Tabs */
+.cnw-users-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+}
+.cnw-users-tab {
+  position: relative;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-med);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cnw-users-tab:hover { color: var(--teal); }
+.cnw-users-tab.active {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+.cnw-users-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d63638;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
+  margin-left: 6px;
+}
 
 /* Grid */
 .cnw-users-grid {
@@ -376,8 +672,9 @@ export default {
   border: none;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
 }
+.cnw-user-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .cnw-user-btn-profile {
   background: var(--teal);
   color: #fff;
@@ -392,6 +689,34 @@ export default {
   justify-content: center;
 }
 .cnw-user-btn-message:hover { background: var(--green-dark); }
+.cnw-user-btn-connect {
+  background: var(--teal);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-connect:hover { background: var(--teal-dark); }
+.cnw-user-btn-pending {
+  background: #e0e0e0;
+  color: var(--text-med);
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-pending:hover { background: #d0d0d0; }
+.cnw-user-btn-accept {
+  background: var(--green);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-accept:hover { background: var(--green-dark); }
+.cnw-user-btn-decline {
+  background: #d63638;
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-decline:hover { background: #b32d2f; }
 
 /* Pagination */
 .cnw-users-pagination {
@@ -522,5 +847,8 @@ export default {
   .cnw-users-header { flex-direction: column; align-items: stretch; }
   .cnw-users-search-wrap { width: 100%; }
   .cnw-users-grid { grid-template-columns: 1fr; }
+  .cnw-users-tabs { flex-direction: column; border-bottom: none; }
+  .cnw-users-tab { white-space: nowrap; padding: 10px 14px; border-bottom: none; border-left: 2px solid transparent; text-align: left; }
+  .cnw-users-tab.active { border-bottom-color: transparent; border-left-color: var(--teal); }
 }
 </style>

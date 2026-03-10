@@ -130,6 +130,25 @@
             </div>
             <div class="cnw-msg-detail-name">{{ otherUser.name }}</div>
           </div>
+          <div class="cnw-msg-header-menu-wrap">
+            <button class="cnw-msg-dots-btn" @click.stop="showHeaderMenu = !showHeaderMenu" title="More options">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+            <div v-if="showHeaderMenu" class="cnw-msg-header-dropdown">
+              <button class="cnw-msg-header-dropdown-item" :disabled="!isConnected" @click="handleRemoveConnection">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Remove Connection
+              </button>
+              <button v-if="blockedBy === 'me'" class="cnw-msg-header-dropdown-item" @click="handleUnblockUser">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                Unblock User
+              </button>
+              <button v-else class="cnw-msg-header-dropdown-item cnw-msg-header-dropdown-danger" :disabled="blockedBy === 'them'" @click="handleBlockUser">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                Block User
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Messages -->
@@ -185,7 +204,7 @@
         </div>
 
         <!-- Input -->
-        <div class="cnw-msg-input-bar">
+        <div v-if="isConnected" class="cnw-msg-input-bar">
           <textarea
             v-model="newMessage"
             @keydown.enter.exact.prevent="sendMsg"
@@ -194,8 +213,16 @@
             class="cnw-msg-input"
             name="message"
           ></textarea>
-          <!-- <button class="cnw-msg-send-btn" :disabled="!newMessage.trim() || sending" @click="sendMsg">Send</button> -->
           <button class="cnw-msg-send-btn" @click="sendMsg">Send</button>
+        </div>
+        <div v-else class="cnw-msg-not-connected">
+          <div class="cnw-msg-not-connected-line">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            You can't send messages to this user because you are not connected.
+          </div>
+          <div v-if="blockedBy" class="cnw-msg-blocked-notice">
+            {{ blockedBy === 'me' ? 'You blocked this person.' : 'This person blocked you.' }}
+          </div>
         </div>
       </template>
 
@@ -208,7 +235,7 @@
 </template>
 
 <script>
-import { getConversations, getConversation, sendMessage, markConversationRead, setTyping } from '@/api';
+import { getConversations, getConversation, sendMessage, markConversationRead, setTyping, getConnections, removeConnection } from '@/api';
 import { getUserChannel } from '@/pusher';
 
 export default {
@@ -239,6 +266,9 @@ export default {
       hasMoreConvs: false,
       loadingMoreConvs: false,
       mobileShowDetail: false,
+      showHeaderMenu: false,
+      isConnected: true,
+      blockedBy: null,
     };
   },
   async mounted() {
@@ -258,6 +288,9 @@ export default {
     await this.loadConversations();
     this.initPusher();
     this.syncHeightWithSidebar();
+
+    this._closeHeaderMenu = () => { this.showHeaderMenu = false; };
+    document.addEventListener('click', this._closeHeaderMenu);
   },
   beforeUnmount() {
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
@@ -267,8 +300,12 @@ export default {
       this.pusherChannel.unbind('client-typing', this._onPusherTyping);
       this.pusherChannel.unbind('user-status', this._onPusherStatus);
       this.pusherChannel.unbind('messages-read', this._onPusherRead);
+      this.pusherChannel.unbind('connection-blocked', this._onPusherBlocked);
+      this.pusherChannel.unbind('connection-unblocked', this._onPusherUnblocked);
+      this.pusherChannel.unbind('connection-removed', this._onPusherConnectionRemoved);
     }
     window.removeEventListener('cnw-start-chat', this._startChatHandler);
+    document.removeEventListener('click', this._closeHeaderMenu);
     if (this._sidebarObserver) this._sidebarObserver.disconnect();
   },
   methods: {
@@ -343,10 +380,43 @@ export default {
         }
       };
 
+      this._onPusherBlocked = (data) => {
+        const blockerId = Number(data.blocker_id);
+        // Update conversation
+        const conv = this.conversations.find(c => Number(c.other_user_id) === blockerId);
+        if (conv) { conv.is_connected = false; conv.blocked_by = 'them'; }
+        // Update active chat
+        if (this.activeUserId === blockerId) {
+          this.isConnected = false;
+          this.blockedBy = 'them';
+        }
+      };
+
+      this._onPusherUnblocked = (data) => {
+        const unblockerId = Number(data.unblocker_id);
+        const conv = this.conversations.find(c => Number(c.other_user_id) === unblockerId);
+        if (conv) { conv.blocked_by = null; }
+        if (this.activeUserId === unblockerId) {
+          this.blockedBy = null;
+        }
+      };
+
+      this._onPusherConnectionRemoved = (data) => {
+        const removerId = Number(data.remover_id);
+        const conv = this.conversations.find(c => Number(c.other_user_id) === removerId);
+        if (conv) { conv.is_connected = false; }
+        if (this.activeUserId === removerId) {
+          this.isConnected = false;
+        }
+      };
+
       channel.bind('new-message', this._onPusherMessage);
       channel.bind('client-typing', this._onPusherTyping);
       channel.bind('user-status', this._onPusherStatus);
       channel.bind('messages-read', this._onPusherRead);
+      channel.bind('connection-blocked', this._onPusherBlocked);
+      channel.bind('connection-unblocked', this._onPusherUnblocked);
+      channel.bind('connection-removed', this._onPusherConnectionRemoved);
     },
     updateConversationFromMessage(data) {
       const senderId = Number(data.sender_id);
@@ -416,6 +486,8 @@ export default {
         verified_label: conv.other_verified_label || '',
         is_online: !!conv.is_online,
       };
+      this.isConnected = !!conv.is_connected;
+      this.blockedBy = conv.blocked_by || null;
       this.otherUserTyping = false;
       this.mobileShowDetail = true;
       await this.loadMessages();
@@ -436,6 +508,8 @@ export default {
         avatar: user.avatar,
         verified_label: user.verified_label || '',
       };
+      this.isConnected = true;
+      this.blockedBy = null;
       this.otherUserTyping = false;
       this.mobileShowDetail = true;
       await this.loadMessages();
@@ -549,10 +623,8 @@ export default {
       if (!this.newChatSearch.trim()) { this.searchResults = []; return; }
       this.searchTimeout = setTimeout(async () => {
         try {
-          const url = `${window.cnwData?.restUrl || ''}/users?search=${encodeURIComponent(this.newChatSearch)}`;
-          const res = await fetch(url, { headers: { 'X-WP-Nonce': window.cnwData?.nonce || '' } });
-          const data = await res.json();
-          this.searchResults = (data.users || data || []).filter(u => u.id !== this.currentUserId).slice(0, 5);
+          const data = await getConnections({ search: this.newChatSearch });
+          this.searchResults = (data.users || []).slice(0, 5);
         } catch { this.searchResults = []; }
       }, 300);
     },
@@ -586,6 +658,45 @@ export default {
       applyHeight();
       this._sidebarObserver = new ResizeObserver(applyHeight);
       this._sidebarObserver.observe(sidebar);
+    },
+    async handleRemoveConnection() {
+      this.showHeaderMenu = false;
+      if (!confirm('Remove connection with ' + this.otherUser.name + '? You will no longer be able to message each other.')) return;
+      try {
+        await removeConnection(this.activeUserId);
+        this.isConnected = false;
+        // Update the conversation object too
+        const conv = this.conversations.find(c => Number(c.other_user_id) === this.activeUserId);
+        if (conv) conv.is_connected = false;
+        window.dispatchEvent(new CustomEvent('cnw-connections-updated'));
+      } catch { /* silent */ }
+    },
+    handleBlockUser() {
+      this.showHeaderMenu = false;
+      if (!confirm('Block ' + this.otherUser.name + '? This will remove your connection and they will not be able to send you connection requests.')) return;
+      this.blockUser();
+    },
+    async blockUser() {
+      try {
+        const url = (window.cnwData?.restUrl || '') + '/connections/' + this.activeUserId + '/block';
+        await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.cnwData?.nonce || '' } });
+        this.isConnected = false;
+        this.blockedBy = 'me';
+        const conv = this.conversations.find(c => Number(c.other_user_id) === this.activeUserId);
+        if (conv) { conv.is_connected = false; conv.blocked_by = 'me'; }
+        window.dispatchEvent(new CustomEvent('cnw-connections-updated'));
+      } catch { /* silent */ }
+    },
+    async handleUnblockUser() {
+      this.showHeaderMenu = false;
+      try {
+        const url = (window.cnwData?.restUrl || '') + '/connections/' + this.activeUserId + '/unblock';
+        await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.cnwData?.nonce || '' } });
+        this.blockedBy = null;
+        const conv = this.conversations.find(c => Number(c.other_user_id) === this.activeUserId);
+        if (conv) conv.blocked_by = null;
+        window.dispatchEvent(new CustomEvent('cnw-connections-updated'));
+      } catch { /* silent */ }
     },
   },
 };
@@ -890,6 +1001,60 @@ main.cnw-social-worker-main.messages-view
   color: var(--text-dark);
 }
 
+/* Header menu (3-dots) */
+.cnw-msg-header-menu-wrap {
+  position: relative;
+  margin-left: auto;
+}
+.cnw-msg-dots-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+}
+.cnw-msg-dots-btn:hover {
+  background: var(--bg-light);
+  color: var(--text-dark);
+}
+.cnw-msg-header-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  min-width: 180px;
+  z-index: 100;
+  padding: 4px 0;
+}
+.cnw-msg-header-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+.cnw-msg-header-dropdown-item:hover {
+  background: var(--bg-light);
+}
+.cnw-msg-header-dropdown-item.cnw-msg-header-dropdown-danger {
+  color: #dc3545;
+}
+.cnw-msg-header-dropdown-item.cnw-msg-header-dropdown-danger:hover {
+  background: #fff5f5;
+}
+
 /* Messages area */
 .cnw-msg-detail-messages {
   flex: 1;
@@ -960,6 +1125,40 @@ main.cnw-social-worker-main.messages-view
 }
 .cnw-msg-send-btn:hover { background: var(--secondary); }
 .cnw-msg-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Not connected notice */
+.cnw-msg-not-connected {
+  padding: 14px 20px;
+  background: #fff5f5;
+  color: #888;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+.cnw-msg-not-connected-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cnw-msg-not-connected-line svg {
+  flex-shrink: 0;
+  stroke: #999;
+}
+.cnw-msg-blocked-notice {
+  margin-top: 6px;
+  padding-left: 24px;
+  color: #dc3545;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Disabled dropdown item */
+.cnw-msg-header-dropdown-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cnw-msg-header-dropdown-item:disabled:hover {
+  background: none;
+}
 
 /* Empty & loading states */
 .cnw-msg-detail-empty {
@@ -1040,8 +1239,8 @@ main.cnw-social-worker-main.messages-view
 /* Responsive */
 @media (max-width: 768px) {
   .cnw-msg { flex-direction: column; max-height: none; }
-  .cnw-msg-list { width: 100%; min-width: 0; }
-  .cnw-msg-detail { margin-left: 0; min-height: 400px; display: none; }
+  .cnw-msg-list { width: 100%; min-width: 0; padding: 20px; }
+  .cnw-msg-detail { margin-left: 0; min-height: 400px; display: none; padding: 20px; }
   .cnw-msg.mobile-show-detail .cnw-msg-list { display: none; }
   .cnw-msg.mobile-show-detail .cnw-msg-detail { display: flex; }
   .cnw-msg-back-btn { display: flex; align-items: center; justify-content: center; }

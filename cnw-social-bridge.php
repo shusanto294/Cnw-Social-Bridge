@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cnw Social Bridge
  * Description: A social forum plugin with threads, replies, messages, and user roles.
- * Version: 1.0.10
+ * Version: 1.0.11
  * Author: CNW
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.8' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.11' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
@@ -292,6 +292,20 @@ class Cnw_Social_Bridge {
             KEY created_at (created_at)
         ) $charset_collate;";
         dbDelta( $sql_reports );
+
+        $sql_connections = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_connections (
+            id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            sender_id   bigint(20) unsigned NOT NULL,
+            receiver_id bigint(20) unsigned NOT NULL,
+            status      varchar(20)         DEFAULT 'pending',
+            created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
+            updated_at  datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY pair (sender_id, receiver_id),
+            KEY receiver_id (receiver_id),
+            KEY status      (status)
+        ) $charset_collate;";
+        dbDelta( $sql_connections );
 
         $this->create_user_roles();
 

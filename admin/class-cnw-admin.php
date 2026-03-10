@@ -1139,7 +1139,7 @@ class Cnw_Social_Bridge_Admin {
         $tables = array(
             'threads', 'replies', 'messages', 'categories', 'tags',
             'thread_tags', 'user_followed_tags', 'votes', 'reputation',
-            'saved_threads', 'notifications', 'activity', 'reports',
+            'saved_threads', 'notifications', 'activity', 'reports', 'connections',
         );
 
         $table_data = array();
@@ -1166,6 +1166,7 @@ class Cnw_Social_Bridge_Admin {
         foreach ( $table_data['saved_threads'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; }
         foreach ( $table_data['notifications'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; if ( ! empty( $r['actor_id'] ) ) $user_ids[ (int) $r['actor_id'] ] = true; }
         foreach ( $table_data['reports'] as $r )               { if ( ! empty( $r['user_id'] ) ) $user_ids[ (int) $r['user_id'] ] = true; }
+        foreach ( $table_data['connections'] as $r )           { $user_ids[ (int) $r['sender_id'] ] = true; $user_ids[ (int) $r['receiver_id'] ] = true; }
         unset( $user_ids[0] );
 
         // Build users array with all CNW meta.
@@ -1708,6 +1709,8 @@ class Cnw_Social_Bridge_Admin {
                         $ref_id = $state['reply_map'][ $ref_id ] ?? null;
                     } elseif ( $ref_type === 'tag' && $ref_id ) {
                         $ref_id = $state['tag_map'][ $ref_id ] ?? null;
+                    } elseif ( $ref_type === 'user' && $ref_id ) {
+                        $ref_id = $ru( $ref_id );
                     }
                     $wpdb->insert( $p . 'notifications', array(
                         'user_id'        => $ru( $row['user_id'] ),
@@ -1739,6 +1742,24 @@ class Cnw_Social_Bridge_Admin {
                         'updated_at'  => $row['updated_at'] ?? current_time( 'mysql' ),
                     ) );
                     $count++;
+                }
+                break;
+
+            case 'connections':
+                $connections = $read_json( 'connections' );
+                foreach ( $connections as $row ) {
+                    $sender   = $ru( $row['sender_id'] ?? 0 );
+                    $receiver = $ru( $row['receiver_id'] ?? 0 );
+                    if ( $sender && $receiver ) {
+                        $wpdb->insert( $p . 'connections', array(
+                            'sender_id'   => $sender,
+                            'receiver_id' => $receiver,
+                            'status'      => $row['status'] ?? 'pending',
+                            'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
+                            'updated_at'  => $row['updated_at'] ?? current_time( 'mysql' ),
+                        ) );
+                        $count++;
+                    }
                 }
                 break;
 

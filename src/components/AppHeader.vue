@@ -214,8 +214,14 @@ export default {
         this.unreadCount = Math.max(0, this.unreadCount - 1);
         try { await markNotificationRead(n.id); } catch { /* silent */ }
       }
-      // Navigate to the thread if reference_type is thread
-      if (n.reference_type === 'thread' && n.reference_id) {
+      // Navigate based on notification type
+      if (n.type === 'connection_request') {
+        this.showDropdown = false;
+        this.$router.push('/users?tab=requests');
+      } else if (n.type === 'connection_accepted') {
+        this.showDropdown = false;
+        this.$router.push('/users?tab=connections');
+      } else if (n.reference_type === 'thread' && n.reference_id) {
         this.showDropdown = false;
         this.$router.push('/thread/' + n.reference_id);
       }

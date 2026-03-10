@@ -21,7 +21,8 @@
       "Bash(grep:*)",
       "Bash(php:*)",
       "Bash(composer:*)",
-      "Bash(npx webpack --mode production 2>&1; echo \"EXIT:$?\")"
+      "Bash(npx webpack --mode production 2>&1; echo \"EXIT:$?\")",
+      "Bash(npx webpack --mode production 2>&1; echo \"EXIT: $?\")"
     ]
   }
 }

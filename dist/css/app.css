@@ -2944,6 +2944,60 @@ main.cnw-social-worker-main.messages-view
   color: var(--text-dark);
 }
 
+/* Header menu (3-dots) */
+.cnw-msg-header-menu-wrap {
+  position: relative;
+  margin-left: auto;
+}
+.cnw-msg-dots-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+}
+.cnw-msg-dots-btn:hover {
+  background: var(--bg-light);
+  color: var(--text-dark);
+}
+.cnw-msg-header-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  min-width: 180px;
+  z-index: 100;
+  padding: 4px 0;
+}
+.cnw-msg-header-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+.cnw-msg-header-dropdown-item:hover {
+  background: var(--bg-light);
+}
+.cnw-msg-header-dropdown-item.cnw-msg-header-dropdown-danger {
+  color: #dc3545;
+}
+.cnw-msg-header-dropdown-item.cnw-msg-header-dropdown-danger:hover {
+  background: #fff5f5;
+}
+
 /* Messages area */
 .cnw-msg-detail-messages {
   flex: 1;
@@ -3016,6 +3070,40 @@ main.cnw-social-worker-main.messages-view
 .cnw-msg-send-btn:hover { background: var(--secondary);
 }
 .cnw-msg-send-btn:disabled { opacity: 0.5; cursor: not-allowed;
+}
+
+/* Not connected notice */
+.cnw-msg-not-connected {
+  padding: 14px 20px;
+  background: #fff5f5;
+  color: #888;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+.cnw-msg-not-connected-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cnw-msg-not-connected-line svg {
+  flex-shrink: 0;
+  stroke: #999;
+}
+.cnw-msg-blocked-notice {
+  margin-top: 6px;
+  padding-left: 24px;
+  color: #dc3545;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Disabled dropdown item */
+.cnw-msg-header-dropdown-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cnw-msg-header-dropdown-item:disabled:hover {
+  background: none;
 }
 
 /* Empty & loading states */
@@ -3103,9 +3191,9 @@ main.cnw-social-worker-main.messages-view
 @media (max-width: 768px) {
 .cnw-msg { flex-direction: column; max-height: none;
 }
-.cnw-msg-list { width: 100%; min-width: 0;
+.cnw-msg-list { width: 100%; min-width: 0; padding: 20px;
 }
-.cnw-msg-detail { margin-left: 0; min-height: 400px; display: none;
+.cnw-msg-detail { margin-left: 0; min-height: 400px; display: none; padding: 20px;
 }
 .cnw-msg.mobile-show-detail .cnw-msg-list { display: none;
 }
@@ -3156,6 +3244,46 @@ main.cnw-social-worker-main.messages-view
   background: #fff;
 }
 .cnw-users-search:focus { border-color: var(--teal);
+}
+
+/* Tabs */
+.cnw-users-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+}
+.cnw-users-tab {
+  position: relative;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-med);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cnw-users-tab:hover { color: var(--teal);
+}
+.cnw-users-tab.active {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+.cnw-users-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d63638;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
+  margin-left: 6px;
 }
 
 /* Grid */
@@ -3265,7 +3393,9 @@ main.cnw-social-worker-main.messages-view
   border: none;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
+}
+.cnw-user-btn:disabled { opacity: 0.6; cursor: not-allowed;
 }
 .cnw-user-btn-profile {
   background: var(--teal);
@@ -3282,6 +3412,38 @@ main.cnw-social-worker-main.messages-view
   justify-content: center;
 }
 .cnw-user-btn-message:hover { background: var(--green-dark);
+}
+.cnw-user-btn-connect {
+  background: var(--teal);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-connect:hover { background: var(--teal-dark);
+}
+.cnw-user-btn-pending {
+  background: #e0e0e0;
+  color: var(--text-med);
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-pending:hover { background: #d0d0d0;
+}
+.cnw-user-btn-accept {
+  background: var(--green);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-accept:hover { background: var(--green-dark);
+}
+.cnw-user-btn-decline {
+  background: #d63638;
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+}
+.cnw-user-btn-decline:hover { background: #b32d2f;
 }
 
 /* Pagination */
@@ -3417,6 +3579,12 @@ main.cnw-social-worker-main.messages-view
 .cnw-users-search-wrap { width: 100%;
 }
 .cnw-users-grid { grid-template-columns: 1fr;
+}
+.cnw-users-tabs { flex-direction: column; border-bottom: none;
+}
+.cnw-users-tab { white-space: nowrap; padding: 10px 14px; border-bottom: none; border-left: 2px solid transparent; text-align: left;
+}
+.cnw-users-tab.active { border-bottom-color: transparent; border-left-color: var(--teal);
 }
 }
 

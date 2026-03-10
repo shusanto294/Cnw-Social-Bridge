@@ -31,6 +31,7 @@ $tables = array(
     'cnw_social_worker_saved_threads',
     'cnw_social_worker_notifications',
     'cnw_social_worker_reports',
+    'cnw_social_worker_connections',
 );
 
 foreach ( $tables as $table ) {

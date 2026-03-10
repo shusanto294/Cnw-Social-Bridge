@@ -127,6 +127,7 @@
             </svg>
           </span>
           <span>Users</span>
+          <span v-if="connectionRequestCount > 0" class="nav-badge">{{ connectionRequestCount }}</span>
         </router-link>
       </div>
 
@@ -204,7 +205,7 @@
 </template>
 
 <script>
-import { logout, getUnreadMessageCount } from '@/api/index.js';
+import { logout, getUnreadMessageCount, getConnectionRequests } from '@/api/index.js';
 import { getUserChannel } from '@/pusher';
 
 export default {
@@ -215,6 +216,7 @@ export default {
       defaultAvatar: window.cnwData?.defaultAvatar || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       unreadMessageCount: 0,
+      connectionRequestCount: 0,
     };
   },
   mounted() {
@@ -227,10 +229,14 @@ export default {
     this._refreshUnread = () => {
       getUnreadMessageCount().then((res) => { this.unreadMessageCount = res.count || 0; }).catch(() => {});
     };
+    this._refreshConnectionRequests = () => {
+      getConnectionRequests().then((res) => { this.connectionRequestCount = (res.requests || []).length; }).catch(() => {});
+    };
 
-    // Fetch initial unread message count
+    // Fetch initial counts
     if (this.isLoggedIn) {
       this._refreshUnread();
+      this._refreshConnectionRequests();
     }
 
     // Listen for Pusher events to update badge in real-time
@@ -241,15 +247,23 @@ export default {
         setTimeout(this._refreshUnread, 300);
       });
       channel.bind('messages-read', this._refreshUnread);
+      channel.bind('new-notification', (data) => {
+        if (data.type === 'connection_request') {
+          setTimeout(this._refreshConnectionRequests, 300);
+        }
+      });
     }
 
     // Listen for local event when user reads messages in MessagesView
     window.addEventListener('cnw-messages-read', this._refreshUnread);
+    // Listen for local event when user accepts/declines a connection request
+    window.addEventListener('cnw-connections-updated', this._refreshConnectionRequests);
   },
   beforeUnmount() {
     window.removeEventListener('cnw-avatar-updated', this._onAvatarUpdated);
     window.removeEventListener('cnw-anonymous-updated', this._onAnonUpdated);
     window.removeEventListener('cnw-messages-read', this._refreshUnread);
+    window.removeEventListener('cnw-connections-updated', this._refreshConnectionRequests);
   },
   computed: {
     displayName() {
