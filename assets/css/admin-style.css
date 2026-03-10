@@ -199,7 +199,6 @@
 
 .cnw-form-footer {
     padding-top: 4px;
-    border-top: 1px solid #f0f0f1;
 }
 
 /* ------------------------------------------------------------------
@@ -226,6 +225,7 @@
 }
 
 .cnw-status-closed,
+.cnw-status-rejected,
 .cnw-status-spam {
     background: #ffcdcd;
     color: #8a2424;

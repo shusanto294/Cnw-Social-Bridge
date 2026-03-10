@@ -54,13 +54,13 @@
 
       <!-- Vote buttons -->
       <div class="reply-helpful">
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :disabled="!isLoggedIn">
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
           <span>{{ localUpvotes }}</span>
           <span>Upvote</span>
         </button>
         <span class="reply-divider"></span>
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :disabled="!isLoggedIn">
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
           <span>{{ localDownvotes }}</span>
           <span>Downvote</span>
@@ -82,14 +82,19 @@
           <span>Replies</span>
         </button>
         <span class="reply-divider"></span>
-        <button class="reply-stat-btn" @click="showReplyBox = !showReplyBox">
+        <button class="reply-stat-btn" @click="handleReplyClick">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
           <span>Reply</span>
         </button>
       </div>
 
+      <!-- Login prompt for non-logged-in users -->
+      <div v-if="showReplyBox && !isLoggedIn" class="reply-login-prompt">
+        You must need to <a href="#" @click.prevent="openLoginModal">login</a> to add a reply.
+      </div>
+
       <!-- Inline reply box for THIS specific reply -->
-      <div v-if="showReplyBox" class="reply-inline-form">
+      <div v-if="showReplyBox && isLoggedIn" class="reply-inline-form">
         <span v-if="isCurrentUserAnonymous" class="reply-anon-avatar">
           <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
         </span>
@@ -253,6 +258,12 @@ export default {
     },
   },
   methods: {
+    handleReplyClick() {
+      this.showReplyBox = !this.showReplyBox;
+    },
+    openLoginModal() {
+      window.dispatchEvent(new CustomEvent('cnw-open-login'));
+    },
     async toggleSolution() {
       if (this.markingSolution) return;
       this.markingSolution = true;
@@ -266,7 +277,7 @@ export default {
       finally { this.markingSolution = false; }
     },
     async vote(type) {
-      if (!this.isLoggedIn) return;
+      if (!this.isLoggedIn) { this.openLoginModal(); return; }
       const prev = this.userVote;
       const prevUp = this.localUpvotes;
       const prevDown = this.localDownvotes;
@@ -621,6 +632,20 @@ export default {
 .reply-bubble.reply-best-answer {
   border: 1.5px solid #22a55b;
   background: #f6fef8;
+}
+
+.reply-login-prompt {
+  padding: var(--space-xs) var(--space-m);
+  font-size: 0.92em;
+  color: var(--text-secondary);
+}
+.reply-login-prompt a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.reply-login-prompt a:hover {
+  text-decoration: underline;
 }
 
 /* ── Inline reply form (inside the bubble) ────────────────────── */

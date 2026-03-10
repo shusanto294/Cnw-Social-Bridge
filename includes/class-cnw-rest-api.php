@@ -311,7 +311,7 @@ class Cnw_Social_Bridge_REST_API {
         $search   = sanitize_text_field( $request->get_param( 'search' ) ?: '' );
         $offset   = ( $page - 1 ) * $per_page;
 
-        $where = "WHERE t.status = 'published'";
+        $where = "WHERE t.status IN ('published','approved')";
         $join  = '';
         $order = 'ORDER BY t.created_at DESC';
 
@@ -513,7 +513,7 @@ class Cnw_Social_Bridge_REST_API {
                 'author_id'    => get_current_user_id(),
                 'title'        => sanitize_text_field( $params['title'] ),
                 'content'      => wp_kses_post( $params['content'] ),
-                'status'       => 'published',
+                'status'       => get_option( 'cnw_default_thread_status', 'pending' ),
                 'is_anonymous' => $is_anonymous,
             ),
             array( '%d', '%s', '%s', '%s', '%d' )
@@ -749,7 +749,7 @@ class Cnw_Social_Bridge_REST_API {
                 'author_id'    => $user_id,
                 'parent_id'    => isset( $params['parent_id'] ) ? intval( $params['parent_id'] ) : null,
                 'content'      => wp_kses_post( $params['content'] ),
-                'status'       => 'approved',
+                'status'       => get_option( 'cnw_default_reply_status', 'approved' ),
                 'is_anonymous' => $is_anonymous,
             ),
             array( '%d', '%d', '%d', '%s', '%s', '%d' )
@@ -2035,7 +2035,7 @@ class Cnw_Social_Bridge_REST_API {
         $total = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
              JOIN {$wpdb->prefix}cnw_social_worker_threads t ON st.thread_id = t.id
-             WHERE st.user_id = %d AND t.status = 'published'",
+             WHERE st.user_id = %d AND t.status IN ('published','approved')",
             $current_user_id
         ) );
 
@@ -2050,7 +2050,7 @@ class Cnw_Social_Bridge_REST_API {
              FROM {$wpdb->prefix}cnw_social_worker_saved_threads st
              JOIN {$wpdb->prefix}cnw_social_worker_threads t ON st.thread_id = t.id
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
-             WHERE st.user_id = %d AND t.status = 'published'
+             WHERE st.user_id = %d AND t.status IN ('published','approved')
              ORDER BY st.created_at DESC
              LIMIT %d OFFSET %d",
             $current_user_id,
@@ -2097,7 +2097,7 @@ class Cnw_Social_Bridge_REST_API {
                 (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_saved_threads st2 WHERE st2.thread_id = t.id) AS saves_count
              FROM {$wpdb->prefix}cnw_social_worker_threads t
              LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
-             WHERE t.status = 'published'
+             WHERE t.status IN ('published','approved')
              ORDER BY t.views DESC, t.created_at DESC
              LIMIT 3",
             $current_user_id,

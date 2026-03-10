@@ -53,6 +53,8 @@ $options = array(
     'cnw_pusher_app_id',
     'cnw_pusher_key',
     'cnw_pusher_secret',
+    'cnw_default_thread_status',
+    'cnw_default_reply_status',
 );
 
 foreach ( $options as $option ) {
@@ -79,7 +81,24 @@ foreach ( $meta_keys as $key ) {
 }
 
 /* ------------------------------------------------------------------
- * 4. Remove custom roles
+ * 4. Delete users whose primary role is a plugin-created role
+ * ------------------------------------------------------------------ */
+
+$cnw_roles = array( 'cnw_forum_member', 'cnw_moderator', 'cnw_forum_admin' );
+
+$all_users = get_users( array(
+    'role__in' => $cnw_roles,
+    'fields'   => 'ID',
+) );
+
+require_once ABSPATH . 'wp-admin/includes/user.php';
+
+foreach ( $all_users as $user_id ) {
+    wp_delete_user( (int) $user_id );
+}
+
+/* ------------------------------------------------------------------
+ * 5. Remove custom roles
  * ------------------------------------------------------------------ */
 
 remove_role( 'cnw_forum_member' );

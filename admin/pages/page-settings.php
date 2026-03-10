@@ -1,12 +1,10 @@
 <?php
 /**
- * Admin Settings page — Logo branding + role info.
+ * Admin Settings page — Pusher, shortcode, role info.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$logo_url        = get_option( 'cnw_social_logo_url', '' );
-$mobile_logo_url = get_option( 'cnw_social_mobile_logo_url', '' );
-$msg             = sanitize_text_field( $_GET['msg'] ?? '' );
+$msg = sanitize_text_field( $_GET['msg'] ?? '' );
 ?>
 
 <div class="wrap cnw-admin-wrap">
@@ -21,79 +19,85 @@ $msg             = sanitize_text_field( $_GET['msg'] ?? '' );
 
     <div class="cnw-section">
         <div class="cnw-section-heading">
-            <h2 class="cnw-section-title"><?php esc_html_e( 'Branding', 'cnw-social-bridge' ); ?></h2>
-            <p class="cnw-section-desc"><?php esc_html_e( 'Customise how your Social Bridge platform looks to members.', 'cnw-social-bridge' ); ?></p>
+            <h2 class="cnw-section-title"><?php esc_html_e( 'Threads', 'cnw-social-bridge' ); ?></h2>
+            <p class="cnw-section-desc"><?php esc_html_e( 'Configure default behaviour for new threads.', 'cnw-social-bridge' ); ?></p>
         </div>
 
         <div class="cnw-settings-card">
             <div class="cnw-settings-card-header">
-                <span class="dashicons dashicons-format-image cnw-card-icon"></span>
+                <span class="dashicons dashicons-format-chat cnw-card-icon"></span>
                 <div>
-                    <h3 class="cnw-settings-card-title"><?php esc_html_e( 'Platform Logo', 'cnw-social-bridge' ); ?></h3>
-                    <p class="cnw-settings-card-desc"><?php esc_html_e( 'Displayed in the header. Recommended: 200x60 px (PNG or SVG).', 'cnw-social-bridge' ); ?></p>
+                    <h3 class="cnw-settings-card-title"><?php esc_html_e( 'Default Thread Status', 'cnw-social-bridge' ); ?></h3>
+                    <p class="cnw-settings-card-desc"><?php esc_html_e( 'The status assigned to new threads when a user submits a question from the frontend.', 'cnw-social-bridge' ); ?></p>
                 </div>
             </div>
 
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-logo-form">
-                <?php wp_nonce_field( 'cnw_save_logo' ); ?>
-                <input type="hidden" name="action" value="cnw_save_logo">
-                <input type="hidden" name="cnw_logo_url" id="cnw-logo-url" value="<?php echo esc_attr( $logo_url ); ?>">
-                <input type="hidden" name="cnw_mobile_logo_url" id="cnw-mobile-logo-url" value="<?php echo esc_attr( $mobile_logo_url ); ?>">
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-pusher-form">
+                <?php wp_nonce_field( 'cnw_save_thread_settings' ); ?>
+                <input type="hidden" name="action" value="cnw_save_thread_settings">
 
-                <div class="cnw-logo-preview-wrap" id="cnw-logo-preview">
-                    <?php if ( $logo_url ) : ?>
-                        <img src="<?php echo esc_url( $logo_url ); ?>" alt="Logo preview" class="cnw-logo-preview-img" />
-                    <?php else : ?>
-                        <div class="cnw-logo-empty-state">
-                            <span class="dashicons dashicons-format-image"></span>
-                            <p><?php esc_html_e( 'No logo selected', 'cnw-social-bridge' ); ?></p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="cnw-logo-actions">
-                    <button type="button" id="cnw-select-logo" class="button button-secondary cnw-btn-select">
-                        <span class="dashicons dashicons-upload"></span>
-                        <?php echo $logo_url ? esc_html__( 'Change Logo', 'cnw-social-bridge' ) : esc_html__( 'Select Logo', 'cnw-social-bridge' ); ?>
-                    </button>
-                    <button type="button" id="cnw-remove-logo" class="button button-link-delete cnw-btn-remove" <?php echo $logo_url ? '' : 'style="display:none"'; ?>>
-                        <span class="dashicons dashicons-trash"></span> <?php esc_html_e( 'Remove', 'cnw-social-bridge' ); ?>
-                    </button>
-                </div>
-
-                <hr style="margin: 24px 0; border: none; border-top: 1px solid #e0e0e0;" />
-
-                <div class="cnw-settings-card-header" style="margin-bottom: 16px;">
-                    <span class="dashicons dashicons-smartphone cnw-card-icon"></span>
-                    <div>
-                        <h3 class="cnw-settings-card-title"><?php esc_html_e( 'Mobile Logo', 'cnw-social-bridge' ); ?></h3>
-                        <p class="cnw-settings-card-desc"><?php esc_html_e( 'Displayed on mobile devices. If not set, the default wave icon is used. Recommended: square, 60x60 px (PNG or SVG).', 'cnw-social-bridge' ); ?></p>
-                    </div>
-                </div>
-
-                <div class="cnw-logo-preview-wrap" id="cnw-mobile-logo-preview">
-                    <?php if ( $mobile_logo_url ) : ?>
-                        <img src="<?php echo esc_url( $mobile_logo_url ); ?>" alt="Mobile logo preview" class="cnw-logo-preview-img" />
-                    <?php else : ?>
-                        <div class="cnw-logo-empty-state">
-                            <span class="dashicons dashicons-smartphone"></span>
-                            <p><?php esc_html_e( 'No mobile logo selected', 'cnw-social-bridge' ); ?></p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="cnw-logo-actions">
-                    <button type="button" id="cnw-select-mobile-logo" class="button button-secondary cnw-btn-select">
-                        <span class="dashicons dashicons-upload"></span>
-                        <?php echo $mobile_logo_url ? esc_html__( 'Change Mobile Logo', 'cnw-social-bridge' ) : esc_html__( 'Select Mobile Logo', 'cnw-social-bridge' ); ?>
-                    </button>
-                    <button type="button" id="cnw-remove-mobile-logo" class="button button-link-delete cnw-btn-remove" <?php echo $mobile_logo_url ? '' : 'style="display:none"'; ?>>
-                        <span class="dashicons dashicons-trash"></span> <?php esc_html_e( 'Remove', 'cnw-social-bridge' ); ?>
-                    </button>
-                </div>
+                <table class="form-table cnw-form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="cnw_default_thread_status"><?php esc_html_e( 'Default Status', 'cnw-social-bridge' ); ?></label>
+                        </th>
+                        <td>
+                            <?php $current_status = get_option( 'cnw_default_thread_status', 'pending' ); ?>
+                            <select id="cnw_default_thread_status" name="cnw_default_thread_status">
+                                <option value="pending" <?php selected( $current_status, 'pending' ); ?>><?php esc_html_e( 'Pending', 'cnw-social-bridge' ); ?></option>
+                                <option value="approved" <?php selected( $current_status, 'approved' ); ?>><?php esc_html_e( 'Approved', 'cnw-social-bridge' ); ?></option>
+                                <option value="rejected" <?php selected( $current_status, 'rejected' ); ?>><?php esc_html_e( 'Rejected', 'cnw-social-bridge' ); ?></option>
+                            </select>
+                            <p class="description"><?php esc_html_e( 'Set to "Pending" to require admin approval before threads are visible. Set to "Approved" to publish immediately.', 'cnw-social-bridge' ); ?></p>
+                        </td>
+                    </tr>
+                </table>
 
                 <div class="cnw-form-footer">
-                    <?php submit_button( __( 'Save', 'cnw-social-bridge' ), 'primary', 'submit', false ); ?>
+                    <?php submit_button( __( 'Save Thread Settings', 'cnw-social-bridge' ), 'primary', 'submit', false ); ?>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="cnw-section">
+        <div class="cnw-section-heading">
+            <h2 class="cnw-section-title"><?php esc_html_e( 'Replies', 'cnw-social-bridge' ); ?></h2>
+            <p class="cnw-section-desc"><?php esc_html_e( 'Configure default behaviour for new replies.', 'cnw-social-bridge' ); ?></p>
+        </div>
+
+        <div class="cnw-settings-card">
+            <div class="cnw-settings-card-header">
+                <span class="dashicons dashicons-admin-comments cnw-card-icon"></span>
+                <div>
+                    <h3 class="cnw-settings-card-title"><?php esc_html_e( 'Default Reply Status', 'cnw-social-bridge' ); ?></h3>
+                    <p class="cnw-settings-card-desc"><?php esc_html_e( 'The status assigned to new replies when a user posts a reply from the frontend.', 'cnw-social-bridge' ); ?></p>
+                </div>
+            </div>
+
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-pusher-form">
+                <?php wp_nonce_field( 'cnw_save_reply_settings' ); ?>
+                <input type="hidden" name="action" value="cnw_save_reply_settings">
+
+                <table class="form-table cnw-form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="cnw_default_reply_status"><?php esc_html_e( 'Default Status', 'cnw-social-bridge' ); ?></label>
+                        </th>
+                        <td>
+                            <?php $current_reply_status = get_option( 'cnw_default_reply_status', 'approved' ); ?>
+                            <select id="cnw_default_reply_status" name="cnw_default_reply_status">
+                                <option value="pending" <?php selected( $current_reply_status, 'pending' ); ?>><?php esc_html_e( 'Pending', 'cnw-social-bridge' ); ?></option>
+                                <option value="approved" <?php selected( $current_reply_status, 'approved' ); ?>><?php esc_html_e( 'Approved', 'cnw-social-bridge' ); ?></option>
+                                <option value="rejected" <?php selected( $current_reply_status, 'rejected' ); ?>><?php esc_html_e( 'Rejected', 'cnw-social-bridge' ); ?></option>
+                            </select>
+                            <p class="description"><?php esc_html_e( 'Set to "Pending" to require admin approval before replies are visible. Set to "Approved" to publish immediately.', 'cnw-social-bridge' ); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="cnw-form-footer">
+                    <?php submit_button( __( 'Save Reply Settings', 'cnw-social-bridge' ), 'primary', 'submit', false ); ?>
                 </div>
             </form>
         </div>

@@ -42,6 +42,8 @@ $forum_roles = array(
     <?php if ( $msg === 'bulk_deleted' && $count ) : ?><div class="notice notice-warning is-dismissible"><p><?php echo esc_html( $count ); ?> user(s) deleted.</p></div><?php endif; ?>
     <?php if ( $msg === 'error_create' ) : ?><div class="notice notice-error is-dismissible"><p>Error creating user. The username or email may already exist.</p></div><?php endif; ?>
     <?php if ( $msg === 'error_password' ) : ?><div class="notice notice-error is-dismissible"><p>Passwords do not match.</p></div><?php endif; ?>
+    <?php if ( $msg === 'reset_sent' ) : ?><div class="notice notice-success is-dismissible"><p>Password reset link sent successfully.</p></div><?php endif; ?>
+    <?php if ( $msg === 'reset_failed' ) : ?><div class="notice notice-error is-dismissible"><p>Failed to send password reset link. Please try again.</p></div><?php endif; ?>
 
 <?php if ( $action === 'add' ) : ?>
     <h2>Add New User</h2>
@@ -163,6 +165,11 @@ $forum_roles = array(
                 <td><input type="password" id="new_password" name="new_password" class="regular-text" autocomplete="new-password"></td></tr>
             <tr><th><label for="new_password_confirm">Confirm New Password</label></th>
                 <td><input type="password" id="new_password_confirm" name="new_password_confirm" class="regular-text" autocomplete="new-password"></td></tr>
+            <tr><th>Password Reset Link</th>
+                <td>
+                    <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cnw_send_password_reset&id=' . $item->ID ), 'cnw_send_password_reset' ) ); ?>" class="button" onclick="return confirm('Send a password reset email to <?php echo esc_attr( $item->user_email ); ?>?');">Send Password Reset Link</a>
+                    <p class="description">Sends the user an email with a link to reset their password.</p>
+                </td></tr>
         </table>
 
         <?php submit_button( 'Update User' ); ?>
@@ -221,6 +228,7 @@ $forum_roles = array(
                 <tr>
                     <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
                     <th><?php esc_html_e( 'User', 'cnw-social-bridge' ); ?></th>
+                    <th style="width:140px"><?php esc_html_e( 'Role', 'cnw-social-bridge' ); ?></th>
                     <th style="width:80px"><?php esc_html_e( 'Threads', 'cnw-social-bridge' ); ?></th>
                     <th style="width:80px"><?php esc_html_e( 'Replies', 'cnw-social-bridge' ); ?></th>
                     <th style="width:100px"><?php esc_html_e( 'Reputation', 'cnw-social-bridge' ); ?></th>
@@ -234,9 +242,23 @@ $forum_roles = array(
                     <tr>
                         <td class="cnw-cb-col"><input type="checkbox" name="bulk_ids[]" value="<?php echo esc_attr( $user->ID ); ?>" class="cnw-bulk-cb" <?php if ( $user->ID === get_current_user_id() ) echo 'disabled'; ?>></td>
                         <td>
-                            <strong><?php echo esc_html( $user->display_name ); ?></strong><br>
-                            <small><?php echo esc_html( $user->user_email ); ?></small>
+                            <?php $avatar = get_user_meta( $user->ID, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR; ?>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <img src="<?php echo esc_url( $avatar ); ?>" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                                <div>
+                                    <strong><?php echo esc_html( $user->display_name ); ?></strong><br>
+                                    <small><?php echo esc_html( $user->user_email ); ?></small>
+                                </div>
+                            </div>
                         </td>
+                        <td><?php
+                            $u_data = get_userdata( $user->ID );
+                            $role_names = wp_roles()->get_names();
+                            $user_roles = array_map( function( $r ) use ( $role_names ) {
+                                return isset( $role_names[ $r ] ) ? translate_user_role( $role_names[ $r ] ) : $r;
+                            }, (array) $u_data->roles );
+                            echo esc_html( implode( ', ', $user_roles ) );
+                        ?></td>
                         <td><?php echo number_format( intval( $user->threads_count ) ); ?></td>
                         <td><?php echo number_format( intval( $user->replies_count ) ); ?></td>
                         <td><strong><?php echo number_format( (int) get_user_meta( $user->ID, 'cnw_reputation_total', true ) ); ?></strong></td>
@@ -252,7 +274,7 @@ $forum_roles = array(
                     </tr>
                     <?php endforeach; ?>
                 <?php else : ?>
-                    <tr><td colspan="7"><?php esc_html_e( 'No users found.', 'cnw-social-bridge' ); ?></td></tr>
+                    <tr><td colspan="8"><?php esc_html_e( 'No users found.', 'cnw-social-bridge' ); ?></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

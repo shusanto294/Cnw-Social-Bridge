@@ -47,6 +47,10 @@ class Cnw_Social_Bridge_Pusher {
             $options['useTLS'] = $use_tls;
         }
 
+        if ( ! class_exists( '\\Pusher\\Pusher' ) ) {
+            return null;
+        }
+
         self::$instance = new \Pusher\Pusher( $key, $secret, $app_id, $options );
 
         return self::$instance;

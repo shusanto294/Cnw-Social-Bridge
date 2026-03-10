@@ -242,12 +242,21 @@ export default {
     };
   },
   async mounted() {
-    await this.loadConversations();
-    this.initPusher();
+    // Register event listener BEFORE async calls so it's ready immediately
     this._startChatHandler = (e) => {
       if (e.detail) this.startConversation(e.detail);
     };
     window.addEventListener('cnw-start-chat', this._startChatHandler);
+
+    // Check if a start-chat request was queued before we mounted
+    if (window._cnwPendingChat) {
+      const user = window._cnwPendingChat;
+      window._cnwPendingChat = null;
+      this.startConversation(user);
+    }
+
+    await this.loadConversations();
+    this.initPusher();
     this.syncHeightWithSidebar();
   },
   beforeUnmount() {
@@ -666,7 +675,8 @@ main.cnw-social-worker-main.messages-view
 /* Contacts row */
 .cnw-msg-contacts-row {
   display: flex;
-  justify-content: space-between;
+  column-gap: 15px;
+  
 }
 .cnw-msg-contact-avatar {
   position: relative;

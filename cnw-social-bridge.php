@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cnw Social Bridge
  * Description: A social forum plugin with threads, replies, messages, and user roles.
- * Version: 1.0.2
+ * Version: 1.0.10
  * Author: CNW
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.1.0' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.8' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
@@ -50,9 +50,29 @@ class Cnw_Social_Bridge {
         // Shortcode
         add_shortcode( 'cnw_social_bridge', array( $this, 'render_shortcode' ) );
 
+        // Hide WP admin bar for forum-only roles.
+        add_action( 'init', array( $this, 'maybe_hide_admin_bar' ) );
+
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
         new Cnw_Social_Bridge_REST_API();
+    }
+
+    /**
+     * Hide the WordPress admin bar for users whose roles are all forum-specific.
+     */
+    public function maybe_hide_admin_bar() {
+        if ( ! is_user_logged_in() ) {
+            return;
+        }
+        $user       = wp_get_current_user();
+        $cnw_roles  = array( 'cnw_forum_member', 'cnw_moderator', 'cnw_forum_admin' );
+        $user_roles = (array) $user->roles;
+
+        // If every role the user has is a CNW forum role, hide the admin bar.
+        if ( ! empty( $user_roles ) && empty( array_diff( $user_roles, $cnw_roles ) ) ) {
+            show_admin_bar( false );
+        }
     }
 
     /* ------------------------------------------------------------------
@@ -364,13 +384,13 @@ class Cnw_Social_Bridge {
             'restUrl'     => esc_url_raw( rest_url( 'cnw-social-bridge/v1' ) ),
             'siteUrl'     => esc_url_raw( home_url( '/' ) ),
             'nonce'       => wp_create_nonce( 'wp_rest' ),
-            'logoUrl'       => esc_url( get_option( 'cnw_social_logo_url', '' ) ),
-            'mobileLogoUrl' => esc_url( get_option( 'cnw_social_mobile_logo_url', '' ) ),
             'defaultAvatar' => CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
             'pusherKey'     => get_option( 'cnw_pusher_key', '' ),
             'pusherCluster' => get_option( 'cnw_pusher_cluster', 'mt1' ),
             'pusherHost'    => get_option( 'cnw_pusher_host', '' ),
             'pusherPort'    => (int) get_option( 'cnw_pusher_port', 443 ),
+            'loginUrl'      => wp_login_url(),
+            'registerUrl'   => wp_registration_url(),
             'currentUser' => array(
                 'id'         => get_current_user_id(),
                 'name'       => $current_user->display_name,

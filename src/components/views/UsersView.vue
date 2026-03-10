@@ -212,11 +212,14 @@ export default {
     },
     messageUser(user) {
       this.selectedUser = null;
+      const detail = { id: user.id, name: user.name, avatar: user.avatar, verified_label: user.verified_label || '' };
+      // Store pending chat so MessagesView can pick it up on mount
+      window._cnwPendingChat = detail;
       this.$router.push('/messages');
-      // Small delay to allow route to load, then trigger message start
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('cnw-start-chat', { detail: { id: user.id, name: user.name, avatar: user.avatar, verified_label: user.verified_label || '' } }));
-      }, 300);
+      // Also dispatch event in case MessagesView is already mounted
+      this.$nextTick(() => {
+        window.dispatchEvent(new CustomEvent('cnw-start-chat', { detail }));
+      });
     },
     formatDate(dateStr) {
       if (!dateStr) return '';

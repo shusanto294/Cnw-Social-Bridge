@@ -5,28 +5,24 @@
     <div class="cnw-social-worker-header-logo" @click="$router.push('/')" role="link" tabindex="0">
       <!-- Desktop logo -->
       <div class="logo-desktop">
-        <img v-if="logoUrl" :src="logoUrl" alt="Social Bridge" class="custom-logo" />
-        <template v-else>
-          <span class="logo-text">SOCIAL</span>
-          <svg class="logo-icon" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M45.041 21.7709C45.0611 21.7302 44.3947 19.0327 43.2705 16.2905C42.2653 13.839 40.347 10.9998 39.9137 10.5799C39.6193 10.2947 38.8291 10.833 37.2112 11.6874C36.9575 11.8214 35.2898 12.7021 34.1286 13.5201C30.3863 16.1566 27.4511 18.6533 24.0634 22.8423C21.4614 26.0596 19.9835 29.036 19.9226 29.1434C19.2373 30.3534 19.0276 31.6476 17.616 31.8909C17.2399 31.9557 7.74751 31.9093 3.42191 31.9231C2.06435 31.9275 0.989599 32.0845 0.309714 31.0424C0.0106363 30.5842 0.00319033 29.9458 0.00208774 29.8472C-0.0315413 26.9906 0.351197 24.5597 0.422865 24.1047C1.9239 14.5704 5.9077 9.63884 6.0968 9.35786C7.20214 7.71564 9.44454 5.5461 10.3598 4.85959C12.5055 3.2505 15.4093 1.10395 21.1954 0.241575C25.4644 -0.394836 29.746 0.415117 29.9177 0.523512C30.1905 0.695822 29.82 0.772872 29.3409 0.986104C28.9954 1.1398 28.9489 1.18182 28.7891 1.25696C26.9506 2.12248 25.2912 3.49603 25.1866 3.54297C24.7951 3.71871 18.4475 3.12746 12.8259 7.57919C9.20183 10.4492 7.57275 13.9224 7.08444 14.9004C4.16699 20.744 3.76413 27.391 3.77185 27.9355C3.77722 28.3189 4.18408 28.2312 4.3864 28.2311C14.2786 28.2184 14.2777 28.2459 15.1378 28.2345C16.055 28.2223 14.8708 27.2808 16.9012 19.4382C17.8365 15.8256 19.5084 12.6327 19.7813 12.1693C20.7705 10.4888 23.5232 5.22652 30.3076 2.08703C30.915 1.80591 34.1468 0.310415 38.4323 0.0618722C42.3775 -0.166962 47.7098 0.156307 52.9212 3.53476C53.5196 3.92277 56.9272 5.9378 59.8765 10.584C65.1801 18.9388 65.1763 28.8738 65.1794 29.8474C65.1831 31.0989 64.3429 31.7433 63.6455 31.8777C63.1467 31.9739 54.6273 31.8983 49.3172 31.928C47.9176 31.9358 46.6634 32.0973 45.9979 30.6742C44.9084 28.3441 43.5062 26.1124 43.018 25.4381C41.6071 23.4888 41.6792 23.4365 40.1018 21.6191C36.1132 17.0235 34.0669 15.9999 33.9169 15.6034C33.8822 15.5113 33.8489 15.4232 34.8369 14.7793C36.0795 13.9693 36.8008 13.4674 37.0614 13.5204C37.2552 13.5598 40.5092 16.3015 42.9893 19.2997C44.5925 21.238 44.8206 21.8614 44.9185 21.8716C44.9311 21.873 44.9875 21.8789 45.041 21.7709ZM28.9094 7.11537C28.6153 7.33366 28.1221 7.62682 28.4905 7.83266C28.6371 7.91464 29.752 8.45155 30.5495 8.94549C30.9049 9.1657 32.3641 10.0196 32.4905 10.047C32.695 10.0912 32.7096 10.0675 34.8089 8.84408C36.7571 7.70894 36.9125 7.76601 36.8453 7.57071C36.8151 7.48366 35.6935 6.73297 35.4276 6.53767C34.7267 6.02252 34.4713 6.05153 34.6623 5.86321C34.7308 5.7956 34.7392 5.80778 35.8235 5.53488C36.9056 5.26252 39.2565 4.92789 39.6364 5.1366C40.3561 5.53214 43.9144 8.94741 46.0982 13.5829C47.4573 16.4675 49.1547 20.9633 49.6439 27.9264C49.6705 28.3038 49.8538 28.2429 50.971 28.2408C61.1688 28.2231 61.1892 28.2776 61.3014 28.1959C61.4428 28.0931 61.4496 28.0543 61.2401 26.0217C60.9206 22.923 59.557 17.1087 57.2081 13.266C56.0771 11.4159 53.0914 6.32854 45.7526 4.32679C39.6967 2.67486 33.3589 3.8813 28.9094 7.11537ZM21.5949 19.9785C25.0192 15.7298 29.0216 12.7262 29.0348 12.7152C29.0571 12.697 29.2971 12.4995 29.1484 12.3747C29.1029 12.3367 27.6981 11.5519 26.1885 10.7744C25.6256 10.4846 25.4484 10.2891 25.1159 10.7305C23.6225 12.7135 22.821 14.3042 22.6267 14.6799C21.0818 17.6662 20.0759 21.7786 20.079 21.7799C20.2462 21.8538 20.3803 21.6774 20.3908 21.6528C20.4511 21.5118 21.3455 20.3137 21.5949 19.9785Z" fill="url(#paint0_linear_logo)"/>
-            <defs>
-              <linearGradient id="paint0_linear_logo" x1="5.69586" y1="18.5561" x2="59.585" y2="18.8337" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#3AA9DA"/>
-                <stop offset="1" stop-color="#5EBF91"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <span class="logo-text">BRIDGE</span>
-        </template>
+        <span class="logo-text">SOCIAL</span>
+        <svg class="logo-icon" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M45.041 21.7709C45.0611 21.7302 44.3947 19.0327 43.2705 16.2905C42.2653 13.839 40.347 10.9998 39.9137 10.5799C39.6193 10.2947 38.8291 10.833 37.2112 11.6874C36.9575 11.8214 35.2898 12.7021 34.1286 13.5201C30.3863 16.1566 27.4511 18.6533 24.0634 22.8423C21.4614 26.0596 19.9835 29.036 19.9226 29.1434C19.2373 30.3534 19.0276 31.6476 17.616 31.8909C17.2399 31.9557 7.74751 31.9093 3.42191 31.9231C2.06435 31.9275 0.989599 32.0845 0.309714 31.0424C0.0106363 30.5842 0.00319033 29.9458 0.00208774 29.8472C-0.0315413 26.9906 0.351197 24.5597 0.422865 24.1047C1.9239 14.5704 5.9077 9.63884 6.0968 9.35786C7.20214 7.71564 9.44454 5.5461 10.3598 4.85959C12.5055 3.2505 15.4093 1.10395 21.1954 0.241575C25.4644 -0.394836 29.746 0.415117 29.9177 0.523512C30.1905 0.695822 29.82 0.772872 29.3409 0.986104C28.9954 1.1398 28.9489 1.18182 28.7891 1.25696C26.9506 2.12248 25.2912 3.49603 25.1866 3.54297C24.7951 3.71871 18.4475 3.12746 12.8259 7.57919C9.20183 10.4492 7.57275 13.9224 7.08444 14.9004C4.16699 20.744 3.76413 27.391 3.77185 27.9355C3.77722 28.3189 4.18408 28.2312 4.3864 28.2311C14.2786 28.2184 14.2777 28.2459 15.1378 28.2345C16.055 28.2223 14.8708 27.2808 16.9012 19.4382C17.8365 15.8256 19.5084 12.6327 19.7813 12.1693C20.7705 10.4888 23.5232 5.22652 30.3076 2.08703C30.915 1.80591 34.1468 0.310415 38.4323 0.0618722C42.3775 -0.166962 47.7098 0.156307 52.9212 3.53476C53.5196 3.92277 56.9272 5.9378 59.8765 10.584C65.1801 18.9388 65.1763 28.8738 65.1794 29.8474C65.1831 31.0989 64.3429 31.7433 63.6455 31.8777C63.1467 31.9739 54.6273 31.8983 49.3172 31.928C47.9176 31.9358 46.6634 32.0973 45.9979 30.6742C44.9084 28.3441 43.5062 26.1124 43.018 25.4381C41.6071 23.4888 41.6792 23.4365 40.1018 21.6191C36.1132 17.0235 34.0669 15.9999 33.9169 15.6034C33.8822 15.5113 33.8489 15.4232 34.8369 14.7793C36.0795 13.9693 36.8008 13.4674 37.0614 13.5204C37.2552 13.5598 40.5092 16.3015 42.9893 19.2997C44.5925 21.238 44.8206 21.8614 44.9185 21.8716C44.9311 21.873 44.9875 21.8789 45.041 21.7709ZM28.9094 7.11537C28.6153 7.33366 28.1221 7.62682 28.4905 7.83266C28.6371 7.91464 29.752 8.45155 30.5495 8.94549C30.9049 9.1657 32.3641 10.0196 32.4905 10.047C32.695 10.0912 32.7096 10.0675 34.8089 8.84408C36.7571 7.70894 36.9125 7.76601 36.8453 7.57071C36.8151 7.48366 35.6935 6.73297 35.4276 6.53767C34.7267 6.02252 34.4713 6.05153 34.6623 5.86321C34.7308 5.7956 34.7392 5.80778 35.8235 5.53488C36.9056 5.26252 39.2565 4.92789 39.6364 5.1366C40.3561 5.53214 43.9144 8.94741 46.0982 13.5829C47.4573 16.4675 49.1547 20.9633 49.6439 27.9264C49.6705 28.3038 49.8538 28.2429 50.971 28.2408C61.1688 28.2231 61.1892 28.2776 61.3014 28.1959C61.4428 28.0931 61.4496 28.0543 61.2401 26.0217C60.9206 22.923 59.557 17.1087 57.2081 13.266C56.0771 11.4159 53.0914 6.32854 45.7526 4.32679C39.6967 2.67486 33.3589 3.8813 28.9094 7.11537ZM21.5949 19.9785C25.0192 15.7298 29.0216 12.7262 29.0348 12.7152C29.0571 12.697 29.2971 12.4995 29.1484 12.3747C29.1029 12.3367 27.6981 11.5519 26.1885 10.7744C25.6256 10.4846 25.4484 10.2891 25.1159 10.7305C23.6225 12.7135 22.821 14.3042 22.6267 14.6799C21.0818 17.6662 20.0759 21.7786 20.079 21.7799C20.2462 21.8538 20.3803 21.6774 20.3908 21.6528C20.4511 21.5118 21.3455 20.3137 21.5949 19.9785Z" fill="url(#paint0_linear_logo)"/>
+          <defs>
+            <linearGradient id="paint0_linear_logo" x1="5.69586" y1="18.5561" x2="59.585" y2="18.8337" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#3AA9DA"/>
+              <stop offset="1" stop-color="#5EBF91"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="logo-text">BRIDGE</span>
       </div>
       <!-- Mobile logo -->
       <div class="logo-mobile">
         <button v-if="isLoggedIn" class="mobile-menu-btn" @click.stop="toggleMobileSidebar" aria-label="Menu">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <img v-if="mobileLogoUrl" :src="mobileLogoUrl" alt="Social Bridge" class="custom-logo-mobile" />
-        <svg v-else class="logo-icon-mobile" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="logo-icon-mobile" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M45.041 21.7709C45.0611 21.7302 44.3947 19.0327 43.2705 16.2905C42.2653 13.839 40.347 10.9998 39.9137 10.5799C39.6193 10.2947 38.8291 10.833 37.2112 11.6874C36.9575 11.8214 35.2898 12.7021 34.1286 13.5201C30.3863 16.1566 27.4511 18.6533 24.0634 22.8423C21.4614 26.0596 19.9835 29.036 19.9226 29.1434C19.2373 30.3534 19.0276 31.6476 17.616 31.8909C17.2399 31.9557 7.74751 31.9093 3.42191 31.9231C2.06435 31.9275 0.989599 32.0845 0.309714 31.0424C0.0106363 30.5842 0.00319033 29.9458 0.00208774 29.8472C-0.0315413 26.9906 0.351197 24.5597 0.422865 24.1047C1.9239 14.5704 5.9077 9.63884 6.0968 9.35786C7.20214 7.71564 9.44454 5.5461 10.3598 4.85959C12.5055 3.2505 15.4093 1.10395 21.1954 0.241575C25.4644 -0.394836 29.746 0.415117 29.9177 0.523512C30.1905 0.695822 29.82 0.772872 29.3409 0.986104C28.9954 1.1398 28.9489 1.18182 28.7891 1.25696C26.9506 2.12248 25.2912 3.49603 25.1866 3.54297C24.7951 3.71871 18.4475 3.12746 12.8259 7.57919C9.20183 10.4492 7.57275 13.9224 7.08444 14.9004C4.16699 20.744 3.76413 27.391 3.77185 27.9355C3.77722 28.3189 4.18408 28.2312 4.3864 28.2311C14.2786 28.2184 14.2777 28.2459 15.1378 28.2345C16.055 28.2223 14.8708 27.2808 16.9012 19.4382C17.8365 15.8256 19.5084 12.6327 19.7813 12.1693C20.7705 10.4888 23.5232 5.22652 30.3076 2.08703C30.915 1.80591 34.1468 0.310415 38.4323 0.0618722C42.3775 -0.166962 47.7098 0.156307 52.9212 3.53476C53.5196 3.92277 56.9272 5.9378 59.8765 10.584C65.1801 18.9388 65.1763 28.8738 65.1794 29.8474C65.1831 31.0989 64.3429 31.7433 63.6455 31.8777C63.1467 31.9739 54.6273 31.8983 49.3172 31.928C47.9176 31.9358 46.6634 32.0973 45.9979 30.6742C44.9084 28.3441 43.5062 26.1124 43.018 25.4381C41.6071 23.4888 41.6792 23.4365 40.1018 21.6191C36.1132 17.0235 34.0669 15.9999 33.9169 15.6034C33.8822 15.5113 33.8489 15.4232 34.8369 14.7793C36.0795 13.9693 36.8008 13.4674 37.0614 13.5204C37.2552 13.5598 40.5092 16.3015 42.9893 19.2997C44.5925 21.238 44.8206 21.8614 44.9185 21.8716C44.9311 21.873 44.9875 21.8789 45.041 21.7709ZM28.9094 7.11537C28.6153 7.33366 28.1221 7.62682 28.4905 7.83266C28.6371 7.91464 29.752 8.45155 30.5495 8.94549C30.9049 9.1657 32.3641 10.0196 32.4905 10.047C32.695 10.0912 32.7096 10.0675 34.8089 8.84408C36.7571 7.70894 36.9125 7.76601 36.8453 7.57071C36.8151 7.48366 35.6935 6.73297 35.4276 6.53767C34.7267 6.02252 34.4713 6.05153 34.6623 5.86321C34.7308 5.7956 34.7392 5.80778 35.8235 5.53488C36.9056 5.26252 39.2565 4.92789 39.6364 5.1366C40.3561 5.53214 43.9144 8.94741 46.0982 13.5829C47.4573 16.4675 49.1547 20.9633 49.6439 27.9264C49.6705 28.3038 49.8538 28.2429 50.971 28.2408C61.1688 28.2231 61.1892 28.2776 61.3014 28.1959C61.4428 28.0931 61.4496 28.0543 61.2401 26.0217C60.9206 22.923 59.557 17.1087 57.2081 13.266C56.0771 11.4159 53.0914 6.32854 45.7526 4.32679C39.6967 2.67486 33.3589 3.8813 28.9094 7.11537ZM21.5949 19.9785C25.0192 15.7298 29.0216 12.7262 29.0348 12.7152C29.0571 12.697 29.2971 12.4995 29.1484 12.3747C29.1029 12.3367 27.6981 11.5519 26.1885 10.7744C25.6256 10.4846 25.4484 10.2891 25.1159 10.7305C23.6225 12.7135 22.821 14.3042 22.6267 14.6799C21.0818 17.6662 20.0759 21.7786 20.079 21.7799C20.2462 21.8538 20.3803 21.6774 20.3908 21.6528C20.4511 21.5118 21.3455 20.3137 21.5949 19.9785Z" fill="url(#paint0_linear_logo_m)"/>
           <defs>
             <linearGradient id="paint0_linear_logo_m" x1="5.69586" y1="18.5561" x2="59.585" y2="18.8337" gradientUnits="userSpaceOnUse">
@@ -105,102 +101,20 @@
     <div v-if="showLoginModal" class="cnw-login-overlay" @click.self="closeLoginModal">
       <div class="cnw-login-modal">
         <button class="cnw-login-close" @click="closeLoginModal">&times;</button>
-
-        <!-- Login View -->
-        <template v-if="modalView === 'login'">
-          <h2 class="cnw-login-title">Login</h2>
-          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
-          <form @submit.prevent="handleLogin" class="cnw-login-form">
-            <label class="cnw-login-label">
-              Username or Email
-              <input v-model="loginUsername" type="text" class="cnw-login-input" required autocomplete="username" />
-            </label>
-            <label class="cnw-login-label">
-              Password
-              <input v-model="loginPassword" type="password" class="cnw-login-input" required autocomplete="current-password" />
-            </label>
-            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
-              {{ loginLoading ? 'Logging in...' : 'Login' }}
-            </button>
-          </form>
-          <p class="cnw-login-forgot">
-            <a href="#" @click.prevent="switchView('forgot')">Forgot your password?</a>
-          </p>
-          <p class="cnw-login-forgot">
-            Don't have an account? <a href="#" @click.prevent="switchView('register')">Register</a>
-          </p>
-        </template>
-
-        <!-- Register View -->
-        <template v-else-if="modalView === 'register'">
-          <h2 class="cnw-login-title">Create Account</h2>
-          <p v-if="registerSuccess" class="cnw-login-success">{{ registerSuccess }}</p>
-          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
-          <form v-if="!registerSuccess" @submit.prevent="handleRegister" class="cnw-login-form">
-            <div class="cnw-login-row">
-              <label class="cnw-login-label">
-                First Name
-                <input v-model="regFirstName" type="text" class="cnw-login-input" required autocomplete="given-name" />
-              </label>
-              <label class="cnw-login-label">
-                Last Name
-                <input v-model="regLastName" type="text" class="cnw-login-input" required autocomplete="family-name" />
-              </label>
-            </div>
-            <label class="cnw-login-label">
-              Username
-              <input v-model="regUsername" type="text" class="cnw-login-input" required autocomplete="username" />
-            </label>
-            <label class="cnw-login-label">
-              Email
-              <input v-model="regEmail" type="email" class="cnw-login-input" required autocomplete="email" />
-            </label>
-            <label class="cnw-login-label">
-              Password
-              <input v-model="regPassword" type="password" class="cnw-login-input" required autocomplete="new-password" />
-            </label>
-            <label class="cnw-login-label">
-              Confirm Password
-              <input v-model="regPasswordConfirm" type="password" class="cnw-login-input" required autocomplete="new-password" />
-            </label>
-            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
-              {{ loginLoading ? 'Creating...' : 'Register' }}
-            </button>
-          </form>
-          <p class="cnw-login-forgot">
-            Already have an account? <a href="#" @click.prevent="switchView('login')">Login</a>
-          </p>
-        </template>
-
-        <!-- Forgot Password View -->
-        <template v-else>
-          <h2 class="cnw-login-title">Reset Password</h2>
-          <p v-if="resetSuccess" class="cnw-login-success">{{ resetSuccess }}</p>
-          <p v-if="loginError" class="cnw-login-error">{{ loginError }}</p>
-          <form v-if="!resetSuccess" @submit.prevent="handleForgotPassword" class="cnw-login-form">
-            <label class="cnw-login-label">
-              Username or Email
-              <input v-model="resetEmail" type="text" class="cnw-login-input" required autocomplete="username" />
-            </label>
-            <button type="submit" class="cnw-social-worker-btn cnw-social-worker-btn-primary cnw-login-submit" :disabled="loginLoading">
-              {{ loginLoading ? 'Sending...' : 'Send Reset Link' }}
-            </button>
-          </form>
-          <p class="cnw-login-forgot">
-            <a href="#" @click.prevent="switchView('login')">Back to Login</a>
-          </p>
-        </template>
+        <AuthForm :initial-view="modalView" @auth-success="closeLoginModal" />
       </div>
     </div>
   </header>
 </template>
 
 <script>
-import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead, login, forgotPassword, register } from '@/api/index.js';
+import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead } from '@/api/index.js';
 import { getUserChannel } from '@/pusher';
+import AuthForm from '@/components/shared/AuthForm.vue';
 
 export default {
   name: 'AppHeader',
+  components: { AuthForm },
   data() {
     return {
       unreadCount: 0,
@@ -210,25 +124,10 @@ export default {
       notifPage: 1,
       notifHasMore: false,
       loadingMore: false,
-      logoUrl: window.cnwData?.logoUrl || '',
-      mobileLogoUrl: window.cnwData?.mobileLogoUrl || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
       pusherChannel: null,
       showLoginModal: false,
       modalView: 'login',
-      loginUsername: '',
-      loginPassword: '',
-      loginError: '',
-      loginLoading: false,
-      resetEmail: '',
-      resetSuccess: '',
-      regFirstName: '',
-      regLastName: '',
-      regUsername: '',
-      regEmail: '',
-      regPassword: '',
-      regPasswordConfirm: '',
-      registerSuccess: '',
     };
   },
   mounted() {
@@ -237,12 +136,15 @@ export default {
       this.initPusherNotifications();
     }
     document.addEventListener('click', this.onOutsideClick);
+    this._onOpenLogin = () => this.openModal('login');
+    window.addEventListener('cnw-open-login', this._onOpenLogin);
   },
   beforeUnmount() {
     if (this.pusherChannel) {
       this.pusherChannel.unbind('new-notification', this._onPusherNotification);
     }
     document.removeEventListener('click', this.onOutsideClick);
+    window.removeEventListener('cnw-open-login', this._onOpenLogin);
   },
   methods: {
     initPusherNotifications() {
@@ -325,83 +227,11 @@ export default {
     },
     openModal(view) {
       this.modalView = view;
-      this.loginError = '';
-      this.resetSuccess = '';
-      this.registerSuccess = '';
       this.showLoginModal = true;
-    },
-    switchView(view) {
-      this.modalView = view;
-      this.loginError = '';
-      this.resetSuccess = '';
-      this.registerSuccess = '';
     },
     closeLoginModal() {
       this.showLoginModal = false;
       this.modalView = 'login';
-      this.loginError = '';
-      this.resetSuccess = '';
-      this.registerSuccess = '';
-    },
-    async handleLogin() {
-      this.loginError = '';
-      this.loginLoading = true;
-      try {
-        const data = await login({ username: this.loginUsername, password: this.loginPassword });
-        // Update global cnwData with fresh nonce and user info
-        window.cnwData.nonce = data.nonce;
-        window.cnwData.currentUser = data.currentUser;
-        this.showLoginModal = false;
-        // Reload the page so all components pick up the new auth state
-        window.location.reload();
-      } catch (e) {
-        this.loginError = e.message || 'Invalid username or password.';
-      } finally {
-        this.loginLoading = false;
-      }
-    },
-    async handleRegister() {
-      this.loginError = '';
-      this.registerSuccess = '';
-      if (this.regPassword !== this.regPasswordConfirm) {
-        this.loginError = 'Passwords do not match.';
-        return;
-      }
-      if (this.regPassword.length < 6) {
-        this.loginError = 'Password must be at least 6 characters.';
-        return;
-      }
-      this.loginLoading = true;
-      try {
-        const data = await register({ username: this.regUsername, email: this.regEmail, password: this.regPassword, first_name: this.regFirstName, last_name: this.regLastName });
-        if (data.success) {
-          // Auto-login with the same credentials
-          const loginData = await login({ username: this.regUsername, password: this.regPassword });
-          window.cnwData.nonce = loginData.nonce;
-          window.cnwData.currentUser = loginData.currentUser;
-          this.showLoginModal = false;
-          window.location.reload();
-        } else {
-          this.loginError = data.message || 'Registration failed.';
-        }
-      } catch (e) {
-        this.loginError = e.message || 'Registration failed.';
-      } finally {
-        this.loginLoading = false;
-      }
-    },
-    async handleForgotPassword() {
-      this.loginError = '';
-      this.resetSuccess = '';
-      this.loginLoading = true;
-      try {
-        const data = await forgotPassword({ user_login: this.resetEmail });
-        this.resetSuccess = data.message || 'If an account exists with that username or email, a password reset link has been sent.';
-      } catch {
-        this.resetSuccess = 'If an account exists with that username or email, a password reset link has been sent.';
-      } finally {
-        this.loginLoading = false;
-      }
     },
     timeAgo(dateStr) {
       if (!dateStr) return '';
@@ -448,13 +278,6 @@ export default {
   border-radius: 3px;
 }
 
-.custom-logo {
-  max-height: 44px;
-  width: auto;
-  display: block;
-  object-fit: contain;
-}
-
 .logo-text {
   font-size: 17px;
   font-weight: 800;
@@ -479,12 +302,6 @@ export default {
   display: none;
   align-items: center;
   gap: 10px;
-}
-.custom-logo-mobile {
-  max-height: 38px;
-  width: auto;
-  display: block;
-  object-fit: contain;
 }
 .logo-icon-mobile {
   width: 40px;

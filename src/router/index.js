@@ -10,28 +10,43 @@ import SavedThreadsView from '@/components/views/SavedThreadsView.vue';
 import GuidelinesView from '@/components/views/GuidelinesView.vue';
 import ReportIssueView from '@/components/views/ReportIssueView.vue';
 import UserProfileView from '@/components/views/UserProfileView.vue';
+import LoginView from '@/components/views/LoginView.vue';
 import NotFoundView from '@/components/views/NotFoundView.vue';
 
 const routes = [
   { path: '/', component: QuestionListView },
   { path: '/thread/:id', component: ThreadDetailView },
-  { path: '/ask', component: AskQuestionView },
-  { path: '/messages', component: MessagesView },
-  { path: '/users', component: UsersView },
+  { path: '/ask', component: AskQuestionView, meta: { requiresAuth: true } },
+  { path: '/messages', component: MessagesView, meta: { requiresAuth: true } },
+  { path: '/users', component: UsersView, meta: { requiresAuth: true } },
   { path: '/users/:id', component: UserProfileView, props: true },
   { path: '/profile', component: UserProfileView },
   { path: '/tags', component: TagsView },
-  { path: '/activity', component: ActivityView },
-  { path: '/saved', component: SavedThreadsView },
+  { path: '/activity', component: ActivityView, meta: { requiresAuth: true } },
+  { path: '/saved', component: SavedThreadsView, meta: { requiresAuth: true } },
   { path: '/guidelines', component: GuidelinesView },
-  { path: '/report', component: ReportIssueView },
+  { path: '/report', component: ReportIssueView, meta: { requiresAuth: true } },
+  { path: '/login', name: 'Login', component: LoginView, meta: { guestOnly: true } },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFoundView },
 ];
 
-export default createRouter({
+const router = createRouter({
   history: createWebHashHistory(),
   routes,
   scrollBehavior() {
     return { top: 0 };
   },
 });
+
+router.beforeEach((to, from, next) => {
+  const userId = window.cnwData && window.cnwData.currentUser && window.cnwData.currentUser.id;
+  if (to.meta.requiresAuth && !userId) {
+    return next({ path: '/login', query: { redirect: to.fullPath } });
+  }
+  if (to.meta.guestOnly && userId) {
+    return next('/');
+  }
+  next();
+});
+
+export default router;

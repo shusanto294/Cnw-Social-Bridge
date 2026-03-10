@@ -28,6 +28,8 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
     <?php if ( $msg === 'saved' ) : ?><div class="notice notice-success is-dismissible"><p>Thread saved.</p></div><?php endif; ?>
     <?php if ( $msg === 'deleted' ) : ?><div class="notice notice-warning is-dismissible"><p>Thread deleted.</p></div><?php endif; ?>
     <?php if ( $msg === 'bulk_deleted' && $count ) : ?><div class="notice notice-warning is-dismissible"><p><?php echo esc_html( $count ); ?> thread(s) deleted.</p></div><?php endif; ?>
+    <?php if ( $msg === 'bulk_updated' && $count ) : ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html( $count ); ?> thread(s) updated.</p></div><?php endif; ?>
+    <?php if ( $msg === 'status_updated' ) : ?><div class="notice notice-success is-dismissible"><p>Thread status updated.</p></div><?php endif; ?>
 
 <?php if ( $action === 'add' || $action === 'edit' ) : ?>
     <h2><?php echo $item ? 'Edit Thread #' . esc_html( $item->id ) : 'Add New Thread'; ?></h2>
@@ -49,8 +51,8 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
                 </select></td></tr>
             <tr><th><label for="status">Status</label></th>
                 <td><select id="status" name="status">
-                    <?php foreach ( array( 'published', 'draft', 'closed' ) as $s ) : ?>
-                    <option value="<?php echo esc_attr( $s ); ?>" <?php selected( $item->status ?? 'published', $s ); ?>><?php echo esc_html( ucfirst( $s ) ); ?></option>
+                    <?php foreach ( array( 'pending' => 'Pending', 'approved' => 'Approve', 'rejected' => 'Reject' ) as $s => $label ) : ?>
+                    <option value="<?php echo esc_attr( $s ); ?>" <?php selected( $item->status ?? 'pending', $s ); ?>><?php echo esc_html( $label ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
         </table>
@@ -63,33 +65,70 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
     <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads&action=add' ) ); ?>" class="button button-primary">Add New Thread</a></p>
 
     <?php
-    $search   = sanitize_text_field( $_GET['s'] ?? '' );
-    $per_page = 20;
-    $paged    = max( 1, intval( $_GET['paged'] ?? 1 ) );
-    $offset   = ( $paged - 1 ) * $per_page;
+    $search        = sanitize_text_field( $_GET['s'] ?? '' );
+    $filter_status = sanitize_text_field( $_GET['status'] ?? '' );
+    $per_page      = 20;
+    $paged         = max( 1, intval( $_GET['paged'] ?? 1 ) );
+    $offset        = ( $paged - 1 ) * $per_page;
 
-    $where = '';
+    $where  = array();
     $params = array();
     if ( $search ) {
-        $like   = '%' . $wpdb->esc_like( $search ) . '%';
-        $where  = 'WHERE t.title LIKE %s OR t.content LIKE %s OR u.display_name LIKE %s';
-        $params = array( $like, $like, $like );
+        $like     = '%' . $wpdb->esc_like( $search ) . '%';
+        $where[]  = '(t.title LIKE %s OR t.content LIKE %s OR u.display_name LIKE %s)';
+        $params   = array_merge( $params, array( $like, $like, $like ) );
     }
+    if ( $filter_status ) {
+        $where[]  = 't.status = %s';
+        $params[] = $filter_status;
+    }
+    $where_sql = $where ? 'WHERE ' . implode( ' AND ', $where ) : '';
 
-    $total_query = "SELECT COUNT(*) FROM $table t LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID $where";
-    $total       = $search ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
+    $total_query = "SELECT COUNT(*) FROM $table t LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID $where_sql";
+    $total       = $params ? (int) $wpdb->get_var( $wpdb->prepare( $total_query, ...$params ) ) : (int) $wpdb->get_var( $total_query );
     $total_pages = max( 1, (int) ceil( $total / $per_page ) );
     $paged       = min( $paged, $total_pages );
 
     $query = "SELECT t.*, u.display_name AS author_name
          FROM $table t LEFT JOIN {$wpdb->users} u ON t.author_id = u.ID
-         $where ORDER BY t.created_at DESC LIMIT %d OFFSET %d";
-    $query_params = $search ? array_merge( $params, array( $per_page, $offset ) ) : array( $per_page, $offset );
+         $where_sql ORDER BY t.created_at DESC LIMIT %d OFFSET %d";
+    $query_params = array_merge( $params, array( $per_page, $offset ) );
     $rows = $wpdb->get_results( $wpdb->prepare( $query, ...$query_params ) );
 
+    // Status counts for filter tabs.
+    $status_counts = array(
+        'all'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table" ),
+        'pending'  => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE status = %s", 'pending' ) ),
+        'approved' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE status IN ('approved','published')" ) ),
+        'rejected' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE status IN ('rejected','closed')" ) ),
+    );
+
     cnw_admin_search_box( 'cnw-threads', $search );
-    cnw_admin_pagination( 'cnw-threads', $paged, $total_pages, $total, $search );
     ?>
+
+    <!-- Status filter tabs -->
+    <ul class="subsubsub" style="margin:8px 0;">
+        <?php
+        $base_url   = admin_url( 'admin.php?page=cnw-threads' );
+        if ( $search ) $base_url = add_query_arg( 's', $search, $base_url );
+        $filters = array(
+            ''         => array( 'All', $status_counts['all'] ),
+            'pending'  => array( 'Pending', $status_counts['pending'] ),
+            'approved' => array( 'Approved', $status_counts['approved'] ),
+            'rejected' => array( 'Rejected', $status_counts['rejected'] ),
+        );
+        $links = array();
+        foreach ( $filters as $fval => $fdata ) {
+            $url   = $fval ? add_query_arg( 'status', $fval, $base_url ) : $base_url;
+            $cls   = ( $filter_status === $fval ) ? ' class="current"' : '';
+            $links[] = sprintf( '<li><a href="%s"%s>%s <span class="count">(%s)</span></a></li>', esc_url( $url ), $cls, esc_html( $fdata[0] ), number_format( $fdata[1] ) );
+        }
+        echo implode( ' | ', $links );
+        ?>
+    </ul>
+    <div style="clear:both;"></div>
+
+    <?php cnw_admin_pagination( 'cnw-threads', $paged, $total_pages, $total, $search ); ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cnw-bulk-form">
         <?php wp_nonce_field( 'cnw_bulk_threads' ); ?>
@@ -98,6 +137,9 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
         <div class="cnw-bulk-bar">
             <select name="bulk_action">
                 <option value="">Bulk Actions</option>
+                <option value="approve">Approve</option>
+                <option value="reject">Reject</option>
+                <option value="pending">Set Pending</option>
                 <option value="delete">Delete</option>
             </select>
             <button type="submit" class="button">Apply</button>
@@ -106,7 +148,7 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
         <table class="wp-list-table widefat fixed striped">
             <thead><tr>
                 <th class="cnw-cb-col"><input type="checkbox" class="cnw-select-all"></th>
-                <th style="width:40px">ID</th><th>Title</th><th style="width:140px">Author</th><th style="width:90px">Status</th><th style="width:70px">Views</th><th style="width:150px">Created</th><th style="width:130px">Actions</th>
+                <th style="width:40px">ID</th><th>Title</th><th style="width:140px">Author</th><th style="width:90px">Status</th><th style="width:70px">Views</th><th style="width:150px">Created</th><th style="width:220px">Actions</th>
             </tr></thead>
             <tbody>
             <?php if ( $rows ) : foreach ( $rows as $row ) : ?>
@@ -115,10 +157,22 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
                     <td><?php echo esc_html( $row->id ); ?></td>
                     <td><?php echo esc_html( $row->title ); ?></td>
                     <td><?php echo esc_html( $row->author_name ); ?></td>
-                    <td><span class="cnw-status cnw-status-<?php echo esc_attr( $row->status ); ?>"><?php echo esc_html( ucfirst( $row->status ) ); ?></span></td>
+                    <?php
+                        $status_labels = array( 'published' => 'Approved', 'approved' => 'Approved', 'pending' => 'Pending', 'rejected' => 'Rejected', 'draft' => 'Pending', 'closed' => 'Rejected' );
+                        $status_classes = array( 'published' => 'approved', 'draft' => 'pending', 'closed' => 'rejected' );
+                        $display_status = isset( $status_labels[ $row->status ] ) ? $status_labels[ $row->status ] : ucfirst( $row->status );
+                        $status_class = isset( $status_classes[ $row->status ] ) ? $status_classes[ $row->status ] : $row->status;
+                    ?>
+                    <td><span class="cnw-status cnw-status-<?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $display_status ); ?></span></td>
                     <td><?php echo number_format( intval( $row->views ) ); ?></td>
                     <td><?php echo esc_html( $row->created_at ); ?></td>
                     <td>
+                        <?php if ( ! in_array( $row->status, array( 'approved', 'published' ), true ) ) : ?>
+                            <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cnw_quick_status_thread&id=' . $row->id . '&status=approved' ), 'cnw_quick_status_thread' ) ); ?>" style="color:#22a55b;font-weight:600;">Approve</a> |
+                        <?php endif; ?>
+                        <?php if ( ! in_array( $row->status, array( 'rejected', 'closed' ), true ) ) : ?>
+                            <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cnw_quick_status_thread&id=' . $row->id . '&status=rejected' ), 'cnw_quick_status_thread' ) ); ?>" style="color:#d63638;font-weight:600;">Reject</a> |
+                        <?php endif; ?>
                         <a href="<?php echo esc_url( admin_url( 'admin.php?page=cnw-threads&action=edit&id=' . $row->id ) ); ?>">Edit</a> |
                         <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cnw_delete_thread&id=' . $row->id ), 'cnw_delete_thread' ) ); ?>" class="cnw-delete-link" onclick="return confirm('Delete this thread and all its replies?')">Delete</a>
                     </td>

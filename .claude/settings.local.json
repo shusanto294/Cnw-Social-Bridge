@@ -20,7 +20,8 @@
       "Bash(python3:*)",
       "Bash(grep:*)",
       "Bash(php:*)",
-      "Bash(composer:*)"
+      "Bash(composer:*)",
+      "Bash(npx webpack --mode production 2>&1; echo \"EXIT:$?\")"
     ]
   }
 }

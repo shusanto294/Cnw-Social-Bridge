@@ -9,42 +9,25 @@ const headers = () => ({
 });
 
 /**
- * Build a REST API URL that works with both pretty permalinks and plain query-string fallback.
- * Tries the pretty /wp-json/ URL first; if it 404s, subsequent calls use ?rest_route= instead.
+ * Build a REST API URL.
+ * If REST_URL contains /wp-json/, pretty permalinks are enabled — use it directly.
+ * Otherwise fall back to ?rest_route= query string format.
  */
-let useFallback = null; // null = untested, true = use ?rest_route=
+const useFallback = !REST_URL || !REST_URL.includes('/wp-json/');
 
-async function apiUrl(path, params = {}) {
+function apiUrl(path, params = {}) {
   const qs = new URLSearchParams(params);
 
-  // If we already know pretty URLs fail, go straight to fallback
   if (useFallback) {
     qs.set('rest_route', `${NS}${path}`);
     return `${SITE_URL}?${qs}`;
   }
 
-  const pretty = `${REST_URL}${path}${qs.toString() ? '?' + qs : ''}`;
-
-  if (useFallback === null) {
-    // First call — probe the pretty URL
-    try {
-      const probe = await fetch(pretty, { method: 'HEAD', headers: headers() });
-      if (probe.ok || probe.status === 401 || probe.status === 403) {
-        useFallback = false;
-        return pretty;
-      }
-    } catch { /* network error */ }
-    // Pretty URL failed — switch to fallback permanently
-    useFallback = true;
-    qs.set('rest_route', `${NS}${path}`);
-    return `${SITE_URL}?${qs}`;
-  }
-
-  return pretty;
+  return `${REST_URL}${path}${qs.toString() ? '?' + qs : ''}`;
 }
 
 async function apiFetch(path, params = {}, options = {}) {
-  const url = await apiUrl(path, params);
+  const url = apiUrl(path, params);
   const res = await fetch(url, { headers: headers(), ...options });
   return res.json();
 }
@@ -60,7 +43,7 @@ export async function getThread(id) {
 }
 
 export async function createThread({ title, content, tags = [], category_id, anonymous }) {
-  const url = await apiUrl('/threads');
+  const url = apiUrl('/threads');
   const body = { title, content, tags };
   if (category_id) body.category_id = category_id;
   if (anonymous) body.anonymous = anonymous;
@@ -73,7 +56,7 @@ export async function createThread({ title, content, tags = [], category_id, ano
 }
 
 export async function updateThread(id, { title, content }) {
-  const url = await apiUrl(`/threads/${id}`);
+  const url = apiUrl(`/threads/${id}`);
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),
@@ -83,7 +66,7 @@ export async function updateThread(id, { title, content }) {
 }
 
 export async function deleteThread(id) {
-  const url = await apiUrl(`/threads/${id}`);
+  const url = apiUrl(`/threads/${id}`);
   const res = await fetch(url, {
     method: 'DELETE',
     headers: headers(),
@@ -96,7 +79,7 @@ export async function getReplies(threadId) {
 }
 
 export async function createReply({ thread_id, content, parent_id }) {
-  const url = await apiUrl('/replies');
+  const url = apiUrl('/replies');
   const body = { thread_id, content };
   if (parent_id) body.parent_id = parent_id;
   const res = await fetch(url, {
@@ -108,7 +91,7 @@ export async function createReply({ thread_id, content, parent_id }) {
 }
 
 export async function updateReply(id, { content }) {
-  const url = await apiUrl(`/replies/${id}`);
+  const url = apiUrl(`/replies/${id}`);
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),
@@ -118,7 +101,7 @@ export async function updateReply(id, { content }) {
 }
 
 export async function deleteReply(id) {
-  const url = await apiUrl(`/replies/${id}`);
+  const url = apiUrl(`/replies/${id}`);
   const res = await fetch(url, {
     method: 'DELETE',
     headers: headers(),
@@ -135,7 +118,7 @@ export async function getTags() {
 }
 
 export async function createTag({ name, description = '' }) {
-  const url = await apiUrl('/tags');
+  const url = apiUrl('/tags');
   const body = { name };
   if (description) body.description = description;
   const res = await fetch(url, {
@@ -147,7 +130,7 @@ export async function createTag({ name, description = '' }) {
 }
 
 export async function updateTag({ id, name, slug, description = '' }) {
-  const url = await apiUrl(`/tags/${id}`);
+  const url = apiUrl(`/tags/${id}`);
   const body = { name, description };
   if (slug) body.slug = slug;
   const res = await fetch(url, {
@@ -159,7 +142,7 @@ export async function updateTag({ id, name, slug, description = '' }) {
 }
 
 export async function createCategory({ name }) {
-  const url = await apiUrl('/categories');
+  const url = apiUrl('/categories');
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
@@ -169,7 +152,7 @@ export async function createCategory({ name }) {
 }
 
 export async function deleteTag(id) {
-  const url = await apiUrl(`/tags/${id}`);
+  const url = apiUrl(`/tags/${id}`);
   const res = await fetch(url, { method: 'DELETE', headers: headers() });
   return res.json();
 }
@@ -179,19 +162,19 @@ export async function getFollowedTags() {
 }
 
 export async function followTag(tagId) {
-  const url = await apiUrl(`/tags/${tagId}/follow`);
+  const url = apiUrl(`/tags/${tagId}/follow`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function unfollowTag(tagId) {
-  const url = await apiUrl(`/tags/${tagId}/unfollow`);
+  const url = apiUrl(`/tags/${tagId}/unfollow`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function createVote({ target_type, target_id, vote_type }) {
-  const url = await apiUrl('/votes');
+  const url = apiUrl('/votes');
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
@@ -201,13 +184,13 @@ export async function createVote({ target_type, target_id, vote_type }) {
 }
 
 export async function saveThread(threadId) {
-  const url = await apiUrl(`/threads/${threadId}/save`);
+  const url = apiUrl(`/threads/${threadId}/save`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function unsaveThread(threadId) {
-  const url = await apiUrl(`/threads/${threadId}/unsave`);
+  const url = apiUrl(`/threads/${threadId}/unsave`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
@@ -229,35 +212,35 @@ export async function getUnreadNotificationCount() {
 }
 
 export async function markNotificationRead(id) {
-  const url = await apiUrl(`/notifications/${id}/read`);
+  const url = apiUrl(`/notifications/${id}/read`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function markAllNotificationsRead() {
-  const url = await apiUrl('/notifications/read-all');
+  const url = apiUrl('/notifications/read-all');
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function logout() {
-  const url = await apiUrl('/logout');
+  const url = apiUrl('/logout');
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function forgotPassword({ user_login }) {
-  const url = await apiUrl('/forgot-password');
+  const url = apiUrl('/forgot-password');
   const res = await fetch(url, {
     method: 'POST',
-    headers: headers(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_login }),
   });
   return res.json();
 }
 
 export async function markSolution(replyId) {
-  const url = await apiUrl(`/replies/${replyId}/solution`);
+  const url = apiUrl(`/replies/${replyId}/solution`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
@@ -267,10 +250,10 @@ export async function getUserReputation(userId) {
 }
 
 export async function register({ username, email, password, first_name, last_name }) {
-  const url = await apiUrl('/register');
+  const url = apiUrl('/register');
   const res = await fetch(url, {
     method: 'POST',
-    headers: headers(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, email, password, first_name, last_name }),
   });
   const data = await res.json();
@@ -297,7 +280,7 @@ export async function getUserReplies(userId, { page = 1 } = {}) {
 }
 
 export async function updateUserProfile({ first_name, last_name, phone, bio, verified_label, professional_title }) {
-  const url = await apiUrl('/users/me/profile');
+  const url = apiUrl('/users/me/profile');
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),
@@ -307,7 +290,7 @@ export async function updateUserProfile({ first_name, last_name, phone, bio, ver
 }
 
 export async function toggleAnonymous() {
-  const url = await apiUrl('/users/me/anonymous');
+  const url = apiUrl('/users/me/anonymous');
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
@@ -317,7 +300,7 @@ export async function getUserActivity({ page = 1 } = {}) {
 }
 
 export async function uploadAvatar(file) {
-  const url = await apiUrl('/users/me/avatar');
+  const url = apiUrl('/users/me/avatar');
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch(url, {
@@ -343,7 +326,7 @@ export async function getConversation(userId, { before = 0 } = {}) {
 }
 
 export async function sendMessage({ recipient_id, content }) {
-  const url = await apiUrl('/messages');
+  const url = apiUrl('/messages');
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
@@ -353,13 +336,13 @@ export async function sendMessage({ recipient_id, content }) {
 }
 
 export async function markConversationRead(userId) {
-  const url = await apiUrl(`/conversations/${userId}/read`);
+  const url = apiUrl(`/conversations/${userId}/read`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
 
 export async function setTyping(userId) {
-  const url = await apiUrl(`/typing/${userId}`);
+  const url = apiUrl(`/typing/${userId}`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
   return res.json();
 }
@@ -369,7 +352,7 @@ export async function getTyping(userId) {
 }
 
 export async function broadcastStatus(status) {
-  const url = await apiUrl('/pusher/status');
+  const url = apiUrl('/pusher/status');
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
@@ -379,7 +362,7 @@ export async function broadcastStatus(status) {
 }
 
 export async function submitReport({ type, subject, link, description, priority }) {
-  const url = await apiUrl('/reports');
+  const url = apiUrl('/reports');
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
@@ -393,10 +376,10 @@ export async function getGuidelines() {
 }
 
 export async function login({ username, password }) {
-  const url = await apiUrl('/login');
+  const url = apiUrl('/login');
   const res = await fetch(url, {
     method: 'POST',
-    headers: headers(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json();

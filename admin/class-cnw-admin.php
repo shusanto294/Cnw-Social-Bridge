@@ -33,15 +33,19 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_save_reputation',   array( $this, 'handle_save_reputation' ) );
         add_action( 'admin_post_cnw_delete_reputation',  array( $this, 'handle_delete_reputation' ) );
         add_action( 'admin_post_cnw_save_logo',         array( $this, 'handle_save_logo' ) );
-        add_action( 'admin_post_cnw_save_pusher',       array( $this, 'handle_save_pusher' ) );
+        add_action( 'admin_post_cnw_save_pusher',           array( $this, 'handle_save_pusher' ) );
+        add_action( 'admin_post_cnw_save_thread_settings', array( $this, 'handle_save_thread_settings' ) );
+        add_action( 'admin_post_cnw_save_reply_settings',  array( $this, 'handle_save_reply_settings' ) );
         add_action( 'admin_post_cnw_save_guidelines',   array( $this, 'handle_save_guidelines' ) );
         add_action( 'admin_post_cnw_update_report',     array( $this, 'handle_update_report' ) );
         add_action( 'admin_post_cnw_delete_report',     array( $this, 'handle_delete_report' ) );
         add_action( 'admin_post_cnw_bulk_reports',      array( $this, 'handle_bulk_reports' ) );
 
         // Bulk action handlers
-        add_action( 'admin_post_cnw_bulk_threads',     array( $this, 'handle_bulk_threads' ) );
-        add_action( 'admin_post_cnw_bulk_replies',     array( $this, 'handle_bulk_replies' ) );
+        add_action( 'admin_post_cnw_bulk_threads',          array( $this, 'handle_bulk_threads' ) );
+        add_action( 'admin_post_cnw_quick_status_thread', array( $this, 'handle_quick_status_thread' ) );
+        add_action( 'admin_post_cnw_bulk_replies',          array( $this, 'handle_bulk_replies' ) );
+        add_action( 'admin_post_cnw_quick_status_reply',  array( $this, 'handle_quick_status_reply' ) );
         add_action( 'admin_post_cnw_bulk_messages',    array( $this, 'handle_bulk_messages' ) );
         add_action( 'admin_post_cnw_bulk_tags',         array( $this, 'handle_bulk_tags' ) );
         add_action( 'admin_post_cnw_bulk_categories',  array( $this, 'handle_bulk_categories' ) );
@@ -51,6 +55,7 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_save_user',           array( $this, 'handle_save_user' ) );
         add_action( 'admin_post_cnw_delete_user',       array( $this, 'handle_delete_user' ) );
         add_action( 'admin_post_cnw_bulk_users',         array( $this, 'handle_bulk_users' ) );
+        add_action( 'admin_post_cnw_send_password_reset', array( $this, 'handle_send_password_reset' ) );
         add_action( 'admin_post_cnw_export_data',       array( $this, 'handle_export_data' ) );
         add_action( 'admin_post_cnw_import_data',       array( $this, 'handle_import_upload' ) );
         add_action( 'wp_ajax_cnw_import_step',           array( $this, 'ajax_import_step' ) );
@@ -81,14 +86,30 @@ class Cnw_Social_Bridge_Admin {
             $reports_label = sprintf( 'Reports <span class="awaiting-mod">%d</span>', $open_reports );
         }
 
+        $pending_threads = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE status = 'pending'"
+        );
+        $threads_label = 'Threads';
+        if ( $pending_threads > 0 ) {
+            $threads_label = sprintf( 'Threads <span class="awaiting-mod">%d</span>', $pending_threads );
+        }
+
+        $pending_replies = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE status = 'pending'"
+        );
+        $replies_label = 'Replies';
+        if ( $pending_replies > 0 ) {
+            $replies_label = sprintf( 'Replies <span class="awaiting-mod">%d</span>', $pending_replies );
+        }
+
         $submenus = array(
             array( 'cnw-social-bridge', 'Dashboard',  'cnw-social-bridge', 'page_dashboard' ),
             array( 'cnw-social-bridge', 'Forum Users', 'cnw-users',         'page_users' ),
-            array( 'cnw-social-bridge', 'Threads',     'cnw-threads',       'page_threads' ),
+            array( 'cnw-social-bridge', $threads_label, 'cnw-threads',       'page_threads' ),
             array( 'cnw-social-bridge', 'Tags',        'cnw-tags',          'page_tags' ),
             array( 'cnw-social-bridge', 'Categories',  'cnw-categories',    'page_categories' ),
             array( 'cnw-social-bridge', 'Votes',       'cnw-votes',         'page_votes' ),
-            array( 'cnw-social-bridge', 'Replies',     'cnw-replies',       'page_replies' ),
+            array( 'cnw-social-bridge', $replies_label, 'cnw-replies',       'page_replies' ),
             array( 'cnw-social-bridge', 'Messages',    'cnw-messages',      'page_messages' ),
             array( 'cnw-social-bridge', 'Reputation',  'cnw-reputation',    'page_reputation' ),
             array( 'cnw-social-bridge', 'Guidelines',  'cnw-guidelines',    'page_guidelines' ),
@@ -621,19 +642,107 @@ class Cnw_Social_Bridge_Admin {
     }
 
     public function handle_bulk_threads() {
-        $this->bulk_delete( 'cnw_bulk_threads', 'cnw-threads', 'threads', function( $wpdb, $ids ) {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_bulk_threads' );
+
+        global $wpdb;
+        $bulk  = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids   = array_map( 'intval', (array) ( $_POST['bulk_ids'] ?? array() ) );
+        $table = $wpdb->prefix . 'cnw_social_worker_threads';
+        $count = count( $ids );
+        $msg   = 'bulk_updated';
+
+        if ( ! empty( $ids ) ) {
             $ph = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id IN ($ph)", ...$ids ) );
-            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'thread' AND target_id IN ($ph)", ...$ids ) );
-        } );
+
+            if ( in_array( $bulk, array( 'approve', 'reject', 'pending' ), true ) ) {
+                $status_map = array( 'approve' => 'approved', 'reject' => 'rejected', 'pending' => 'pending' );
+                $new_status = $status_map[ $bulk ];
+                $wpdb->query( $wpdb->prepare( "UPDATE $table SET status = %s WHERE id IN ($ph)", $new_status, ...$ids ) );
+            } elseif ( $bulk === 'delete' ) {
+                $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_replies WHERE thread_id IN ($ph)", ...$ids ) );
+                $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'thread' AND target_id IN ($ph)", ...$ids ) );
+                $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id IN ($ph)", ...$ids ) );
+                $msg = 'bulk_deleted';
+            }
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-threads', 'msg' => $msg, 'count' => $count ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_quick_status_thread() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_quick_status_thread' );
+
+        global $wpdb;
+        $id     = intval( $_GET['id'] ?? 0 );
+        $status = sanitize_text_field( $_GET['status'] ?? '' );
+
+        if ( $id && in_array( $status, array( 'approved', 'rejected', 'pending' ), true ) ) {
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_threads',
+                array( 'status' => $status ),
+                array( 'id' => $id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-threads', 'msg' => 'status_updated' ), admin_url( 'admin.php' ) ) );
+        exit;
     }
 
     public function handle_bulk_replies() {
-        $this->bulk_delete( 'cnw_bulk_replies', 'cnw-replies', 'replies', function( $wpdb, $ids ) {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_bulk_replies' );
+
+        global $wpdb;
+        $bulk  = sanitize_text_field( $_POST['bulk_action'] ?? '' );
+        $ids   = array_map( 'intval', (array) ( $_POST['bulk_ids'] ?? array() ) );
+        $table = $wpdb->prefix . 'cnw_social_worker_replies';
+        $count = count( $ids );
+        $msg   = 'bulk_updated';
+
+        if ( ! empty( $ids ) ) {
             $ph = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_replies WHERE parent_id IN ($ph)", ...$ids ) );
-            $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'reply' AND target_id IN ($ph)", ...$ids ) );
-        } );
+
+            if ( in_array( $bulk, array( 'approve', 'reject', 'pending', 'spam' ), true ) ) {
+                $status_map = array( 'approve' => 'approved', 'reject' => 'rejected', 'pending' => 'pending', 'spam' => 'spam' );
+                $new_status = $status_map[ $bulk ];
+                $wpdb->query( $wpdb->prepare( "UPDATE $table SET status = %s WHERE id IN ($ph)", $new_status, ...$ids ) );
+            } elseif ( $bulk === 'delete' ) {
+                $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_replies WHERE parent_id IN ($ph)", ...$ids ) );
+                $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}cnw_social_worker_votes WHERE target_type = 'reply' AND target_id IN ($ph)", ...$ids ) );
+                $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id IN ($ph)", ...$ids ) );
+                $msg = 'bulk_deleted';
+            }
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-replies', 'msg' => $msg, 'count' => $count ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_quick_status_reply() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_quick_status_reply' );
+
+        global $wpdb;
+        $id     = intval( $_GET['id'] ?? 0 );
+        $status = sanitize_text_field( $_GET['status'] ?? '' );
+
+        if ( $id && in_array( $status, array( 'approved', 'rejected', 'pending', 'spam' ), true ) ) {
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_replies',
+                array( 'status' => $status ),
+                array( 'id' => $id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-replies', 'msg' => 'status_updated' ), admin_url( 'admin.php' ) ) );
+        exit;
     }
 
     public function handle_bulk_messages() {
@@ -848,6 +957,25 @@ class Cnw_Social_Bridge_Admin {
         exit;
     }
 
+    public function handle_send_password_reset() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_send_password_reset' );
+
+        $id   = intval( $_GET['id'] ?? 0 );
+        $user = get_userdata( $id );
+        $msg  = 'reset_failed';
+
+        if ( $user ) {
+            $result = retrieve_password( $user->user_login );
+            if ( ! is_wp_error( $result ) ) {
+                $msg = 'reset_sent';
+            }
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'edit', 'id' => $id, 'msg' => $msg ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
     /* ------------------------------------------------------------------
      * LOGO handler (Settings page)
      * ------------------------------------------------------------------ */
@@ -880,6 +1008,34 @@ class Cnw_Social_Bridge_Admin {
         update_option( 'cnw_pusher_host',    sanitize_text_field( $_POST['cnw_pusher_host']    ?? '' ) );
         update_option( 'cnw_pusher_port',    sanitize_text_field( $_POST['cnw_pusher_port']    ?? '443' ) );
         update_option( 'cnw_pusher_cluster', sanitize_text_field( $_POST['cnw_pusher_cluster'] ?? 'mt1' ) );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-settings', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_save_thread_settings() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_thread_settings' );
+
+        $status = sanitize_text_field( $_POST['cnw_default_thread_status'] ?? 'pending' );
+        if ( ! in_array( $status, array( 'pending', 'approved', 'rejected' ), true ) ) {
+            $status = 'pending';
+        }
+        update_option( 'cnw_default_thread_status', $status );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-settings', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_save_reply_settings() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_save_reply_settings' );
+
+        $status = sanitize_text_field( $_POST['cnw_default_reply_status'] ?? 'approved' );
+        if ( ! in_array( $status, array( 'pending', 'approved', 'rejected' ), true ) ) {
+            $status = 'approved';
+        }
+        update_option( 'cnw_default_reply_status', $status );
 
         wp_redirect( add_query_arg( array( 'page' => 'cnw-settings', 'msg' => 'saved' ), admin_url( 'admin.php' ) ) );
         exit;
@@ -1022,6 +1178,7 @@ class Cnw_Social_Bridge_Admin {
                 'id'           => $uid,
                 'user_login'   => $u->user_login,
                 'user_email'   => $u->user_email,
+                'user_pass'    => $u->user_pass,
                 'display_name' => $u->display_name,
                 'first_name'   => get_user_meta( $uid, 'first_name', true ),
                 'last_name'    => get_user_meta( $uid, 'last_name', true ),
@@ -1035,8 +1192,6 @@ class Cnw_Social_Bridge_Admin {
 
         // Plugin settings.
         $settings = array(
-            'cnw_social_logo_url'              => get_option( 'cnw_social_logo_url', '' ),
-            'cnw_social_mobile_logo_url'       => get_option( 'cnw_social_mobile_logo_url', '' ),
             'cnw_social_bridge_version'        => get_option( 'cnw_social_bridge_version', '' ),
             'cnw_pusher_host'                  => get_option( 'cnw_pusher_host', '' ),
             'cnw_pusher_port'                  => get_option( 'cnw_pusher_port', '443' ),
@@ -1046,6 +1201,8 @@ class Cnw_Social_Bridge_Admin {
             'cnw_pusher_secret'                => get_option( 'cnw_pusher_secret', '' ),
             'cnw_community_guidelines'         => get_option( 'cnw_community_guidelines', '' ),
             'cnw_community_guidelines_html'    => get_option( 'cnw_community_guidelines_html', '' ),
+            'cnw_default_thread_status'        => get_option( 'cnw_default_thread_status', 'pending' ),
+            'cnw_default_reply_status'         => get_option( 'cnw_default_reply_status', 'approved' ),
         );
 
         // Build ZIP.
@@ -1067,6 +1224,32 @@ class Cnw_Social_Bridge_Admin {
         foreach ( $tables as $t ) {
             $zip->addFromString( $t . '.json', wp_json_encode( $table_data[ $t ], $json_flags ) );
         }
+
+        // Include avatar image files in the ZIP.
+        $upload_dir  = wp_get_upload_dir();
+        $upload_base = $upload_dir['basedir']; // e.g. /path/wp-content/uploads
+        $upload_url  = $upload_dir['baseurl']; // e.g. http://localhost/wordpress/wp-content/uploads
+        foreach ( $users as &$ue ) {
+            $avatar_url = $ue['cnw_avatar_url'] ?? '';
+            if ( ! $avatar_url ) continue;
+            // Check if the URL belongs to this site's uploads
+            if ( strpos( $avatar_url, $upload_url ) === 0 ) {
+                $rel  = substr( $avatar_url, strlen( $upload_url ) ); // e.g. /2024/01/photo.jpg
+                $file = $upload_base . $rel;
+                if ( file_exists( $file ) ) {
+                    $zip->addFile( $file, 'avatars/' . $ue['id'] . '-' . basename( $file ) );
+                    $ue['_avatar_file'] = $ue['id'] . '-' . basename( $file );
+                }
+            }
+        }
+        unset( $ue );
+        // Re-write users.json with _avatar_file references
+        $zip->deleteName( 'users.json' );
+        $zip->addFromString( 'users.json', wp_json_encode( $users, $json_flags ) );
+
+        // Re-write settings.json
+        $zip->deleteName( 'settings.json' );
+        $zip->addFromString( 'settings.json', wp_json_encode( $settings, $json_flags ) );
 
         $zip->close();
 
@@ -1209,9 +1392,13 @@ class Cnw_Social_Bridge_Admin {
         switch ( $step ) {
 
             case 'users':
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+                require_once ABSPATH . 'wp-admin/includes/media.php';
+
                 $users = $read_json( 'users' );
                 $state['user_map'] = array( 0 => 0 );
-                $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description' );
+                $cnw_meta_keys = array( 'cnw_phone', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description' );
                 foreach ( $users as $eu ) {
                     $old_id = (int) $eu['id'];
                     $existing = get_user_by( 'email', $eu['user_email'] );
@@ -1230,7 +1417,17 @@ class Cnw_Social_Bridge_Admin {
                             'last_name'    => $eu['last_name'] ?? '',
                             'role'         => ! empty( $eu['roles'] ) ? $eu['roles'][0] : 'cnw_forum_member',
                         ) );
-                        $state['user_map'][ $old_id ] = ! is_wp_error( $new_id ) ? (int) $new_id : 0;
+                        if ( ! is_wp_error( $new_id ) ) {
+                            $state['user_map'][ $old_id ] = (int) $new_id;
+                            // Restore the original password hash so users keep their passwords.
+                            if ( ! empty( $eu['user_pass'] ) ) {
+                                global $wpdb;
+                                $wpdb->update( $wpdb->users, array( 'user_pass' => $eu['user_pass'] ), array( 'ID' => $new_id ) );
+                                clean_user_cache( $new_id );
+                            }
+                        } else {
+                            $state['user_map'][ $old_id ] = 0;
+                        }
                     }
                     // Restore CNW user meta.
                     $new_uid = $state['user_map'][ $old_id ];
@@ -1238,6 +1435,36 @@ class Cnw_Social_Bridge_Admin {
                         foreach ( $cnw_meta_keys as $mk ) {
                             if ( isset( $eu[ $mk ] ) && $eu[ $mk ] !== '' ) {
                                 update_user_meta( $new_uid, $mk, $eu[ $mk ] );
+                            }
+                        }
+
+                        // Import avatar file if included in the export
+                        $avatar_file = $eu['_avatar_file'] ?? '';
+                        if ( $avatar_file ) {
+                            $src = $dir . '/avatars/' . $avatar_file;
+                            if ( file_exists( $src ) ) {
+                                $upload = wp_upload_bits( basename( $avatar_file ), null, file_get_contents( $src ) );
+                                if ( empty( $upload['error'] ) ) {
+                                    $filetype      = wp_check_filetype( $upload['file'] );
+                                    $attachment_id = wp_insert_attachment( array(
+                                        'post_mime_type' => $filetype['type'],
+                                        'post_title'     => sanitize_file_name( basename( $upload['file'] ) ),
+                                        'post_status'    => 'inherit',
+                                    ), $upload['file'] );
+                                    if ( ! is_wp_error( $attachment_id ) ) {
+                                        $meta = wp_generate_attachment_metadata( $attachment_id, $upload['file'] );
+                                        wp_update_attachment_metadata( $attachment_id, $meta );
+                                        $new_url = wp_get_attachment_url( $attachment_id );
+                                        update_user_meta( $new_uid, 'cnw_avatar_url', esc_url_raw( $new_url ) );
+                                        update_user_meta( $new_uid, 'cnw_avatar_attachment_id', $attachment_id );
+                                    }
+                                }
+                            }
+                        } elseif ( ! empty( $eu['cnw_avatar_url'] ) ) {
+                            // Fallback: store the old URL (may work if same domain)
+                            update_user_meta( $new_uid, 'cnw_avatar_url', $eu['cnw_avatar_url'] );
+                            if ( ! empty( $eu['cnw_avatar_attachment_id'] ) ) {
+                                update_user_meta( $new_uid, 'cnw_avatar_attachment_id', $eu['cnw_avatar_attachment_id'] );
                             }
                         }
                     }
@@ -1516,17 +1743,21 @@ class Cnw_Social_Bridge_Admin {
                 break;
 
             case 'settings':
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+                require_once ABSPATH . 'wp-admin/includes/media.php';
+
                 $settings = $read_json( 'settings' );
                 if ( ! empty( $settings ) && is_array( $settings ) ) {
                     $allowed = array(
-                        'cnw_social_logo_url', 'cnw_social_mobile_logo_url',
                         'cnw_pusher_host', 'cnw_pusher_port', 'cnw_pusher_cluster',
                         'cnw_pusher_app_id', 'cnw_pusher_key', 'cnw_pusher_secret',
                         'cnw_community_guidelines', 'cnw_community_guidelines_html',
+                        'cnw_default_thread_status', 'cnw_default_reply_status',
                     );
                     foreach ( $allowed as $key ) {
                         if ( isset( $settings[ $key ] ) && $settings[ $key ] !== '' ) {
-                            update_option( $key, sanitize_text_field( $settings[ $key ] ) );
+                            update_option( $key, $settings[ $key ] );
                             $count++;
                         }
                     }
