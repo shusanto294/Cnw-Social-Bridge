@@ -426,3 +426,21 @@ export async function removeConnection(userId) {
 export async function getConnectionStatus(userId) {
   return apiFetch(`/connections/status/${userId}`);
 }
+
+// ── Restrictions ──────────────────────────────────────────────
+
+export async function restrictUser(userId) {
+  const url = apiUrl(`/restrict/${userId}`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function unrestrictUser(userId) {
+  const url = apiUrl(`/unrestrict/${userId}`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return res.json();
+}
+
+export async function getRestrictions() {
+  return apiFetch('/restrictions');
+}

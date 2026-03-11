@@ -32,6 +32,7 @@ $tables = array(
     'cnw_social_worker_notifications',
     'cnw_social_worker_reports',
     'cnw_social_worker_connections',
+    'cnw_social_worker_restrictions',
 );
 
 foreach ( $tables as $table ) {

@@ -264,6 +264,17 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/connections/status/(?P<user_id>\d+)', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_connection_status' ), 'permission_callback' => 'is_user_logged_in',
         ) );
+
+        // ── Restrictions ───────────────────────────────────────────────
+        register_rest_route( $ns, '/restrict/(?P<user_id>\d+)', array(
+            'methods' => 'POST', 'callback' => array( $this, 'restrict_user' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/unrestrict/(?P<user_id>\d+)', array(
+            'methods' => 'POST', 'callback' => array( $this, 'unrestrict_user' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/restrictions', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_restrictions' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
     }
 
     /* ------------------------------------------------------------------
@@ -1181,9 +1192,20 @@ class Cnw_Social_Bridge_REST_API {
             if ( empty( $row->other_avatar ) ) {
                 $row->other_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             }
-            $row->is_online    = $this->is_user_online( $row->other_user_id );
-            $row->is_connected = $this->are_connected( $me, $row->other_user_id );
-            $row->blocked_by   = $this->get_blocked_by( $me, $row->other_user_id );
+            $other_id = (int) $row->other_user_id;
+            // If the other user has restricted me, hide my visibility info from them
+            // If I have restricted the other user, hide their info from me
+            $restricted_by_other = $this->has_restricted( $other_id, $me );
+            $restricted_by_me    = $this->has_restricted( $me, $other_id );
+            $row->is_online    = ( $restricted_by_other || $restricted_by_me ) ? false : $this->is_user_online( $other_id );
+            $row->is_connected = $this->are_connected( $me, $other_id );
+            $row->blocked_by   = $this->get_blocked_by( $me, $other_id );
+            if ( $restricted_by_other || $restricted_by_me ) {
+                $row->unread_count = 0;
+                if ( (int) $row->last_sender_id === $me ) {
+                    $row->last_is_read = 0; // Hide read receipt
+                }
+            }
         }
 
         return array(
@@ -1199,9 +1221,18 @@ class Cnw_Social_Bridge_REST_API {
         global $wpdb;
         $me    = get_current_user_id();
         $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $r_table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+
+        // Exclude unread messages from users I've restricted or who've restricted me
         $count = (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$table} WHERE recipient_id = %d AND is_read = 0",
-            $me
+            "SELECT COUNT(*) FROM {$table} m
+             WHERE m.recipient_id = %d AND m.is_read = 0
+             AND NOT EXISTS (
+                SELECT 1 FROM {$r_table} r
+                WHERE (r.restricter_id = %d AND r.restricted_id = m.sender_id)
+                   OR (r.restricter_id = m.sender_id AND r.restricted_id = %d)
+             )",
+            $me, $me, $me
         ) );
         return array( 'count' => $count );
     }
@@ -1257,6 +1288,18 @@ class Cnw_Social_Bridge_REST_API {
 
         $has_more = $total > $per_page;
 
+        // Hide online status and read receipts if either side has restricted the other
+        $any_restriction = $this->has_restricted( $other, $me ) || $this->has_restricted( $me, $other );
+        $is_online = $any_restriction ? false : $this->is_user_online( $other );
+
+        if ( $any_restriction ) {
+            foreach ( $messages as &$msg ) {
+                if ( (int) $msg->sender_id === $me ) {
+                    $msg->is_read = 0;
+                }
+            }
+        }
+
         return array(
             'messages'   => $messages,
             'has_more'   => $has_more,
@@ -1265,6 +1308,7 @@ class Cnw_Social_Bridge_REST_API {
                 'name'           => $other_user ? $other_user->display_name : 'Unknown',
                 'avatar'         => $other_avatar,
                 'verified_label' => $other_label,
+                'is_online'      => $is_online,
             ),
         );
     }
@@ -1282,7 +1326,8 @@ class Cnw_Social_Bridge_REST_API {
         ) );
 
         // Notify the sender that their messages have been read
-        if ( $updated > 0 ) {
+        // But skip if either side has restricted the other
+        if ( $updated > 0 && ! $this->has_restricted( $me, $other ) && ! $this->has_restricted( $other, $me ) ) {
             Cnw_Social_Bridge_Pusher::trigger(
                 'private-user-' . $other,
                 'messages-read',
@@ -1304,15 +1349,18 @@ class Cnw_Social_Bridge_REST_API {
 
         set_transient( $key, time(), 5 );
 
-        $user = get_userdata( $me );
-        Cnw_Social_Bridge_Pusher::trigger(
-            'private-user-' . $other,
-            'client-typing',
-            array(
-                'user_id' => $me,
-                'name'    => $user ? $user->display_name : 'Unknown',
-            )
-        );
+        // Don't broadcast typing if either side has restricted the other
+        if ( ! $this->has_restricted( $me, $other ) && ! $this->has_restricted( $other, $me ) ) {
+            $user = get_userdata( $me );
+            Cnw_Social_Bridge_Pusher::trigger(
+                'private-user-' . $other,
+                'client-typing',
+                array(
+                    'user_id' => $me,
+                    'name'    => $user ? $user->display_name : 'Unknown',
+                )
+            );
+        }
 
         return array( 'success' => true );
     }
@@ -1385,8 +1433,17 @@ class Cnw_Social_Bridge_REST_API {
             'status'  => $status,
         );
 
-        // Broadcast to each partner's private channel
+        // Get users who have restricted me (they shouldn't see my status)
+        $restricters = $this->get_restricters_of( $me );
+        // Get users I have restricted (I don't want them to see my status)
+        $my_restricted = $this->get_restricted_by( $me );
+        $skip_ids = array_unique( array_merge( $restricters, $my_restricted ) );
+
+        // Broadcast to each partner's private channel (skip restricted)
         foreach ( $partners as $partner_id ) {
+            if ( in_array( (int) $partner_id, $skip_ids, true ) ) {
+                continue;
+            }
             Cnw_Social_Bridge_Pusher::trigger(
                 'private-user-' . (int) $partner_id,
                 'user-status',
@@ -2221,6 +2278,7 @@ class Cnw_Social_Bridge_REST_API {
                 "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $u->ID
             ) );
 
+            $any_restriction = $current && ( $this->has_restricted( $current, $u->ID ) || $this->has_restricted( $u->ID, $current ) );
             $users[] = array(
                 'id'                 => $u->ID,
                 'name'               => $u->display_name,
@@ -2231,7 +2289,7 @@ class Cnw_Social_Bridge_REST_API {
                 'thread_count'       => $thread_count,
                 'reply_count'        => $reply_count,
                 'user_registered'    => $u->user_registered,
-                'is_online'          => $this->is_user_online( $u->ID ),
+                'is_online'          => $any_restriction ? false : $this->is_user_online( $u->ID ),
                 'connection_status'  => $conn_map[ $u->ID ] ?? 'none',
             );
         }
@@ -3168,7 +3226,7 @@ class Cnw_Social_Bridge_REST_API {
                 'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
                 ) ),
-                'is_online'          => $this->is_user_online( $uid ),
+                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid ),
                 'connected_since'    => $row->connected_since,
                 'connection_status'  => 'connected',
             );
@@ -3211,11 +3269,105 @@ class Cnw_Social_Bridge_REST_API {
                 'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
                 ) ),
-                'is_online'          => $this->is_user_online( $uid ),
+                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid ),
                 'created_at'         => $row->created_at,
             );
         }
 
         return array( 'requests' => $requests );
+    }
+
+    /* ==================================================================
+     * RESTRICTIONS
+     * ================================================================== */
+
+    /**
+     * Check if $restricter has restricted $restricted.
+     */
+    private function has_restricted( $restricter_id, $restricted_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+        return (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table} WHERE restricter_id = %d AND restricted_id = %d",
+            $restricter_id, $restricted_id
+        ) );
+    }
+
+    /**
+     * Get all user IDs that have restricted the given user.
+     */
+    private function get_restricters_of( $user_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+        return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+            "SELECT restricter_id FROM {$table} WHERE restricted_id = %d",
+            $user_id
+        ) ) );
+    }
+
+    /**
+     * Get all user IDs that the given user has restricted.
+     */
+    private function get_restricted_by( $user_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+        return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+            "SELECT restricted_id FROM {$table} WHERE restricter_id = %d",
+            $user_id
+        ) ) );
+    }
+
+    public function restrict_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+
+        if ( $me === $other ) {
+            return new WP_Error( 'invalid', 'Cannot restrict yourself.', array( 'status' => 400 ) );
+        }
+
+        $table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+        $wpdb->replace( $table, array(
+            'restricter_id' => $me,
+            'restricted_id' => $other,
+        ) );
+
+        // Notify the restricted user in real-time so their UI updates
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'user-restricted',
+            array( 'restricter_id' => $me )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function unrestrict_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $me    = get_current_user_id();
+        $other = intval( $request['user_id'] );
+
+        $table = $wpdb->prefix . 'cnw_social_worker_restrictions';
+        $wpdb->delete( $table, array(
+            'restricter_id' => $me,
+            'restricted_id' => $other,
+        ) );
+
+        // Notify the unrestricted user in real-time
+        Cnw_Social_Bridge_Pusher::trigger(
+            'private-user-' . $other,
+            'user-unrestricted',
+            array( 'restricter_id' => $me )
+        );
+
+        return array( 'success' => true );
+    }
+
+    public function get_restrictions() {
+        $me = get_current_user_id();
+        return array(
+            'restricted'     => $this->get_restricted_by( $me ),
+            'restricted_by'  => $this->get_restricters_of( $me ),
+        );
     }
 }

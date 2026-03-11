@@ -29,6 +29,37 @@
               {{ user.reputation || 0 }}&nbsp; Reputation
             </p>
           </div>
+          <!-- Connection / Message buttons -->
+          <div v-if="!isOwn && connectionStatus !== null" class="profile-action-buttons">
+            <template v-if="connectionStatus === 'connected'">
+              <button class="profile-action-btn profile-action-message" @click="goToMessage">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Message
+              </button>
+            </template>
+            <template v-else-if="connectionStatus === 'pending_received'">
+              <button class="profile-action-btn profile-action-accept" :disabled="connectionLoading" @click="handleAcceptConnection">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                {{ connectionLoading ? 'Accepting...' : 'Accept Request' }}
+              </button>
+              <button class="profile-action-btn profile-action-decline" :disabled="connectionLoading" @click="handleDeclineConnection">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Decline
+              </button>
+            </template>
+            <template v-else-if="connectionStatus === 'pending_sent'">
+              <button class="profile-action-btn profile-action-pending" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Request Sent
+              </button>
+            </template>
+            <template v-else-if="connectionStatus === 'none'">
+              <button class="profile-action-btn profile-action-connect" :disabled="connectionLoading" @click="handleSendConnection">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                {{ connectionLoading ? 'Sending...' : 'Connect' }}
+              </button>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -329,7 +360,7 @@
 </template>
 
 <script>
-import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar } from '@/api/index.js';
+import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar, getConnectionStatus, sendConnectionRequest, acceptConnection, declineConnection } from '@/api/index.js';
 
 export default {
   name: 'UserProfileView',
@@ -366,6 +397,8 @@ export default {
       saving: false,
       editForm: { first_name: '', last_name: '', phone: '', verified_label: '', professional_title: '' },
       defaultAvatar: window.cnwData?.defaultAvatar || '',
+      connectionStatus: null,
+      connectionLoading: false,
     };
   },
   computed: {
@@ -420,11 +453,54 @@ export default {
       try {
         this.user = await getUser(this.userId);
         this.fetchReplies();
+        if (!this.user.is_own) {
+          this.loadConnectionStatus();
+        }
       } catch {
         this.error = 'Failed to load user profile.';
       } finally {
         this.loading = false;
       }
+    },
+    async loadConnectionStatus() {
+      try {
+        const data = await getConnectionStatus(this.userId);
+        this.connectionStatus = data.status || 'none';
+      } catch { this.connectionStatus = 'none'; }
+    },
+    async handleSendConnection() {
+      this.connectionLoading = true;
+      try {
+        await sendConnectionRequest(this.userId);
+        this.connectionStatus = 'pending_sent';
+      } catch { /* silent */ }
+      this.connectionLoading = false;
+    },
+    async handleAcceptConnection() {
+      this.connectionLoading = true;
+      try {
+        await acceptConnection(this.userId);
+        this.connectionStatus = 'connected';
+      } catch { /* silent */ }
+      this.connectionLoading = false;
+    },
+    async handleDeclineConnection() {
+      this.connectionLoading = true;
+      try {
+        await declineConnection(this.userId);
+        this.connectionStatus = 'none';
+      } catch { /* silent */ }
+      this.connectionLoading = false;
+    },
+    goToMessage() {
+      const user = {
+        id: this.userId,
+        name: this.fullName,
+        avatar: this.user.avatar || this.defaultAvatar,
+        verified_label: this.user.verified_label || '',
+      };
+      window._cnwPendingChat = user;
+      this.$router.push('/messages');
     },
     async fetchThreads(page) {
       if (page) this.threadsPage = page;
@@ -657,6 +733,57 @@ export default {
 }
 .profile-reputation svg {
   flex-shrink: 0;
+}
+
+/* ── Profile Action Buttons ─────────────────────────────────── */
+.profile-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.profile-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.profile-action-message {
+  background: var(--primary, #3aa9da);
+  color: #fff;
+}
+.profile-action-message:hover { opacity: 0.85; }
+.profile-action-connect {
+  background: var(--secondary, #22a55b);
+  color: #fff;
+}
+.profile-action-connect:hover { opacity: 0.85; }
+.profile-action-accept {
+  background: var(--secondary, #22a55b);
+  color: #fff;
+}
+.profile-action-accept:hover { opacity: 0.85; }
+.profile-action-decline {
+  background: #f0f0f0;
+  color: #666;
+}
+.profile-action-decline:hover { background: #e0e0e0; }
+.profile-action-pending {
+  background: #f0f0f0;
+  color: #999;
 }
 
 /* ── Anonymous Toggle ───────────────────────────────────────── */

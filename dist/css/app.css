@@ -2768,11 +2768,98 @@ main.cnw-social-worker-main.messages-view
 }
 .cnw-msg-profile-section-item:hover { opacity: 0.7;
 }
+.cnw-msg-profile-section-notice {
+  font-size: 13px;
+  color: #999;
+  padding: 4px 0 4px 19px;
+  font-style: italic;
+}
+.cnw-muted { opacity: 0.5;
+}
+.cnw-active-action svg path { fill: var(--primary);
+}
+
+/* Profile search messages */
+.cnw-msg-profile-search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cnw-msg-profile-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: 'Poppins', sans-serif;
+  outline: none;
+}
+.cnw-msg-profile-search-input:focus { border-color: var(--primary);
+}
+.cnw-msg-profile-search-count {
+  font-size: 12px;
+  color: #999;
+}
+.cnw-msg-profile-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.cnw-msg-profile-search-result-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.cnw-msg-profile-search-result-item:hover { background: #f5f5f5;
+}
+.cnw-msg-profile-search-result-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #414141;
+}
+.cnw-msg-profile-search-result-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+.cnw-msg-profile-search-result-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* Message highlight when scrolled to from search */
+@keyframes cnw-msg-highlight-fade {
+0% { background: rgba(59, 189, 212, 0.25);
+}
+100% { background: transparent;
+}
+}
+.cnw-msg-highlight {
+  animation: cnw-msg-highlight-fade 2s ease-out;
+  border-radius: var(--radius);
+}
 
 /* Clickable header avatar/name */
 .cnw-msg-header-clickable { cursor: pointer;
 }
 .cnw-msg-header-clickable:hover { opacity: 0.8;
+}
+.cnw-msg-header-profile-link {
+  margin-left: auto;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border-radius: 50%;
+  transition: background 0.15s, color 0.15s;
+}
+.cnw-msg-header-profile-link:hover {
+  background: var(--bg-light, #f0f0f0);
+  color: var(--primary);
 }
 
 /* ── Chat list panel ─────────────────────── */
@@ -4866,6 +4953,61 @@ main.cnw-social-worker-main.messages-view
 }
 .profile-reputation svg {
   flex-shrink: 0;
+}
+
+/* ── Profile Action Buttons ─────────────────────────────────── */
+.profile-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.profile-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.profile-action-message {
+  background: var(--primary, #3aa9da);
+  color: #fff;
+}
+.profile-action-message:hover { opacity: 0.85;
+}
+.profile-action-connect {
+  background: var(--secondary, #22a55b);
+  color: #fff;
+}
+.profile-action-connect:hover { opacity: 0.85;
+}
+.profile-action-accept {
+  background: var(--secondary, #22a55b);
+  color: #fff;
+}
+.profile-action-accept:hover { opacity: 0.85;
+}
+.profile-action-decline {
+  background: #f0f0f0;
+  color: #666;
+}
+.profile-action-decline:hover { background: #e0e0e0;
+}
+.profile-action-pending {
+  background: #f0f0f0;
+  color: #999;
 }
 
 /* ── Anonymous Toggle ───────────────────────────────────────── */

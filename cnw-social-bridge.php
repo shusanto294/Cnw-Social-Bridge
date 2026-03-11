@@ -307,6 +307,17 @@ class Cnw_Social_Bridge {
         ) $charset_collate;";
         dbDelta( $sql_connections );
 
+        $sql_restrictions = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_restrictions (
+            id            bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            restricter_id bigint(20) unsigned NOT NULL,
+            restricted_id bigint(20) unsigned NOT NULL,
+            created_at    datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY pair (restricter_id, restricted_id),
+            KEY restricted_id (restricted_id)
+        ) $charset_collate;";
+        dbDelta( $sql_restrictions );
+
         $this->create_user_roles();
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );

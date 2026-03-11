@@ -65,9 +65,6 @@
             <div class="cnw-user-card-top">
               <div class="cnw-user-avatar-wrap">
                 <img :src="req.avatar" :alt="req.name" class="cnw-social-worker-avatar cnw-user-avatar" width="60" height="60" />
-                <svg class="cnw-user-status-icon" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <circle cx="4" cy="4" r="4" :fill="req.is_online ? '#82E71D' : '#B0B0B0'" />
-                </svg>
               </div>
               <div class="cnw-user-card-info">
                 <div class="cnw-user-name-row">
@@ -125,9 +122,6 @@
             <div class="cnw-user-card-top">
               <div class="cnw-user-avatar-wrap">
                 <img :src="user.avatar" :alt="user.name" class="cnw-social-worker-avatar cnw-user-avatar" width="60" height="60" />
-                <svg class="cnw-user-status-icon" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <circle cx="4" cy="4" r="4" :fill="user.is_online ? '#82E71D' : '#B0B0B0'" />
-                </svg>
               </div>
               <div class="cnw-user-card-info">
                 <div class="cnw-user-name-row">
