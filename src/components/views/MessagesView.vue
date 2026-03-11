@@ -1,5 +1,116 @@
 <template>
-  <div class="cnw-msg" :class="{ 'mobile-show-detail': mobileShowDetail }">
+  <div class="cnw-msg" :class="{ 'mobile-show-detail': mobileShowDetail, 'show-profile': showProfile }">
+    <!-- Short Profile Panel -->
+    <div v-if="showProfile && activeUserId" class="cnw-msg-profile-panel">
+      <button class="cnw-msg-profile-close" @click="showProfile = false" title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <!-- Avatar + Name -->
+      <div class="cnw-msg-profile-top">
+        <div class="cnw-msg-profile-avatar-wrap">
+          <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar" width="87" height="87" />
+        </div>
+        <p class="cnw-msg-profile-name">{{ otherUser.name }}</p>
+      </div>
+      <!-- Action buttons: Mute + Search -->
+      <div class="cnw-msg-profile-actions">
+        <div class="cnw-msg-profile-action-btn" @click="toggleMuteUser">
+          <svg width="24" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.379 16.913C17.867 15.635 17 13.767 17 11.788V9C17 5.481 14.386 2.568 11 2.08V1C11 0.447 10.552 0 10 0C9.448 0 9 0.447 9 1V2.08C5.613 2.568 3 5.481 3 9V11.788C3 13.767 2.133 15.635 0.612 16.921C0.223 17.254 0 17.738 0 18.25C0 19.215 0.785 20 1.75 20H18.25C19.215 20 20 19.215 20 18.25C20 17.738 19.777 17.254 19.379 16.913Z" fill="#414141"/>
+            <path d="M10 24C11.811 24 13.326 22.709 13.674 21H6.326C6.674 22.709 8.189 24 10 24Z" fill="#414141"/>
+          </svg>
+          <span>Mute</span>
+        </div>
+        <div class="cnw-msg-profile-action-btn" @click="profileSearchMessages = !profileSearchMessages">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.65925 19.3084C11.8044 19.3084 13.8882 18.5927 15.5806 17.2745L21.9653 23.6593C22.4423 24.12 23.2023 24.1067 23.663 23.6298C24.1123 23.1645 24.1123 22.4269 23.663 21.9617L17.2782 15.5769C20.5491 11.3664 19.7874 5.30149 15.5769 2.03058C11.3663 -1.24033 5.30149 -0.478645 2.03058 3.7319C-1.24033 7.94244 -0.478646 14.0073 3.7319 17.2782C5.42702 18.5951 7.51269 19.3095 9.65925 19.3084ZM4.52915 4.52545C7.36245 1.6921 11.9561 1.69204 14.7895 4.52535C17.6229 7.35866 17.6229 11.9524 14.7896 14.7857C11.9563 17.6191 7.36261 17.6191 4.52925 14.7858C4.5292 14.7858 4.5292 14.7858 4.52915 14.7857C1.69584 11.973 1.67915 7.3961 4.49181 4.56279C4.50424 4.55031 4.51667 4.53788 4.52915 4.52545Z" fill="#414141"/>
+          </svg>
+          <span>Search</span>
+        </div>
+      </div>
+      <!-- Chat Info section -->
+      <div class="cnw-msg-profile-section">
+        <div class="cnw-msg-profile-section-header" @click="profileChatInfoOpen = !profileChatInfoOpen">
+          <span>Chat Info</span>
+          <svg :class="{ 'cnw-chevron-open': profileChatInfoOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
+          </svg>
+        </div>
+        <template v-if="profileChatInfoOpen">
+          <div class="cnw-msg-profile-section-item">
+            <svg width="14" height="14" viewBox="0 0 10.82 10.8779" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10.675 3.98125L6.825 0.13125C6.65 -0.04375 6.3875 -0.04375 6.2125 0.13125L4.8125 1.53125C4.59375 1.75 4.68125 2.0125 4.8125 2.14375L5.11875 2.45L3.80625 3.7625C3.15 3.63125 1.35625 3.325 0.39375 4.2875C0.21875 4.4625 0.21875 4.725 0.39375 4.9L2.8875 7.39375L0.13125 10.15C-0.04375 10.325 -0.04375 10.5875 0.13125 10.7625C0.30625 10.9375 0.6125 10.8938 0.74375 10.7625L3.5 8.00625L5.99375 10.5C6.25625 10.7188 6.51875 10.6313 6.60625 10.5C7.56875 9.5375 7.2625 7.74375 7.13125 7.0875L8.44375 5.775L8.75 6.08125C8.925 6.25625 9.1875 6.25625 9.3625 6.08125L10.7625 4.68125C10.85 4.41875 10.85 4.15625 10.675 3.98125Z" fill="#414141"/>
+            </svg>
+            <span>View Pinned Message</span>
+          </div>
+        </template>
+      </div>
+      <!-- Media Files section -->
+      <div class="cnw-msg-profile-section">
+        <div class="cnw-msg-profile-section-header" @click="profileMediaOpen = !profileMediaOpen">
+          <span>Media Files</span>
+          <svg :class="{ 'cnw-chevron-open': profileMediaOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
+          </svg>
+        </div>
+        <template v-if="profileMediaOpen">
+          <div class="cnw-msg-profile-section-item">
+            <svg width="14" height="14" viewBox="0 0 11.6667 11.6667" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.338217 9.9225L0.32655 9.93417C0.16905 9.59 0.0698832 9.19917 0.0290499 8.7675C0.0698832 9.19333 0.180717 9.57833 0.338217 9.9225Z" fill="#414141"/>
+              <path d="M4.0834 4.88833C4.85018 4.88833 5.47173 4.26675 5.47173 3.5C5.47173 2.73324 4.85018 2.11167 4.0834 2.11167C3.31665 2.11167 2.69507 2.73324 2.69507 3.5C2.69507 4.26675 3.31665 4.88833 4.0834 4.88833Z" fill="#414141"/>
+              <path d="M8.2775 0H3.38917C1.26583 0 0 1.26583 0 3.38917V8.2775C0 8.91333 0.110833 9.4675 0.326667 9.93417C0.828333 11.0425 1.90167 11.6667 3.38917 11.6667H8.2775C10.4008 11.6667 11.6667 10.4008 11.6667 8.2775V6.94167V3.38917C11.6667 1.26583 10.4008 0 8.2775 0ZM10.7158 6.125C10.2608 5.73417 9.52583 5.73417 9.07083 6.125L6.64417 8.2075C6.18917 8.59833 5.45417 8.59833 4.99917 8.2075L4.80083 8.04417C4.38667 7.6825 3.7275 7.6475 3.26083 7.9625L1.07917 9.42667C0.950833 9.1 0.875 8.72083 0.875 8.2775V3.38917C0.875 1.74417 1.74417 0.875 3.38917 0.875H8.2775C9.9225 0.875 10.7917 1.74417 10.7917 3.38917V6.18917L10.7158 6.125Z" fill="#414141"/>
+            </svg>
+            <span>Media</span>
+          </div>
+          <div class="cnw-msg-profile-section-item">
+            <svg width="14" height="14" viewBox="0 0 10.82 10.8779" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10.675 3.98125L6.825 0.13125C6.65 -0.04375 6.3875 -0.04375 6.2125 0.13125L4.8125 1.53125C4.59375 1.75 4.68125 2.0125 4.8125 2.14375L5.11875 2.45L3.80625 3.7625C3.15 3.63125 1.35625 3.325 0.39375 4.2875C0.21875 4.4625 0.21875 4.725 0.39375 4.9L2.8875 7.39375L0.13125 10.15C-0.04375 10.325 -0.04375 10.5875 0.13125 10.7625C0.30625 10.9375 0.6125 10.8938 0.74375 10.7625L3.5 8.00625L5.99375 10.5C6.25625 10.7188 6.51875 10.6313 6.60625 10.5C7.56875 9.5375 7.2625 7.74375 7.13125 7.0875L8.44375 5.775L8.75 6.08125C8.925 6.25625 9.1875 6.25625 9.3625 6.08125L10.7625 4.68125C10.85 4.41875 10.85 4.15625 10.675 3.98125Z" fill="#414141"/>
+            </svg>
+            <span>Files</span>
+          </div>
+        </template>
+      </div>
+      <!-- Privacy & Support section -->
+      <div class="cnw-msg-profile-section">
+        <div class="cnw-msg-profile-section-header" @click="profilePrivacyOpen = !profilePrivacyOpen">
+          <span>Privacy &amp; Support</span>
+          <svg :class="{ 'cnw-chevron-open': profilePrivacyOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
+          </svg>
+        </div>
+        <template v-if="profilePrivacyOpen">
+          <div class="cnw-msg-profile-section-item" @click="toggleMuteUser">
+            <svg width="14" height="14" viewBox="0 0 11.6667 11.6667" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.338217 9.9225L0.32655 9.93417C0.16905 9.59 0.0698832 9.19917 0.0290499 8.7675C0.0698832 9.19333 0.180717 9.57833 0.338217 9.9225Z" fill="#414141"/>
+              <path d="M4.0834 4.88833C4.85018 4.88833 5.47173 4.26675 5.47173 3.5C5.47173 2.73324 4.85018 2.11167 4.0834 2.11167C3.31665 2.11167 2.69507 2.73324 2.69507 3.5C2.69507 4.26675 3.31665 4.88833 4.0834 4.88833Z" fill="#414141"/>
+              <path d="M8.2775 0H3.38917C1.26583 0 0 1.26583 0 3.38917V8.2775C0 8.91333 0.110833 9.4675 0.326667 9.93417C0.828333 11.0425 1.90167 11.6667 3.38917 11.6667H8.2775C10.4008 11.6667 11.6667 10.4008 11.6667 8.2775V6.94167V3.38917C11.6667 1.26583 10.4008 0 8.2775 0ZM10.7158 6.125C10.2608 5.73417 9.52583 5.73417 9.07083 6.125L6.64417 8.2075C6.18917 8.59833 5.45417 8.59833 4.99917 8.2075L4.80083 8.04417C4.38667 7.6825 3.7275 7.6475 3.26083 7.9625L1.07917 9.42667C0.950833 9.1 0.875 8.72083 0.875 8.2775V3.38917C0.875 1.74417 1.74417 0.875 3.38917 0.875H8.2775C9.9225 0.875 10.7917 1.74417 10.7917 3.38917V6.18917L10.7158 6.125Z" fill="#414141"/>
+            </svg>
+            <span>Mute Notifications</span>
+          </div>
+          <div class="cnw-msg-profile-section-item">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6.58984 3.30859V7.41016H7.41016V3.30859H6.58984ZM6.58984 3.30859V7.41016H7.41016V3.30859H6.58984ZM9.88805 0H4.11195L0 4.11195V9.88805L4.11195 14H9.88805L14 9.88805V4.11195L9.88805 0ZM8.23047 11.5117H5.76953V9.05078H8.23047V11.5117ZM8.23047 8.23047H5.76953V2.48828H8.23047V8.23047ZM7.41016 9.87109H6.58984V10.6914H7.41016V9.87109ZM7.41016 3.30859H6.58984V7.41016H7.41016V3.30859Z" fill="#414141"/>
+            </svg>
+            <span>Restrict</span>
+          </div>
+          <div class="cnw-msg-profile-section-item" @click="handleBlockUser">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.91667 7.14583C8.38892 7.14583 7.14583 8.38892 7.14583 9.91667C7.14583 11.4444 8.38892 12.6875 9.91667 12.6875C11.4444 12.6875 12.6875 11.4444 12.6875 9.91667C12.6875 8.38892 11.4444 7.14583 9.91667 7.14583ZM8.02083 9.91667C8.02083 8.87133 8.87133 8.02083 9.91667 8.02083C10.2807 8.02083 10.6178 8.12875 10.9072 8.30783L8.30783 10.9072C8.12933 10.6178 8.02083 10.2807 8.02083 9.91667ZM9.91667 11.8125C9.55267 11.8125 9.2155 11.7046 8.92617 11.5255L11.5255 8.92617C11.704 9.2155 11.8125 9.55267 11.8125 9.91667C11.8125 10.962 10.962 11.8125 9.91667 11.8125ZM7 6.85417C5.47225 6.85417 4.22917 5.61108 4.22917 4.08333C4.22917 2.55558 5.47225 1.3125 7 1.3125C8.52775 1.3125 9.77083 2.55558 9.77083 4.08333C9.77083 5.61108 8.52775 6.85417 7 6.85417ZM6.27083 9.91667C6.27083 10.6283 6.475 11.2933 6.83667 11.8592V12.25C6.83667 12.4892 6.63833 12.6875 6.39917 12.6875H3.5C2.61333 12.6875 1.89583 11.97 1.89583 11.0833C1.89583 9.23417 3.40083 7.72917 5.25 7.72917H6.41667C6.5975 7.72917 6.755 7.84 6.81917 7.9975C6.46917 8.5575 6.27083 9.21667 6.27083 9.91667Z" fill="#414141"/>
+            </svg>
+            <span>Block User</span>
+          </div>
+          <div class="cnw-msg-profile-section-item">
+            <svg width="14" height="14" viewBox="0 0 12.6872 11.5208" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6.85429 8.89583C6.8541 9.3657 6.95768 9.8298 7.15763 10.255C6.77869 10.5878 6.29109 10.7703 5.78679 10.7683H2.08846C1.53507 10.7668 1.00479 10.5463 0.613485 10.155C0.22218 9.76367 0.0016657 9.23339 0.000126368 8.68C-0.0048244 8.10173 0.135767 7.53151 0.408959 7.02183C0.682152 6.51214 1.07917 6.07936 1.56346 5.76333C2.22057 6.33147 3.06022 6.64411 3.92888 6.64411C4.79754 6.64411 5.63718 6.33147 6.29429 5.76333C6.57424 5.94755 6.82412 6.17382 7.03513 6.43417C7.19042 6.61315 7.32541 6.80879 7.43763 7.0175C7.04731 7.56512 6.84286 8.22345 6.85429 8.89583Z" fill="#414141"/>
+              <path d="M3.92596 6.11333C5.61411 6.11333 6.98263 4.74482 6.98263 3.05667C6.98263 1.36852 5.61411 0 3.92596 0C2.23781 0 0.869293 1.36852 0.869293 3.05667C0.869293 4.74482 2.23781 6.11333 3.92596 6.11333Z" fill="#414141"/>
+              <path d="M10.0626 6.27083C9.65519 6.27013 9.25332 6.36534 8.88951 6.54877C8.5257 6.73219 8.21017 6.99868 7.96846 7.32667C7.62256 7.77647 7.43584 8.32841 7.43763 8.89583C7.43601 9.51253 7.65303 10.1098 8.05013 10.5817C8.33363 10.92 8.69789 11.1815 9.10921 11.3417C9.52053 11.502 9.96563 11.5559 10.4033 11.4986C10.841 11.4412 11.2572 11.2744 11.6133 11.0136C11.9695 10.7527 12.2541 10.4063 12.4408 10.0063C12.6275 9.60626 12.7104 9.16563 12.6817 8.72512C12.653 8.28461 12.5136 7.85846 12.2766 7.48608C12.0395 7.1137 11.7123 6.80712 11.3253 6.59471C10.9384 6.38229 10.5041 6.2709 10.0626 6.27083ZM10.0626 10.4242C9.9476 10.4242 9.83719 10.3789 9.75531 10.2981C9.67343 10.2173 9.62666 10.1075 9.62513 9.9925C9.62513 9.87647 9.67122 9.76519 9.75327 9.68314C9.83531 9.60109 9.94659 9.555 10.0626 9.555C10.1787 9.555 10.2899 9.60109 10.372 9.68314C10.454 9.76519 10.5001 9.87647 10.5001 9.9925C10.4986 10.1075 10.4518 10.2173 10.3699 10.2981C10.2881 10.3789 10.1777 10.4242 10.0626 10.4242ZM10.5001 8.82583C10.5001 8.94186 10.454 9.05314 10.372 9.13519C10.2899 9.21724 10.1787 9.26333 10.0626 9.26333C9.94659 9.26333 9.83531 9.21724 9.75327 9.13519C9.67122 9.05314 9.62513 8.94186 9.62513 8.82583V7.65917C9.62513 7.54313 9.67122 7.43185 9.75327 7.34981C9.83531 7.26776 9.94659 7.22167 10.0626 7.22167C10.1787 7.22167 10.2899 7.26776 10.372 7.34981C10.454 7.43185 10.5001 7.54313 10.5001 7.65917V8.82583Z" fill="#414141"/>
+            </svg>
+            <span>Report</span>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <!-- Left: Chat list -->
     <div class="cnw-msg-list">
       <div class="cnw-msg-list-header">
@@ -112,8 +223,8 @@
           <button class="cnw-msg-back-btn" @click="backToList" title="Back">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar" width="44" height="44" />
-          <div>
+          <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar cnw-msg-header-clickable" width="44" height="44" @click="toggleProfile" />
+          <div class="cnw-msg-header-clickable" @click="toggleProfile">
             <div class="cnw-msg-detail-label" v-if="otherUser.verified_label">
               <!-- <span class="cnw-social-worker-verified">&#10003;</span> -->
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -129,25 +240,6 @@
               <span>{{ otherUser.verified_label }}</span>
             </div>
             <div class="cnw-msg-detail-name">{{ otherUser.name }}</div>
-          </div>
-          <div class="cnw-msg-header-menu-wrap">
-            <button class="cnw-msg-dots-btn" @click.stop="showHeaderMenu = !showHeaderMenu" title="More options">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-            </button>
-            <div v-if="showHeaderMenu" class="cnw-msg-header-dropdown">
-              <button class="cnw-msg-header-dropdown-item" :disabled="!isConnected" @click="handleRemoveConnection">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-                Remove Connection
-              </button>
-              <button v-if="blockedBy === 'me'" class="cnw-msg-header-dropdown-item" @click="handleUnblockUser">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
-                Unblock User
-              </button>
-              <button v-else class="cnw-msg-header-dropdown-item cnw-msg-header-dropdown-danger" :disabled="blockedBy === 'them'" @click="handleBlockUser">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                Block User
-              </button>
-            </div>
           </div>
         </div>
 
@@ -226,9 +318,63 @@
         </div>
       </template>
 
-      <div v-else class="cnw-msg-detail-empty">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        <p>Select a conversation to start chatting</p>
+      <div v-else class="cnw-msg-compose-panel">
+        <!-- To: search header -->
+        <div class="cnw-msg-compose-to">
+          <span class="cnw-msg-compose-to-label">To:</span>
+          <input
+            v-model="composeSearch"
+            @input="onComposeSearch"
+            type="text"
+            placeholder=""
+            class="cnw-msg-compose-to-input"
+          />
+        </div>
+        <div class="cnw-msg-compose-divider"></div>
+
+        <!-- Filtered search results -->
+        <template v-if="composeSearch.trim() && composeFilteredUsers.length">
+          <div class="cnw-msg-compose-section-label">Results</div>
+          <div class="cnw-msg-compose-user-list">
+            <div
+              v-for="user in composeFilteredUsers"
+              :key="'compose-' + user.id"
+              class="cnw-msg-compose-user-item"
+              @click="startConversation(user)"
+            >
+              <div class="cnw-msg-conv-avatar-wrap">
+                <img :src="user.avatar" :alt="user.name" class="cnw-social-worker-avatar" width="34" height="34" />
+                <span class="cnw-msg-status-dot" :class="user.is_online ? 'online' : 'offline'"></span>
+              </div>
+              <span class="cnw-msg-compose-user-name">{{ user.name }}</span>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="composeSearch.trim() && !composeFilteredUsers.length">
+          <div class="cnw-msg-compose-section-label">Results</div>
+          <div class="cnw-msg-compose-no-results">No users found</div>
+        </template>
+
+        <!-- Suggested users (shown when not searching) -->
+        <template v-if="!composeSearch.trim()">
+          <div class="cnw-msg-compose-section-label">Suggested</div>
+          <div v-if="loadingSuggested" class="cnw-msg-loading">Loading...</div>
+          <div v-else class="cnw-msg-compose-user-list">
+            <div
+              v-for="user in suggestedUsers"
+              :key="'suggested-' + user.id"
+              class="cnw-msg-compose-user-item"
+              @click="startConversation(user)"
+            >
+              <div class="cnw-msg-conv-avatar-wrap">
+                <img :src="user.avatar" :alt="user.name" class="cnw-social-worker-avatar" width="34" height="34" />
+                <span class="cnw-msg-status-dot" :class="user.is_online ? 'online' : 'offline'"></span>
+              </div>
+              <span class="cnw-msg-compose-user-name">{{ user.name }}</span>
+            </div>
+            <div v-if="!suggestedUsers.length" class="cnw-msg-compose-no-results">No connections yet</div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -269,6 +415,16 @@ export default {
       showHeaderMenu: false,
       isConnected: true,
       blockedBy: null,
+      showProfile: false,
+      profileChatInfoOpen: true,
+      profileMediaOpen: true,
+      profilePrivacyOpen: true,
+      profileSearchMessages: false,
+      suggestedUsers: [],
+      loadingSuggested: false,
+      composeSearch: '',
+      composeFilteredUsers: [],
+      composeSearchTimeout: null,
     };
   },
   async mounted() {
@@ -286,6 +442,7 @@ export default {
     }
 
     await this.loadConversations();
+    this.loadSuggestedUsers();
     this.initPusher();
     this.syncHeightWithSidebar();
 
@@ -309,6 +466,30 @@ export default {
     if (this._sidebarObserver) this._sidebarObserver.disconnect();
   },
   methods: {
+    toggleProfile() {
+      this.showProfile = !this.showProfile;
+    },
+    toggleMuteUser() {
+      // Placeholder for mute functionality
+    },
+    async loadSuggestedUsers() {
+      this.loadingSuggested = true;
+      try {
+        const data = await getConnections({ page: 1 });
+        this.suggestedUsers = (data.users || []).slice(0, 10);
+      } catch { this.suggestedUsers = []; }
+      this.loadingSuggested = false;
+    },
+    onComposeSearch() {
+      clearTimeout(this.composeSearchTimeout);
+      if (!this.composeSearch.trim()) { this.composeFilteredUsers = []; return; }
+      this.composeSearchTimeout = setTimeout(async () => {
+        try {
+          const data = await getConnections({ search: this.composeSearch });
+          this.composeFilteredUsers = (data.users || []).slice(0, 10);
+        } catch { this.composeFilteredUsers = []; }
+      }, 300);
+    },
     initPusher() {
       const channel = getUserChannel();
       if (!channel) return;
@@ -478,6 +659,7 @@ export default {
       this.loadingMoreConvs = false;
     },
     async openConversation(conv) {
+      this.showProfile = false;
       this.activeUserId = Number(conv.other_user_id);
       this.otherUser = {
         id: Number(conv.other_user_id),
@@ -718,6 +900,120 @@ main.cnw-social-worker-main.messages-view
   height: 100%;
   overflow: hidden;
 }
+
+/* ── Profile panel ────────────────────────── */
+.cnw-msg-profile-panel {
+  width: 377px;
+  min-width: 377px;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  padding: 40px 28px;
+  position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cnw-msg-profile-panel::-webkit-scrollbar { display: none; }
+.cnw-msg-profile-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #999;
+  border-radius: 50%;
+}
+.cnw-msg-profile-close:hover { background: #f0f0f0; color: #414141; }
+.cnw-msg-profile-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.cnw-msg-profile-avatar-wrap img {
+  width: 87px;
+  height: 87px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.cnw-msg-profile-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+  line-height: 24.5px;
+}
+.cnw-msg-profile-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.cnw-msg-profile-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 0 3px;
+}
+.cnw-msg-profile-action-btn span {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #414141;
+  line-height: 16px;
+}
+.cnw-msg-profile-action-btn:hover { opacity: 0.7; }
+.cnw-msg-profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cnw-msg-profile-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0;
+}
+.cnw-msg-profile-section-header span {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #414141;
+}
+.cnw-msg-profile-chevron {
+  transition: transform 0.2s;
+  color: #414141;
+}
+.cnw-msg-profile-chevron.cnw-chevron-open {
+  transform: rotate(180deg);
+}
+.cnw-msg-profile-section-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.cnw-msg-profile-section-item span {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #414141;
+}
+.cnw-msg-profile-section-item:hover { opacity: 0.7; }
+
+/* Clickable header avatar/name */
+.cnw-msg-header-clickable { cursor: pointer; }
+.cnw-msg-header-clickable:hover { opacity: 0.8; }
 
 /* ── Chat list panel ─────────────────────── */
 .cnw-msg-list {
@@ -1160,17 +1456,82 @@ main.cnw-social-worker-main.messages-view
   background: none;
 }
 
-/* Empty & loading states */
-.cnw-msg-detail-empty {
+/* Compose panel (select user to message) */
+.cnw-msg-compose-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--text-light);
-  font-size: 14px;
+  gap: 20px;
+  overflow-y: auto;
 }
+.cnw-msg-compose-to {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 25px;
+}
+.cnw-msg-compose-to-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #414141;
+  line-height: 24.5px;
+  white-space: nowrap;
+}
+.cnw-msg-compose-to-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  color: #414141;
+  padding: 0 8px;
+  background: transparent;
+}
+.cnw-msg-compose-divider {
+  height: 1px;
+  background: var(--primary);
+  width: 100%;
+}
+.cnw-msg-compose-section-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #999;
+  line-height: 18.5px;
+}
+.cnw-msg-compose-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cnw-msg-compose-user-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cnw-msg-compose-user-item:hover {
+  background: #f5f5f5;
+}
+.cnw-msg-compose-user-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  color: #414141;
+  line-height: 1.32;
+}
+.cnw-msg-compose-no-results {
+  font-size: 14px;
+  color: #999;
+  padding: 10px 0;
+}
+
+/* Empty & loading states */
 .cnw-msg-empty {
   padding: 40px 20px;
   text-align: center;
@@ -1237,6 +1598,11 @@ main.cnw-social-worker-main.messages-view
 }
 
 /* Responsive */
+/* On desktop, only hide chat list when profile is open */
+@media (min-width: 769px) {
+  .cnw-msg.show-profile .cnw-msg-list { display: none; }
+}
+
 @media (max-width: 768px) {
   .cnw-msg { flex-direction: column; max-height: none; }
   .cnw-msg-list { width: 100%; min-width: 0; padding: 20px; }
@@ -1244,5 +1610,8 @@ main.cnw-social-worker-main.messages-view
   .cnw-msg.mobile-show-detail .cnw-msg-list { display: none; }
   .cnw-msg.mobile-show-detail .cnw-msg-detail { display: flex; }
   .cnw-msg-back-btn { display: flex; align-items: center; justify-content: center; }
+  .cnw-msg-profile-panel { width: 100%; min-width: 0; }
+  .cnw-msg.show-profile .cnw-msg-list { display: none; }
+  .cnw-msg.show-profile .cnw-msg-detail { display: none; }
 }
 </style>
