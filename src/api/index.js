@@ -26,10 +26,19 @@ function apiUrl(path, params = {}) {
   return `${REST_URL}${path}${qs.toString() ? '?' + qs : ''}`;
 }
 
+async function handleResponse(res) {
+  const data = await res.json();
+  if (data && data.code === 'account_suspended' && data.message) {
+    alert(data.message);
+    throw new Error(data.message);
+  }
+  return data;
+}
+
 async function apiFetch(path, params = {}, options = {}) {
   const url = apiUrl(path, params);
   const res = await fetch(url, { headers: headers(), ...options });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getThreads({ page = 1, filter = 'newest', search = '' } = {}) {
@@ -52,7 +61,7 @@ export async function createThread({ title, content, tags = [], category_id, ano
     headers: headers(),
     body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function updateThread(id, { title, content }) {
@@ -62,7 +71,7 @@ export async function updateThread(id, { title, content }) {
     headers: headers(),
     body: JSON.stringify({ title, content }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function deleteThread(id) {
@@ -71,7 +80,7 @@ export async function deleteThread(id) {
     method: 'DELETE',
     headers: headers(),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getReplies(threadId) {
@@ -87,7 +96,7 @@ export async function createReply({ thread_id, content, parent_id }) {
     headers: headers(),
     body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function updateReply(id, { content }) {
@@ -97,7 +106,7 @@ export async function updateReply(id, { content }) {
     headers: headers(),
     body: JSON.stringify({ content }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function deleteReply(id) {
@@ -106,7 +115,7 @@ export async function deleteReply(id) {
     method: 'DELETE',
     headers: headers(),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getCategories() {
@@ -126,7 +135,7 @@ export async function createTag({ name, description = '' }) {
     headers: headers(),
     body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function updateTag({ id, name, slug, description = '' }) {
@@ -138,7 +147,7 @@ export async function updateTag({ id, name, slug, description = '' }) {
     headers: headers(),
     body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function createCategory({ name }) {
@@ -148,13 +157,13 @@ export async function createCategory({ name }) {
     headers: headers(),
     body: JSON.stringify({ name }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function deleteTag(id) {
   const url = apiUrl(`/tags/${id}`);
   const res = await fetch(url, { method: 'DELETE', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getFollowedTags() {
@@ -164,13 +173,13 @@ export async function getFollowedTags() {
 export async function followTag(tagId) {
   const url = apiUrl(`/tags/${tagId}/follow`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function unfollowTag(tagId) {
   const url = apiUrl(`/tags/${tagId}/unfollow`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function createVote({ target_type, target_id, vote_type }) {
@@ -180,19 +189,19 @@ export async function createVote({ target_type, target_id, vote_type }) {
     headers: headers(),
     body: JSON.stringify({ target_type, target_id, vote_type }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function saveThread(threadId) {
   const url = apiUrl(`/threads/${threadId}/save`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function unsaveThread(threadId) {
   const url = apiUrl(`/threads/${threadId}/unsave`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getSavedThreads({ page = 1 } = {}) {
@@ -214,19 +223,19 @@ export async function getUnreadNotificationCount() {
 export async function markNotificationRead(id) {
   const url = apiUrl(`/notifications/${id}/read`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function markAllNotificationsRead() {
   const url = apiUrl('/notifications/read-all');
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function logout() {
   const url = apiUrl('/logout');
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function forgotPassword({ user_login }) {
@@ -236,13 +245,13 @@ export async function forgotPassword({ user_login }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_login }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function markSolution(replyId) {
   const url = apiUrl(`/replies/${replyId}/solution`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getUserReputation(userId) {
@@ -279,20 +288,20 @@ export async function getUserReplies(userId, { page = 1 } = {}) {
   return apiFetch(`/users/${userId}/replies`, { page });
 }
 
-export async function updateUserProfile({ first_name, last_name, phone, bio, verified_label, professional_title }) {
+export async function updateUserProfile({ first_name, last_name, email, phone, bio, verified_label, professional_title }) {
   const url = apiUrl('/users/me/profile');
   const res = await fetch(url, {
     method: 'PUT',
     headers: headers(),
-    body: JSON.stringify({ first_name, last_name, phone, bio, verified_label, professional_title }),
+    body: JSON.stringify({ first_name, last_name, email, phone, bio, verified_label, professional_title }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function toggleAnonymous() {
   const url = apiUrl('/users/me/anonymous');
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getUserActivity({ page = 1 } = {}) {
@@ -308,7 +317,7 @@ export async function uploadAvatar(file) {
     headers: { 'X-WP-Nonce': NONCE },
     body: formData,
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getConversations({ page = 1 } = {}) {
@@ -332,19 +341,19 @@ export async function sendMessage({ recipient_id, content }) {
     headers: headers(),
     body: JSON.stringify({ recipient_id, content }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function markConversationRead(userId) {
   const url = apiUrl(`/conversations/${userId}/read`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function setTyping(userId) {
   const url = apiUrl(`/typing/${userId}`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getTyping(userId) {
@@ -358,17 +367,20 @@ export async function broadcastStatus(status) {
     headers: headers(),
     body: JSON.stringify({ status }),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
-export async function submitReport({ type, subject, link, description, priority }) {
+export async function submitReport({ type, subject, link, description, priority, content_type, content_id }) {
   const url = apiUrl('/reports');
+  const body = { type, subject, link, description, priority };
+  if (content_type) body.content_type = content_type;
+  if (content_id) body.content_id = content_id;
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ type, subject, link, description, priority }),
+    body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getGuidelines() {
@@ -402,25 +414,25 @@ export async function getConnectionRequests() {
 export async function sendConnectionRequest(userId) {
   const url = apiUrl(`/connections/${userId}`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function acceptConnection(userId) {
   const url = apiUrl(`/connections/${userId}/accept`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function declineConnection(userId) {
   const url = apiUrl(`/connections/${userId}/decline`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function removeConnection(userId) {
   const url = apiUrl(`/connections/${userId}`);
   const res = await fetch(url, { method: 'DELETE', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getConnectionStatus(userId) {
@@ -432,15 +444,83 @@ export async function getConnectionStatus(userId) {
 export async function restrictUser(userId) {
   const url = apiUrl(`/restrict/${userId}`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function unrestrictUser(userId) {
   const url = apiUrl(`/unrestrict/${userId}`);
   const res = await fetch(url, { method: 'POST', headers: headers() });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function getRestrictions() {
   return apiFetch('/restrictions');
+}
+
+// ── Moderation ──────────────────────────────────────────────
+
+export async function closeThread(threadId) {
+  const url = apiUrl(`/threads/${threadId}/close`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return handleResponse(res);
+}
+
+export async function pinThread(threadId) {
+  const url = apiUrl(`/threads/${threadId}/pin`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return handleResponse(res);
+}
+
+export async function getReports({ page = 1, status = '' } = {}) {
+  const params = { page };
+  if (status) params.status = status;
+  return apiFetch('/reports', params);
+}
+
+export async function updateReport(id, { status, admin_notes }) {
+  const url = apiUrl(`/reports/${id}`);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ status, admin_notes }),
+  });
+  return handleResponse(res);
+}
+
+export async function warnUser(userId, { reason }) {
+  const url = apiUrl(`/users/${userId}/warn`);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+export async function suspendUser(userId, { reason, duration }) {
+  const url = apiUrl(`/users/${userId}/suspend`);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ reason, duration }),
+  });
+  return handleResponse(res);
+}
+
+export async function getModerationStats() {
+  return apiFetch('/moderation/stats');
+}
+
+export async function getWarnings({ page = 1 } = {}) {
+  return apiFetch('/moderation/warnings', { page });
+}
+
+export async function deleteWarning(id) {
+  const url = apiUrl(`/moderation/warnings/${id}`);
+  const res = await fetch(url, { method: 'DELETE', headers: headers() });
+  return handleResponse(res);
+}
+
+export async function getUserWarnings(userId, { page = 1 } = {}) {
+  return apiFetch(`/users/${userId}/warnings`, { page });
 }

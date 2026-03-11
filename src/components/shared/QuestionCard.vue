@@ -6,14 +6,17 @@
         <span v-if="isAnonymous" class="qcard-anon-avatar" title="Anonymous">
           <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
         </span>
-        <img
-          v-else
-          :src="avatarUrl"
-          :alt="thread.author_name"
-          class="cnw-social-worker-avatar qcard-avatar"
-          width="34" height="34"
-        />
-        <span class="qcard-author">{{ thread.author_name }}</span>
+        <template v-else>
+          <router-link :to="'/users/' + thread.author_id" class="qcard-author-link" @click.stop>
+            <img
+              :src="avatarUrl"
+              :alt="thread.author_name"
+              class="cnw-social-worker-avatar qcard-avatar"
+              width="34" height="34"
+            />
+          </router-link>
+          <router-link :to="'/users/' + thread.author_id" class="qcard-author qcard-author-link" @click.stop>{{ thread.author_name }}</router-link>
+        </template>
         <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
         <span v-if="!isAnonymous && thread.author_reputation" class="cnw-reputation-badge" :title="thread.author_reputation + ' reputation points'">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -22,19 +25,18 @@
         <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
       </div>
       <div class="qcard-meta-right">
-        <div v-if="isOwner" class="td-owner-actions">
-          <button class="td-action-btn td-edit-btn" @click.stop="openEditModal" title="Edit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="td-action-btn td-delete-btn" @click.stop="showDeleteConfirm = true" title="Delete">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
+        <button v-if="isLoggedIn" class="td-action-btn td-report-btn" @click.stop="showReportModal = true" title="Report">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
       </div>
     </div>
 
     <!-- Title -->
     <h2 class="qcard-title" @click="open">{{ thread.title }}</h2>
+    <div v-if="isPinned || isClosed" class="thread-badges">
+      <span v-if="isPinned" class="thread-badge badge-pinned">Pinned</span>
+      <span v-if="isClosed" class="thread-badge badge-closed">Closed</span>
+    </div>
 
     <!-- Excerpt -->
     <p class="qcard-excerpt">{{ truncate(thread.content, 200) }}</p>
@@ -198,12 +200,44 @@
         </div>
       </div>
     </div>
+
+    <!-- Report Modal -->
+    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Report Thread</h3>
+          <button class="td-modal-close" @click="showReportModal = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <label class="td-modal-label">Report Type</label>
+          <select v-model="reportType" class="td-modal-input">
+            <option value="">Select a reason...</option>
+            <option value="inappropriate_content">Inappropriate Content</option>
+            <option value="harassment">Harassment or Bullying</option>
+            <option value="spam">Spam or Self-Promotion</option>
+            <option value="confidentiality">Confidentiality Violation</option>
+            <option value="misinformation">Misinformation</option>
+            <option value="other">Other</option>
+          </select>
+          <label class="td-modal-label">Description</label>
+          <textarea v-model="reportDescription" class="td-modal-textarea" rows="4" placeholder="Describe the issue..."></textarea>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="showReportModal = false">Cancel</button>
+          <button class="td-modal-save" :disabled="!reportType || !reportDescription.trim() || reportSending" @click="submitThreadReport" style="background:#e74c3c">
+            {{ reportSending ? 'Submitting...' : 'Submit Report' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import ReplyCard from './ReplyCard.vue';
-import { getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread } from '@/api/index.js';
+import { getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread, submitReport } from '@/api/index.js';
 
 export default {
   name: 'QuestionCard',
@@ -231,6 +265,10 @@ export default {
       saving: false,
       showDeleteConfirm: false,
       deleting: false,
+      showReportModal: false,
+      reportType: '',
+      reportDescription: '',
+      reportSending: false,
     };
   },
   computed: {
@@ -259,6 +297,12 @@ export default {
     isOwner() {
       const uid = window.cnwData?.currentUser?.id;
       return uid && String(this.thread.author_id) === String(uid);
+    },
+    isPinned() {
+      return !!(parseInt(this.thread.is_pinned));
+    },
+    isClosed() {
+      return !!(parseInt(this.thread.is_closed));
     },
   },
   methods: {
@@ -374,6 +418,26 @@ export default {
       } catch (e) { /* silent */ }
       finally { this.deleting = false; }
     },
+    async submitThreadReport() {
+      if (!this.reportType || !this.reportDescription.trim()) return;
+      this.reportSending = true;
+      try {
+        await submitReport({
+          type: this.reportType,
+          subject: 'Report: ' + this.thread.title,
+          description: this.reportDescription,
+          link: window.location.origin + window.location.pathname + '#/thread/' + this.thread.id,
+          priority: 'medium',
+          content_type: 'thread',
+          content_id: this.thread.id,
+        });
+        this.showReportModal = false;
+        this.reportType = '';
+        this.reportDescription = '';
+      } catch {} finally {
+        this.reportSending = false;
+      }
+    },
     truncate(str, len) {
       if (!str) return '';
       return str.length > len ? str.slice(0, len) + '…' : str;
@@ -453,6 +517,14 @@ export default {
   color: #000;
   white-space: nowrap;
   line-height: 16px;
+}
+.qcard-author-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.qcard-author-link:hover {
+  color: var(--primary);
 }
 .qcard-date {
   font-size: var(--text-xs);

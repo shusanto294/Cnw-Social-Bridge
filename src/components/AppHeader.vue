@@ -215,12 +215,12 @@ export default {
         try { await markNotificationRead(n.id); } catch { /* silent */ }
       }
       // Navigate based on notification type
-      if (n.type === 'connection_request') {
+      if (n.type === 'connection_request' || n.type === 'connection_accepted') {
         this.showDropdown = false;
-        this.$router.push('/users?tab=requests');
-      } else if (n.type === 'connection_accepted') {
+        this.$router.push('/users/' + n.reference_id);
+      } else if (n.type === 'warning' || n.type === 'suspension') {
         this.showDropdown = false;
-        this.$router.push('/users?tab=connections');
+        this.$router.push('/users/' + n.reference_id + '?tab=warnings');
       } else if (n.reference_type === 'thread' && n.reference_id) {
         this.showDropdown = false;
         this.$router.push('/thread/' + n.reference_id);

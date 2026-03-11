@@ -167,6 +167,14 @@
           <span>Community Guidelines</span>
         </router-link>
 
+        <router-link v-if="canModerate" to="/moderation" class="sidebar-nav-item" active-class="is-active">
+          <span class="nav-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <span>Moderation</span>
+          <span v-if="openReportCount > 0" class="nav-badge">{{ openReportCount }}</span>
+        </router-link>
+
         <router-link to="/report" class="sidebar-nav-item" active-class="is-active">
           <span class="nav-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -205,7 +213,7 @@
 </template>
 
 <script>
-import { logout, getUnreadMessageCount, getConnectionRequests } from '@/api/index.js';
+import { logout, getUnreadMessageCount, getConnectionRequests, getModerationStats } from '@/api/index.js';
 import { getUserChannel } from '@/pusher';
 
 export default {
@@ -215,8 +223,10 @@ export default {
       currentUser: window.cnwData?.currentUser || { name: '', first_name: '', last_name: '', avatar: '' },
       defaultAvatar: window.cnwData?.defaultAvatar || '',
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
+      canModerate: !!(window.cnwData?.currentUser?.canModerate),
       unreadMessageCount: 0,
       connectionRequestCount: 0,
+      openReportCount: 0,
     };
   },
   mounted() {
@@ -237,6 +247,12 @@ export default {
     if (this.isLoggedIn) {
       this._refreshUnread();
       this._refreshConnectionRequests();
+    }
+    if (this.canModerate) {
+      this._refreshOpenReports = () => {
+        getModerationStats().then((res) => { this.openReportCount = res.open_reports || 0; }).catch(() => {});
+      };
+      this._refreshOpenReports();
     }
 
     // Listen for Pusher events to update badge in real-time

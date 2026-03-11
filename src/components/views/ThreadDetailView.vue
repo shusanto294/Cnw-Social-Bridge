@@ -17,14 +17,17 @@
             <span v-if="isAnonymous" class="qcard-anon-avatar" title="Anonymous">
               <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
             </span>
-            <img
-              v-else
-              :src="avatarUrl"
-              :alt="thread.author_name"
-              class="cnw-social-worker-avatar qcard-avatar"
-              width="34" height="34"
-            />
-            <span class="qcard-author">{{ thread.author_name }}</span>
+            <template v-else>
+              <router-link :to="'/users/' + thread.author_id" class="qcard-author-link">
+                <img
+                  :src="avatarUrl"
+                  :alt="thread.author_name"
+                  class="cnw-social-worker-avatar qcard-avatar"
+                  width="34" height="34"
+                />
+              </router-link>
+              <router-link :to="'/users/' + thread.author_id" class="qcard-author qcard-author-link">{{ thread.author_name }}</router-link>
+            </template>
             <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
             <span v-if="!isAnonymous && thread.author_reputation" class="cnw-reputation-badge" :title="thread.author_reputation + ' reputation points'">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -33,6 +36,18 @@
             <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
           </div>
           <div class="qcard-meta-right">
+            <button v-if="isLoggedIn && !isOwner" class="td-action-btn td-report-btn" @click="showReportModal = true" title="Report">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            </button>
+            <template v-if="canModerate">
+              <button class="td-action-btn" :class="isPinned ? 'td-unpin-btn' : 'td-pin-btn'" @click="togglePin" :title="isPinned ? 'Unpin' : 'Pin'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" :stroke="isPinned ? '#e67e22' : 'currentColor'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></svg>
+              </button>
+              <button class="td-action-btn" :class="isClosed ? 'td-reopen-btn' : 'td-close-btn'" @click="toggleClose" :title="isClosed ? 'Reopen Thread' : 'Close Thread'">
+                <svg v-if="!isClosed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22a55b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+              </button>
+            </template>
             <div v-if="isOwner" class="td-owner-actions">
               <button class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -46,6 +61,10 @@
 
         <!-- Title -->
         <h2 class="qcard-title">{{ thread.title }}</h2>
+        <div v-if="isPinned || isClosed" class="thread-badges">
+          <span v-if="isPinned" class="thread-badge badge-pinned">Pinned</span>
+          <span v-if="isClosed" class="thread-badge badge-closed">Closed</span>
+        </div>
 
         <!-- Content (full, not truncated) -->
         <p class="qcard-excerpt">{{ thread.content }}</p>
@@ -126,12 +145,16 @@
               :is-last="idx === topLevelReplies.length - 1"
               :thread-id="thread.id"
               :thread-author-id="thread.author_id"
+              :highlight-reply-id="highlightReplyId"
               @reply-submitted="refreshReplies"
             />
           </template>
 
           <!-- Write message box -->
-          <div v-if="isLoggedIn" class="inline-reply-form">
+          <div v-if="isClosed" class="td-closed-notice">
+            This thread has been closed by a moderator and is no longer accepting replies.
+          </div>
+          <div v-else-if="isLoggedIn" class="inline-reply-form">
             <span v-if="isCurrentUserAnonymous" class="qcard-anon-avatar qcard-anon-avatar-sm">
               <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
             </span>
@@ -211,13 +234,45 @@
         </div>
       </div>
     </div>
+
+    <!-- Report Modal -->
+    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Report Thread</h3>
+          <button class="td-modal-close" @click="showReportModal = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <label class="td-modal-label">Report Type</label>
+          <select v-model="reportType" class="td-modal-input">
+            <option value="">Select a reason...</option>
+            <option value="inappropriate_content">Inappropriate Content</option>
+            <option value="harassment">Harassment or Bullying</option>
+            <option value="spam">Spam or Self-Promotion</option>
+            <option value="confidentiality">Confidentiality Violation</option>
+            <option value="misinformation">Misinformation</option>
+            <option value="other">Other</option>
+          </select>
+          <label class="td-modal-label">Description</label>
+          <textarea v-model="reportDescription" class="td-modal-textarea" rows="4" placeholder="Describe the issue..."></textarea>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="showReportModal = false">Cancel</button>
+          <button class="td-modal-save" :disabled="!reportType || !reportDescription.trim() || reportSending" @click="submitReportThread" style="background:#e74c3c">
+            {{ reportSending ? 'Submitting...' : 'Submit Report' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import ReplyCard from '@/components/shared/ReplyCard.vue';
 import NotFoundView from '@/components/views/NotFoundView.vue';
-import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread } from '@/api/index.js';
+import { getThread, getReplies, createReply, createVote, saveThread, unsaveThread, updateThread, deleteThread, closeThread, pinThread, submitReport } from '@/api/index.js';
 
 export default {
   name: 'ThreadDetailView',
@@ -243,6 +298,11 @@ export default {
       saving: false,
       showDeleteConfirm: false,
       deleting: false,
+      canModerate: !!(window.cnwData?.currentUser?.canModerate),
+      showReportModal: false,
+      reportType: '',
+      reportDescription: '',
+      reportSending: false,
     };
   },
   computed: {
@@ -254,6 +314,15 @@ export default {
     },
     isCurrentUserAnonymous() {
       return !!(window.cnwData?.currentUser?.anonymous);
+    },
+    isPinned() {
+      return !!(this.thread && parseInt(this.thread.is_pinned));
+    },
+    isClosed() {
+      return !!(this.thread && parseInt(this.thread.is_closed));
+    },
+    highlightReplyId() {
+      return this.$route?.query?.highlight_reply || 0;
     },
     topLevelReplies() {
       return this.replies.filter(r => !r.parent_id || r.parent_id === '0' || r.parent_id === 0);
@@ -402,6 +471,38 @@ export default {
         console.error(e);
       } finally {
         this.deleting = false;
+      }
+    },
+    async togglePin() {
+      try {
+        const res = await pinThread(this.thread.id);
+        if (res.success) this.thread.is_pinned = res.is_pinned ? 1 : 0;
+      } catch {}
+    },
+    async toggleClose() {
+      try {
+        const res = await closeThread(this.thread.id);
+        if (res.success) this.thread.is_closed = res.is_closed ? 1 : 0;
+      } catch {}
+    },
+    async submitReportThread() {
+      if (!this.reportType || !this.reportDescription.trim()) return;
+      this.reportSending = true;
+      try {
+        await submitReport({
+          type: this.reportType,
+          subject: 'Report: ' + this.thread.title,
+          description: this.reportDescription,
+          link: window.location.href,
+          priority: 'medium',
+          content_type: 'thread',
+          content_id: this.thread.id,
+        });
+        this.showReportModal = false;
+        this.reportType = '';
+        this.reportDescription = '';
+      } catch {} finally {
+        this.reportSending = false;
       }
     },
     formatDate(d) {
@@ -641,6 +742,36 @@ export default {
   color: var(--text-body);
   line-height: 1.5;
   margin: 0;
+}
+
+.thread-badges {
+  display: flex;
+  gap: var(--space-2xs);
+}
+.thread-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.badge-pinned { background: #fff8e1; color: #f57f17; }
+.badge-closed { background: #ffebee; color: #c62828; }
+.td-report-btn:hover { color: #e74c3c; border-color: #e74c3c; }
+.td-pin-btn:hover { color: #f39c12; border-color: #f39c12; }
+.td-unpin-btn { color: #e67e22; border-color: #e67e22; }
+.td-close-btn:hover { color: #e74c3c; border-color: #e74c3c; }
+.td-reopen-btn { color: #22a55b; border-color: #22a55b; }
+.td-closed-notice {
+  text-align: center;
+  padding: var(--space-m);
+  margin-top: 20px;
+  color: #c62828;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  background: #ffebee;
+  border-radius: var(--radius-m);
 }
 
 @media (max-width: 480px) {

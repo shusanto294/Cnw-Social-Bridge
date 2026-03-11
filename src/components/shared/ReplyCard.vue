@@ -7,7 +7,11 @@
     </div>
 
     <!-- Reply content bubble -->
-    <div class="reply-bubble" :class="{ 'reply-best-answer': localIsSolution, 'reply-has-actions': isOwner }">
+    <div
+      class="reply-bubble"
+      :class="{ 'reply-best-answer': localIsSolution, 'reply-has-actions': isOwner, 'reply-highlighted': isHighlighted }"
+      :ref="isHighlighted ? 'highlightedReply' : undefined"
+    >
       <!-- Header: avatar + name + verified + date + owner actions -->
       <div class="reply-header">
         <div class="reply-header-left">
@@ -16,15 +20,17 @@
               <span v-if="isAnonymous" class="reply-anon-avatar" title="Anonymous">
                 <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
               </span>
-              <img
-                v-else
-                :src="avatarUrl"
-                :alt="reply.author_name"
-                class="cnw-social-worker-avatar reply-avatar"
-                width="22" height="22"
-              />
+              <router-link v-else :to="'/users/' + reply.author_id" class="qcard-author-link">
+                <img
+                  :src="avatarUrl"
+                  :alt="reply.author_name"
+                  class="cnw-social-worker-avatar reply-avatar"
+                  width="22" height="22"
+                />
+              </router-link>
             </div>
-            <span class="reply-author">{{ reply.author_name }}</span>
+            <router-link v-if="!isAnonymous" :to="'/users/' + reply.author_id" class="reply-author qcard-author-link">{{ reply.author_name }}</router-link>
+            <span v-else class="reply-author">{{ reply.author_name }}</span>
             <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
             <span v-if="!isAnonymous && reply.author_reputation" class="cnw-reputation-badge" :title="reply.author_reputation + ' reputation points'">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -47,6 +53,9 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
+        <button v-if="isLoggedIn && !isOwner" class="td-action-btn td-report-btn reply-report-btn" @click="showReportModal = true" title="Report">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </button>
       </div>
 
       <!-- Body text -->
@@ -167,6 +176,38 @@
       </div>
     </div>
 
+    <!-- Report Reply Modal -->
+    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
+      <div class="td-modal">
+        <div class="td-modal-header">
+          <h3>Report Reply</h3>
+          <button class="td-modal-close" @click="showReportModal = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="td-modal-body">
+          <label class="td-modal-label">Report Type</label>
+          <select v-model="reportType" class="td-modal-input">
+            <option value="">Select a reason...</option>
+            <option value="inappropriate_content">Inappropriate Content</option>
+            <option value="harassment">Harassment or Bullying</option>
+            <option value="spam">Spam or Self-Promotion</option>
+            <option value="confidentiality">Confidentiality Violation</option>
+            <option value="misinformation">Misinformation</option>
+            <option value="other">Other</option>
+          </select>
+          <label class="td-modal-label">Description</label>
+          <textarea v-model="reportDescription" class="td-modal-textarea" rows="4" placeholder="Describe the issue..."></textarea>
+        </div>
+        <div class="td-modal-footer">
+          <button class="td-modal-cancel" @click="showReportModal = false">Cancel</button>
+          <button class="td-modal-save" :disabled="!reportType || !reportDescription.trim() || reportSending" @click="submitReplyReport" style="background:#e74c3c">
+            {{ reportSending ? 'Submitting...' : 'Submit Report' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Nested replies -->
     <div v-if="nestedReplies.length" class="nested-replies">
       <ReplyCard
@@ -178,6 +219,7 @@
         :is-last="idx === nestedReplies.length - 1"
         :thread-id="threadId"
         :thread-author-id="threadAuthorId"
+        :highlight-reply-id="highlightReplyId"
         @reply-submitted="$emit('reply-submitted')"
       />
     </div>
@@ -185,7 +227,7 @@
 </template>
 
 <script>
-import { createReply, createVote, updateReply, deleteReply, markSolution } from '@/api/index.js';
+import { createReply, createVote, updateReply, deleteReply, markSolution, submitReport } from '@/api/index.js';
 
 export default {
   name: 'ReplyCard',
@@ -196,8 +238,21 @@ export default {
     isLast: { type: Boolean, default: false },
     threadId: { type: [Number, String], default: 0 },
     threadAuthorId: { type: [Number, String], default: 0 },
+    highlightReplyId: { type: [Number, String], default: 0 },
   },
   emits: ['reply-submitted'],
+  mounted() {
+    if (this.isHighlighted) {
+      this.$nextTick(() => {
+        setTimeout(() => {
+          const el = this.$refs.highlightedReply;
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      });
+    }
+  },
   data() {
     return {
       userVote: this.reply.user_vote ? parseInt(this.reply.user_vote) : 0,
@@ -215,9 +270,16 @@ export default {
       deleting: false,
       localIsSolution: !!(this.reply.is_solution && parseInt(this.reply.is_solution)),
       markingSolution: false,
+      showReportModal: false,
+      reportType: '',
+      reportDescription: '',
+      reportSending: false,
     };
   },
   computed: {
+    isHighlighted() {
+      return this.highlightReplyId && String(this.highlightReplyId) === String(this.reply.id);
+    },
     nestedReplies() {
       return this.allReplies.filter(r => String(r.parent_id) === String(this.reply.id));
     },
@@ -349,6 +411,26 @@ export default {
       } catch { /* silent */ }
       finally { this.deleting = false; }
     },
+    async submitReplyReport() {
+      if (!this.reportType || !this.reportDescription.trim()) return;
+      this.reportSending = true;
+      try {
+        await submitReport({
+          type: this.reportType,
+          subject: 'Report: Reply by ' + this.reply.author_name,
+          description: this.reportDescription,
+          link: window.location.href,
+          priority: 'medium',
+          content_type: 'reply',
+          content_id: this.reply.id,
+        });
+        this.showReportModal = false;
+        this.reportType = '';
+        this.reportDescription = '';
+      } catch {} finally {
+        this.reportSending = false;
+      }
+    },
     formatDate(d) {
       if (!d) return '';
       const date = new Date(d);
@@ -465,6 +547,18 @@ export default {
   height: 1px;
   background: var(--secondary);
   margin-left: -1px;
+}
+
+/* ── Reply highlighted (reported) ─────────────────────────────── */
+.reply-bubble.reply-highlighted {
+  background-color: #fff0f0 !important;
+  border: 2px solid #e74c3c !important;
+  box-shadow: 0 0 12px rgba(231, 76, 60, 0.25);
+  animation: reply-highlight-pulse 2s ease-in-out 2;
+}
+@keyframes reply-highlight-pulse {
+  0%, 100% { background-color: #fff0f0; }
+  50% { background-color: #ffe0e0; }
 }
 
 /* ── Reply content bubble ─────────────────────────────────────── */
@@ -702,6 +796,10 @@ export default {
 .reply-inline-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.reply-report-btn {
+  flex-shrink: 0;
 }
 
 /* ── Nested replies — indentation, primary border continues ──── */

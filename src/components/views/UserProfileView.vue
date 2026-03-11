@@ -14,8 +14,16 @@
           <p class="profile-joined">Joined {{ joinedDate }}</p>
           <div class="profile-name-row">
             <h1 class="profile-name">{{ fullName }}</h1>
-            <span class="cnw-social-worker-verified" title="Verified">&#10003;</span>
-            <span class="profile-verified-label">{{ user.verified_label || 'Verified Social Worker' }}</span>
+            <template v-if="user.suspension && user.suspension.is_suspended">
+              <span class="profile-suspended-icon" title="Suspended">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </span>
+              <span class="profile-suspended-label">{{ suspensionText }}</span>
+            </template>
+            <template v-else>
+              <span class="cnw-social-worker-verified" title="Verified">&#10003;</span>
+              <span class="profile-verified-label">{{ user.verified_label || 'Verified Social Worker' }}</span>
+            </template>
           </div>
           <p class="profile-title">{{ user.professional_title || 'Licensed Clinical Social Worker' }}</p>
           <div class="profile-stats-row">
@@ -116,7 +124,7 @@
             </div>
             <div class="profile-modal-field">
               <label>Email</label>
-              <input :value="user.email || '---'" class="profile-input" disabled />
+              <input v-model="editForm.email" placeholder="Email address" class="profile-input" />
             </div>
             <div class="profile-modal-field">
               <label>Phone</label>
@@ -188,6 +196,7 @@
   </defs>
 </svg>
 
+          <svg v-if="tab.key === 'warnings'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <svg v-if="tab.key === 'stats'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
           {{ tab.label }}
         </button>
@@ -307,6 +316,35 @@
           </div>
         </template>
 
+        <!-- Warnings & Suspensions Tab -->
+        <template v-if="activeTab === 'warnings'">
+          <div v-if="loadingWarnings" class="cnw-social-worker-loading" style="padding:20px">Loading warnings...</div>
+          <div v-else-if="userWarnings.length === 0" class="profile-empty-state">
+            <p class="profile-empty-title">No warnings or suspensions</p>
+            <p class="profile-empty-desc">This account has a clean record.</p>
+          </div>
+          <div v-else class="profile-warnings-list">
+            <div v-for="w in userWarnings" :key="w.id" class="profile-warning-card" :class="w.type === 'suspension' ? 'profile-warning-card--suspension' : 'profile-warning-card--warning'">
+              <div class="profile-warning-header">
+                <span class="profile-warning-type" :class="w.type === 'suspension' ? 'pw-type-suspension' : 'pw-type-warning'">{{ w.type === 'suspension' ? 'Suspension' : 'Warning' }}</span>
+                <span class="profile-warning-date">{{ formatWarningDate(w.created_at) }}</span>
+                <button v-if="canModerate" class="profile-warning-delete" @click="deleteUserWarning(w)" :disabled="w._deleting" title="Delete">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+              </div>
+              <div class="profile-warning-reason">{{ w.reason }}</div>
+              <div v-if="w.expires_at" class="profile-warning-expires">Expires: {{ formatWarningDate(w.expires_at) }}</div>
+              <div v-if="w.type === 'suspension' && !w.expires_at" class="profile-warning-expires profile-warning-permanent">Permanent</div>
+              <div class="profile-warning-by">Issued by: {{ w.moderator_name }}</div>
+            </div>
+          </div>
+          <div v-if="warningsPages > 1" class="profile-pagination">
+            <button :disabled="warningsPage <= 1" @click="fetchWarnings(warningsPage - 1)">&laquo; Prev</button>
+            <button v-for="p in warningsPages" :key="p" class="profile-page-btn" :class="{ 'is-active': p === warningsPage }" @click="fetchWarnings(p)">{{ p }}</button>
+            <button :disabled="warningsPage >= warningsPages" @click="fetchWarnings(warningsPage + 1)">Next &raquo;</button>
+          </div>
+        </template>
+
         <!-- Stats Tab -->
         <template v-if="activeTab === 'stats'">
           <div class="profile-stats-grid">
@@ -360,7 +398,7 @@
 </template>
 
 <script>
-import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar, getConnectionStatus, sendConnectionRequest, acceptConnection, declineConnection } from '@/api/index.js';
+import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar, getConnectionStatus, sendConnectionRequest, acceptConnection, declineConnection, getUserWarnings, deleteWarning } from '@/api/index.js';
 
 export default {
   name: 'UserProfileView',
@@ -375,6 +413,7 @@ export default {
         { key: 'questions', label: 'Questions' },
         { key: 'saved', label: 'Saved' },
         { key: 'activity', label: 'Activity' },
+        { key: 'warnings', label: 'Warnings & Suspensions' },
         { key: 'stats', label: 'Stats' },
       ],
       threads: [],
@@ -393,9 +432,13 @@ export default {
       loadingActivity: false,
       activityPage: 1,
       activityPages: 1,
+      userWarnings: [],
+      loadingWarnings: false,
+      warningsPage: 1,
+      warningsPages: 1,
       editing: false,
       saving: false,
-      editForm: { first_name: '', last_name: '', phone: '', verified_label: '', professional_title: '' },
+      editForm: { first_name: '', last_name: '', email: '', phone: '', verified_label: '', professional_title: '' },
       defaultAvatar: window.cnwData?.defaultAvatar || '',
       connectionStatus: null,
       connectionLoading: false,
@@ -422,6 +465,15 @@ export default {
     userRole() {
       return 'Verified Social Worker';
     },
+    canModerate() {
+      return !!(window.cnwData?.currentUser?.canModerate);
+    },
+    suspensionText() {
+      if (!this.user.suspension) return '';
+      if (this.user.suspension.permanent) return 'Permanently Suspended';
+      const days = this.user.suspension.days_left;
+      return `Suspended for ${days} day${days > 1 ? 's' : ''}`;
+    },
     answerRatio() {
       const q = this.user.thread_count || 0;
       const a = this.user.reply_count || 0;
@@ -431,18 +483,29 @@ export default {
   },
   watch: {
     '$route.params.id'() {
-      this.activeTab = 'answers';
+      const tab = this.$route?.query?.tab;
+      this.activeTab = (tab && this.tabs.some(t => t.key === tab)) ? tab : 'answers';
       this.loadProfile();
+    },
+    '$route.query.tab'(tab) {
+      if (tab && this.tabs.some(t => t.key === tab)) {
+        this.activeTab = tab;
+      }
     },
     activeTab(tab) {
       if (tab === 'answers' && this.replies.length === 0) this.fetchReplies(1);
       if (tab === 'questions' && this.threads.length === 0) this.fetchThreads(1);
       if (tab === 'saved' && this.savedThreads.length === 0) this.fetchSaved(1);
       if (tab === 'activity' && this.activities.length === 0) this.fetchActivity(1);
+      if (tab === 'warnings' && this.userWarnings.length === 0) this.fetchWarnings(1);
     },
   },
   created() {
     this.loadProfile();
+    const tab = this.$route?.query?.tab;
+    if (tab && this.tabs.some(t => t.key === tab)) {
+      this.activeTab = tab;
+    }
   },
   methods: {
     async loadProfile() {
@@ -542,9 +605,39 @@ export default {
       } catch { /* silent */ }
       finally { this.loadingActivity = false; }
     },
+    async fetchWarnings(page) {
+      if (page) this.warningsPage = page;
+      this.loadingWarnings = true;
+      try {
+        const data = await getUserWarnings(this.userId, { page: this.warningsPage });
+        this.userWarnings = data.warnings || [];
+        this.warningsPages = data.pages || 1;
+      } catch { /* silent */ }
+      finally { this.loadingWarnings = false; }
+    },
+    formatWarningDate(d) {
+      if (!d) return '';
+      const date = new Date(d);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        + ' ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    },
+    async deleteUserWarning(w) {
+      const label = w.type === 'suspension' ? 'suspension' : 'warning';
+      if (!confirm(`Are you sure you want to delete this ${label}?`)) return;
+      w._deleting = true;
+      try {
+        await deleteWarning(w.id);
+        this.userWarnings = this.userWarnings.filter(x => x.id !== w.id);
+        // Refresh profile to update suspension status
+        this.user = await getUser(this.userId);
+      } catch {} finally {
+        w._deleting = false;
+      }
+    },
     startEdit() {
       this.editForm.first_name = this.user.first_name || '';
       this.editForm.last_name = this.user.last_name || '';
+      this.editForm.email = this.user.email || '';
       this.editForm.phone = this.user.phone || '';
       this.editForm.verified_label = this.user.verified_label || 'Verified Social Worker';
       this.editForm.professional_title = this.user.professional_title || 'Licensed Clinical Social Worker';
@@ -559,6 +652,7 @@ export default {
         await updateUserProfile(this.editForm);
         this.user.first_name = this.editForm.first_name;
         this.user.last_name = this.editForm.last_name;
+        this.user.email = this.editForm.email;
         this.user.phone = this.editForm.phone;
         this.user.verified_label = this.editForm.verified_label;
         this.user.professional_title = this.editForm.professional_title;
@@ -681,6 +775,17 @@ export default {
   width: 14px;
   height: 14px;
   font-size: 9px;
+}
+.profile-suspended-icon {
+  display: flex;
+  align-items: center;
+}
+.profile-suspended-label {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  font-size: var(--text-xs, 14px);
+  line-height: 16px;
+  color: #e74c3c;
 }
 .profile-verified-label {
   font-family: 'Poppins', sans-serif;
@@ -1051,6 +1156,83 @@ export default {
 }
 
 /* ── Activity List ─────────────────────────────────────────── */
+/* Warnings & Suspensions tab */
+.profile-warnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 14px);
+}
+.profile-warning-card {
+  background: var(--white, #fff);
+  border-radius: var(--radius-m, 12px);
+  padding: var(--space-m, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs, 8px);
+  border: 1px solid var(--border, #e0e0e0);
+}
+.profile-warning-card--warning {
+  border-left: 4px solid #f39c12;
+}
+.profile-warning-card--suspension {
+  border-left: 4px solid #e74c3c;
+}
+.profile-warning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.profile-warning-type {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+.pw-type-warning {
+  background: #fff8e1;
+  color: #f57f17;
+}
+.pw-type-suspension {
+  background: #ffebee;
+  color: #c62828;
+}
+.profile-warning-date {
+  font-size: var(--text-xs, 12px);
+  color: #999;
+}
+.profile-warning-delete {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s, background 0.2s;
+}
+.profile-warning-delete:hover { color: #e74c3c; background: #ffebee; }
+.profile-warning-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+.profile-warning-reason {
+  font-size: var(--text-xs, 13px);
+  color: var(--text-body, #444);
+  line-height: 1.5;
+}
+.profile-warning-expires {
+  font-size: var(--text-xs, 12px);
+  color: #e65100;
+  font-weight: 500;
+}
+.profile-warning-permanent {
+  color: #c62828;
+}
+.profile-warning-by {
+  font-size: var(--text-xs, 12px);
+  color: #999;
+}
+
 .profile-activity-list {
   display: flex;
   flex-direction: column;

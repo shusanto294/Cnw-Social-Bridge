@@ -1140,6 +1140,7 @@ class Cnw_Social_Bridge_Admin {
             'threads', 'replies', 'messages', 'categories', 'tags',
             'thread_tags', 'user_followed_tags', 'votes', 'reputation',
             'saved_threads', 'notifications', 'activity', 'reports', 'connections',
+            'restrictions', 'warnings',
         );
 
         $table_data = array();
@@ -1167,11 +1168,13 @@ class Cnw_Social_Bridge_Admin {
         foreach ( $table_data['notifications'] as $r )          { $user_ids[ (int) $r['user_id'] ] = true; if ( ! empty( $r['actor_id'] ) ) $user_ids[ (int) $r['actor_id'] ] = true; }
         foreach ( $table_data['reports'] as $r )               { if ( ! empty( $r['user_id'] ) ) $user_ids[ (int) $r['user_id'] ] = true; }
         foreach ( $table_data['connections'] as $r )           { $user_ids[ (int) $r['sender_id'] ] = true; $user_ids[ (int) $r['receiver_id'] ] = true; }
+        foreach ( $table_data['restrictions'] as $r )          { $user_ids[ (int) $r['restricter_id'] ] = true; $user_ids[ (int) $r['restricted_id'] ] = true; }
+        foreach ( $table_data['warnings'] as $r )              { $user_ids[ (int) $r['user_id'] ] = true; $user_ids[ (int) $r['moderator_id'] ] = true; }
         unset( $user_ids[0] );
 
         // Build users array with all CNW meta.
         $users = array();
-        $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'cnw_reputation_total', 'description' );
+        $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'cnw_reputation_total', 'description', 'cnw_suspended', 'cnw_suspended_until' );
         foreach ( array_keys( $user_ids ) as $uid ) {
             $u = get_userdata( $uid );
             if ( ! $u ) continue;
@@ -1204,6 +1207,7 @@ class Cnw_Social_Bridge_Admin {
             'cnw_community_guidelines_html'    => get_option( 'cnw_community_guidelines_html', '' ),
             'cnw_default_thread_status'        => get_option( 'cnw_default_thread_status', 'pending' ),
             'cnw_default_reply_status'         => get_option( 'cnw_default_reply_status', 'approved' ),
+            'cnw_social_logo_url'              => get_option( 'cnw_social_logo_url', '' ),
         );
 
         // Build ZIP.
@@ -1399,7 +1403,7 @@ class Cnw_Social_Bridge_Admin {
 
                 $users = $read_json( 'users' );
                 $state['user_map'] = array( 0 => 0 );
-                $cnw_meta_keys = array( 'cnw_phone', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description' );
+                $cnw_meta_keys = array( 'cnw_phone', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description', 'cnw_suspended', 'cnw_suspended_until' );
                 foreach ( $users as $eu ) {
                     $old_id = (int) $eu['id'];
                     $existing = get_user_by( 'email', $eu['user_email'] );
@@ -1528,6 +1532,8 @@ class Cnw_Social_Bridge_Admin {
                         'status'       => $row['status'] ?? 'published',
                         'is_anonymous' => (int) ( $row['is_anonymous'] ?? 0 ),
                         'views'        => (int) ( $row['views'] ?? 0 ),
+                        'is_pinned'    => (int) ( $row['is_pinned'] ?? 0 ),
+                        'is_closed'    => (int) ( $row['is_closed'] ?? 0 ),
                         'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
                         'updated_at'   => $row['updated_at'] ?? current_time( 'mysql' ),
                     ) );
@@ -1729,17 +1735,27 @@ class Cnw_Social_Bridge_Admin {
             case 'reports':
                 $reports = $read_json( 'reports' );
                 foreach ( $reports as $row ) {
+                    // Remap content_id based on content_type
+                    $content_id = ! empty( $row['content_id'] ) ? (int) $row['content_id'] : null;
+                    $content_type = $row['content_type'] ?? null;
+                    if ( $content_type === 'thread' && $content_id ) {
+                        $content_id = $state['thread_map'][ $content_id ] ?? null;
+                    } elseif ( $content_type === 'reply' && $content_id ) {
+                        $content_id = $state['reply_map'][ $content_id ] ?? null;
+                    }
                     $wpdb->insert( $p . 'reports', array(
-                        'user_id'     => $ru( $row['user_id'] ?? 0 ) ?: 0,
-                        'type'        => $row['type'] ?? '',
-                        'subject'     => $row['subject'] ?? '',
-                        'description' => $row['description'] ?? '',
-                        'link'        => $row['link'] ?? null,
-                        'priority'    => $row['priority'] ?? 'medium',
-                        'status'      => $row['status'] ?? 'open',
-                        'admin_notes' => $row['admin_notes'] ?? null,
-                        'created_at'  => $row['created_at'] ?? current_time( 'mysql' ),
-                        'updated_at'  => $row['updated_at'] ?? current_time( 'mysql' ),
+                        'user_id'      => $ru( $row['user_id'] ?? 0 ) ?: 0,
+                        'type'         => $row['type'] ?? '',
+                        'subject'      => $row['subject'] ?? '',
+                        'description'  => $row['description'] ?? '',
+                        'link'         => $row['link'] ?? null,
+                        'content_type' => $content_type,
+                        'content_id'   => $content_id,
+                        'priority'     => $row['priority'] ?? 'medium',
+                        'status'       => $row['status'] ?? 'open',
+                        'admin_notes'  => $row['admin_notes'] ?? null,
+                        'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                        'updated_at'   => $row['updated_at'] ?? current_time( 'mysql' ),
                     ) );
                     $count++;
                 }
@@ -1763,6 +1779,43 @@ class Cnw_Social_Bridge_Admin {
                 }
                 break;
 
+            case 'restrictions':
+                $restrictions = $read_json( 'restrictions' );
+                foreach ( $restrictions as $row ) {
+                    $restricter = $ru( $row['restricter_id'] ?? 0 );
+                    $restricted = $ru( $row['restricted_id'] ?? 0 );
+                    if ( $restricter && $restricted ) {
+                        $wpdb->replace( $p . 'restrictions', array(
+                            'restricter_id' => $restricter,
+                            'restricted_id' => $restricted,
+                            'created_at'    => $row['created_at'] ?? current_time( 'mysql' ),
+                        ) );
+                        $count++;
+                    }
+                }
+                break;
+
+            case 'warnings':
+                $warnings = $read_json( 'warnings' );
+                foreach ( $warnings as $row ) {
+                    $user_id      = $ru( $row['user_id'] ?? 0 );
+                    $moderator_id = $ru( $row['moderator_id'] ?? 0 );
+                    if ( $user_id && $moderator_id ) {
+                        $wpdb->insert( $p . 'warnings', array(
+                            'user_id'      => $user_id,
+                            'moderator_id' => $moderator_id,
+                            'type'         => $row['type'] ?? 'warning',
+                            'reason'       => $row['reason'] ?? '',
+                            'duration'     => isset( $row['duration'] ) ? (int) $row['duration'] : null,
+                            'expires_at'   => $row['expires_at'] ?? null,
+                            'is_active'    => (int) ( $row['is_active'] ?? 1 ),
+                            'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                        ) );
+                        $count++;
+                    }
+                }
+                break;
+
             case 'settings':
                 require_once ABSPATH . 'wp-admin/includes/file.php';
                 require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -1775,6 +1828,7 @@ class Cnw_Social_Bridge_Admin {
                         'cnw_pusher_app_id', 'cnw_pusher_key', 'cnw_pusher_secret',
                         'cnw_community_guidelines', 'cnw_community_guidelines_html',
                         'cnw_default_thread_status', 'cnw_default_reply_status',
+                        'cnw_social_logo_url',
                     );
                     foreach ( $allowed as $key ) {
                         if ( isset( $settings[ $key ] ) && $settings[ $key ] !== '' ) {

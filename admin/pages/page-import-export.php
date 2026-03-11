@@ -160,6 +160,8 @@ $import_id = isset( $_GET['import_ready'] ) ? sanitize_text_field( $_GET['import
         { key: 'notifications', label: 'Notifications, Saved Threads & Followed Tags' },
         { key: 'reports',       label: 'Reports' },
         { key: 'connections',   label: 'Connections' },
+        { key: 'restrictions',  label: 'Restrictions' },
+        { key: 'warnings',      label: 'Warnings & Suspensions' },
         { key: 'settings',      label: 'Settings' },
         { key: 'finalize',      label: 'Finalize & Recalculate Totals' },
     ];

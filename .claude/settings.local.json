@@ -22,7 +22,9 @@
       "Bash(php:*)",
       "Bash(composer:*)",
       "Bash(npx webpack --mode production 2>&1; echo \"EXIT:$?\")",
-      "Bash(npx webpack --mode production 2>&1; echo \"EXIT: $?\")"
+      "Bash(npx webpack --mode production 2>&1; echo \"EXIT: $?\")",
+      "Bash(find /c/xampp/htdocs/wordpress/wp-content/plugins/cnw-social-bridge -type f -name \"*report*\" -o -name \"*moderate*\" 2>/dev/null | head -20)",
+      "Bash(cd C:/xampp/htdocs/wordpress && php -r \"\ndefine\\('ABSPATH', 'C:/xampp/htdocs/wordpress/'\\);\nrequire_once 'wp-load.php';\nglobal \\\\$wpdb;\n\\\\$result = \\\\$wpdb->get_results\\(\\\\\"SHOW TABLES LIKE '%warnings%'\\\\\"\\);\necho 'Warnings table: ' . \\(empty\\(\\\\$result\\) ? 'MISSING' : 'EXISTS'\\) . PHP_EOL;\nif \\(!empty\\(\\\\$result\\)\\) {\n    \\\\$cols = \\\\$wpdb->get_results\\(\\\\\"SHOW COLUMNS FROM {\\\\$wpdb->prefix}cnw_social_worker_warnings\\\\\"\\);\n    foreach\\(\\\\$cols as \\\\$c\\) echo '  - ' . \\\\$c->Field . ' \\(' . \\\\$c->Type . '\\)' . PHP_EOL;\n}\n\" 2>&1)"
     ]
   }
 }

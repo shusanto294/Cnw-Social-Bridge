@@ -12,6 +12,7 @@ import ReportIssueView from '@/components/views/ReportIssueView.vue';
 import UserProfileView from '@/components/views/UserProfileView.vue';
 import LoginView from '@/components/views/LoginView.vue';
 import NotFoundView from '@/components/views/NotFoundView.vue';
+import ModerationView from '@/components/views/ModerationView.vue';
 
 const routes = [
   { path: '/', component: QuestionListView },
@@ -27,6 +28,7 @@ const routes = [
   { path: '/guidelines', component: GuidelinesView },
   { path: '/report', component: ReportIssueView, meta: { requiresAuth: true } },
   { path: '/login', name: 'Login', component: LoginView, meta: { guestOnly: true } },
+  { path: '/moderation', component: ModerationView, meta: { requiresAuth: true } },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFoundView },
 ];
 

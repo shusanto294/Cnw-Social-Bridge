@@ -318,6 +318,45 @@ class Cnw_Social_Bridge {
         ) $charset_collate;";
         dbDelta( $sql_restrictions );
 
+        // ── Add moderation columns to threads ─────────────────────────────
+        $threads_table = $wpdb->prefix . 'cnw_social_worker_threads';
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_pinned'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER views" );
+        }
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_closed'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_closed tinyint(1) DEFAULT 0 AFTER is_pinned" );
+        }
+
+        // ── Warnings / suspensions table ──────────────────────────────────
+        $sql_warnings = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_warnings (
+            id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id     bigint(20) unsigned NOT NULL,
+            moderator_id bigint(20) unsigned NOT NULL,
+            type        varchar(20)         NOT NULL COMMENT 'warning or suspension',
+            reason      text                NOT NULL,
+            duration    int(11)             DEFAULT NULL COMMENT 'suspension days, NULL = permanent',
+            expires_at  datetime            DEFAULT NULL,
+            is_active   tinyint(1)          DEFAULT 1,
+            created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id     (user_id),
+            KEY moderator_id (moderator_id),
+            KEY type        (type),
+            KEY is_active   (is_active),
+            KEY expires_at  (expires_at)
+        ) $charset_collate;";
+        dbDelta( $sql_warnings );
+
+        // ── Add content reference columns to reports ──────────────────────
+        $reports_table = $wpdb->prefix . 'cnw_social_worker_reports';
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$reports_table} LIKE 'content_type'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_type varchar(20) DEFAULT NULL AFTER link" );
+            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
+        }
+
         $this->create_user_roles();
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );
@@ -373,6 +412,61 @@ class Cnw_Social_Bridge {
         // Keep data on deactivation; roles remain until explicitly removed.
     }
 
+    /**
+     * Get current user's suspension info for frontend.
+     */
+    private function get_current_user_suspension() {
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) return null;
+
+        $suspended = get_user_meta( $user_id, 'cnw_suspended', true );
+        if ( ! $suspended ) return null;
+
+        // Verify an active suspension actually exists in the DB
+        global $wpdb;
+        $active = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_warnings WHERE user_id = %d AND type = 'suspension' AND is_active = 1 ORDER BY created_at DESC LIMIT 1",
+            $user_id
+        ) );
+
+        if ( ! $active ) {
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            return null;
+        }
+
+        $until = get_user_meta( $user_id, 'cnw_suspended_until', true );
+
+        // Auto-clear expired
+        if ( $until && strtotime( $until ) <= time() ) {
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_warnings',
+                array( 'is_active' => 0 ),
+                array( 'user_id' => $user_id, 'type' => 'suspension', 'is_active' => 1 )
+            );
+            return null;
+        }
+
+        if ( $until ) {
+            $days = (int) ceil( ( strtotime( $until ) - time() ) / DAY_IN_SECONDS );
+            return array(
+                'is_suspended' => true,
+                'permanent'    => false,
+                'days_left'    => $days,
+                'until'        => $until,
+            );
+        }
+
+        return array(
+            'is_suspended' => true,
+            'permanent'    => true,
+            'days_left'    => null,
+            'until'        => null,
+        );
+    }
+
     /* ------------------------------------------------------------------
      * Shortcode — renders the Vue 3 SPA (built by webpack → dist/)
      * ------------------------------------------------------------------ */
@@ -424,6 +518,9 @@ class Cnw_Social_Bridge {
                 'avatar'     => get_user_meta( get_current_user_id(), 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
                 'reputation' => (int) get_user_meta( get_current_user_id(), 'cnw_reputation_total', true ),
                 'anonymous'  => (bool) get_user_meta( get_current_user_id(), 'cnw_anonymous', true ),
+                'roles' => (array) $current_user->roles,
+                'canModerate' => current_user_can( 'cnw_close_threads' ) || current_user_can( 'manage_options' ),
+                'suspension' => $this->get_current_user_suspension(),
             ),
         ) );
 

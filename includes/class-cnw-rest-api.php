@@ -275,6 +275,154 @@ class Cnw_Social_Bridge_REST_API {
         register_rest_route( $ns, '/restrictions', array(
             'methods' => 'GET', 'callback' => array( $this, 'get_restrictions' ), 'permission_callback' => 'is_user_logged_in',
         ) );
+
+        // ── Moderation ────────────────────────────────────────────────────
+        register_rest_route( $ns, '/threads/(?P<id>\d+)/close', array(
+            'methods' => 'POST', 'callback' => array( $this, 'toggle_close_thread' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/threads/(?P<id>\d+)/pin', array(
+            'methods' => 'POST', 'callback' => array( $this, 'toggle_pin_thread' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/reports', array(
+            array( 'methods' => 'GET', 'callback' => array( $this, 'get_reports' ), 'permission_callback' => array( $this, 'can_moderate' ) ),
+        ) );
+        register_rest_route( $ns, '/reports/(?P<id>\d+)', array(
+            'methods' => 'PUT', 'callback' => array( $this, 'update_report' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/warn', array(
+            'methods' => 'POST', 'callback' => array( $this, 'warn_user' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/suspend', array(
+            'methods' => 'POST', 'callback' => array( $this, 'suspend_user' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/moderation/stats', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_moderation_stats' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/moderation/warnings', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_warnings' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/moderation/warnings/(?P<id>\d+)', array(
+            'methods' => 'DELETE', 'callback' => array( $this, 'delete_warning' ), 'permission_callback' => array( $this, 'can_moderate' ),
+        ) );
+        register_rest_route( $ns, '/users/(?P<id>\d+)/warnings', array(
+            'methods' => 'GET', 'callback' => array( $this, 'get_user_warnings' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+    }
+
+    /* ------------------------------------------------------------------
+     * Suspension check
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Check if the current user is suspended.
+     * Auto-clears expired suspensions.
+     * Returns WP_Error if suspended, false if not.
+     */
+    private function get_suspension_error() {
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) {
+            return false;
+        }
+
+        $suspended = get_user_meta( $user_id, 'cnw_suspended', true );
+        if ( ! $suspended ) {
+            return false;
+        }
+
+        // Verify an active suspension actually exists in the DB
+        global $wpdb;
+        $active = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_warnings WHERE user_id = %d AND type = 'suspension' AND is_active = 1 ORDER BY created_at DESC LIMIT 1",
+            $user_id
+        ) );
+
+        if ( ! $active ) {
+            // Stale meta — clean it up
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            return false;
+        }
+
+        $until = get_user_meta( $user_id, 'cnw_suspended_until', true );
+
+        // If there's an expiry date and it has passed, auto-clear
+        if ( $until && strtotime( $until ) <= time() ) {
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_warnings',
+                array( 'is_active' => 0 ),
+                array( 'user_id' => $user_id, 'type' => 'suspension', 'is_active' => 1 )
+            );
+            return false;
+        }
+
+        // User is suspended
+        if ( $until ) {
+            $remaining = strtotime( $until ) - time();
+            $days = ceil( $remaining / DAY_IN_SECONDS );
+            $msg = sprintf( 'Your account is suspended for %d more day%s.', $days, $days > 1 ? 's' : '' );
+        } else {
+            $msg = 'Your account has been permanently suspended.';
+        }
+
+        return new WP_Error( 'account_suspended', $msg, array( 'status' => 403 ) );
+    }
+
+    /**
+     * Get suspension info for a user (for profile display).
+     */
+    private function get_suspension_info( $user_id ) {
+        $suspended = get_user_meta( $user_id, 'cnw_suspended', true );
+        if ( ! $suspended ) {
+            return null;
+        }
+
+        // Verify an active suspension actually exists in the DB
+        global $wpdb;
+        $active = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_warnings WHERE user_id = %d AND type = 'suspension' AND is_active = 1 ORDER BY created_at DESC LIMIT 1",
+            $user_id
+        ) );
+
+        if ( ! $active ) {
+            // Stale meta — clean it up
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            return null;
+        }
+
+        $until = get_user_meta( $user_id, 'cnw_suspended_until', true );
+
+        // Auto-clear expired
+        if ( $until && strtotime( $until ) <= time() ) {
+            delete_user_meta( $user_id, 'cnw_suspended' );
+            delete_user_meta( $user_id, 'cnw_suspended_until' );
+            $wpdb->update(
+                $wpdb->prefix . 'cnw_social_worker_warnings',
+                array( 'is_active' => 0 ),
+                array( 'user_id' => $user_id, 'type' => 'suspension', 'is_active' => 1 )
+            );
+            return null;
+        }
+
+        if ( $until ) {
+            $remaining = strtotime( $until ) - time();
+            $days = ceil( $remaining / DAY_IN_SECONDS );
+            return array(
+                'is_suspended' => true,
+                'permanent'    => false,
+                'days_left'    => (int) $days,
+                'until'        => $until,
+            );
+        }
+
+        return array(
+            'is_suspended' => true,
+            'permanent'    => true,
+            'days_left'    => null,
+            'until'        => null,
+        );
     }
 
     /* ------------------------------------------------------------------
@@ -295,6 +443,10 @@ class Cnw_Social_Bridge_REST_API {
 
     public function can_manage() {
         return current_user_can( 'manage_options' );
+    }
+
+    public function can_moderate() {
+        return current_user_can( 'cnw_close_threads' ) || current_user_can( 'manage_options' );
     }
 
     public function can_manage_tag( WP_REST_Request $request ) {
@@ -351,7 +503,7 @@ class Cnw_Social_Bridge_REST_API {
 
         $where = "WHERE t.status IN ('published','approved')";
         $join  = '';
-        $order = 'ORDER BY t.created_at DESC';
+        $order = 'ORDER BY t.is_pinned DESC, t.created_at DESC';
 
         if ( $search ) {
             $like   = '%' . $wpdb->esc_like( $search ) . '%';
@@ -360,7 +512,7 @@ class Cnw_Social_Bridge_REST_API {
 
         switch ( $filter ) {
             case 'active':
-                $order = 'ORDER BY t.updated_at DESC';
+                $order = 'ORDER BY t.is_pinned DESC, t.updated_at DESC';
                 break;
             case 'unanswered':
                 $where .= " AND NOT EXISTS (
@@ -395,10 +547,10 @@ class Cnw_Social_Bridge_REST_API {
                 }
                 break;
             case 'frequent':
-                $order = "ORDER BY (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') DESC, t.created_at DESC";
+                $order = "ORDER BY t.is_pinned DESC, (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies r WHERE r.thread_id = t.id AND r.status = 'approved') DESC, t.created_at DESC";
                 break;
             case 'score':
-                $order = "ORDER BY (
+                $order = "ORDER BY t.is_pinned DESC, (
                     (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = 1)
                     - (SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_votes v WHERE v.target_type = 'thread' AND v.target_id = t.id AND v.vote_type = -1)
                 ) DESC, t.created_at DESC";
@@ -416,9 +568,9 @@ class Cnw_Social_Bridge_REST_API {
             ) );
             if ( ! empty( $followed_tag_ids ) ) {
                 $tag_placeholders = implode( ',', array_fill( 0, count( $followed_tag_ids ), '%d' ) );
-                $join  = "INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags ftj ON ftj.thread_id = t.id";
+                $join  = "LEFT JOIN {$wpdb->prefix}cnw_social_worker_thread_tags ftj ON ftj.thread_id = t.id";
                 $where .= $wpdb->prepare(
-                    " AND ftj.tag_id IN ($tag_placeholders)",
+                    " AND (ftj.tag_id IN ($tag_placeholders) OR t.is_pinned = 1)",
                     ...$followed_tag_ids
                 );
             }
@@ -524,6 +676,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function create_thread( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         // get_json_params() can return null if Content-Type parsing fails; guard against it.
@@ -769,12 +924,24 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function create_reply( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         $params = $request->get_json_params();
 
         if ( empty( $params['thread_id'] ) || empty( $params['content'] ) ) {
             return new WP_Error( 'missing_fields', 'thread_id and content are required', array( 'status' => 400 ) );
+        }
+
+        // Check if thread is closed
+        $thread_check = $wpdb->get_row( $wpdb->prepare(
+            "SELECT id, is_closed FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d",
+            intval( $params['thread_id'] )
+        ) );
+        if ( $thread_check && $thread_check->is_closed ) {
+            return new WP_Error( 'thread_closed', 'This thread is closed and no longer accepting replies.', array( 'status' => 403 ) );
         }
 
         $user_id = get_current_user_id();
@@ -920,6 +1087,9 @@ class Cnw_Social_Bridge_REST_API {
      * ================================================================== */
 
     public function mark_solution( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         $reply_id = intval( $request['id'] );
@@ -1045,6 +1215,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function create_message( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         $params = $request->get_json_params();
@@ -1606,6 +1779,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function create_vote( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         $params = $request->get_json_params();
@@ -2079,6 +2255,9 @@ class Cnw_Social_Bridge_REST_API {
      * ================================================================== */
 
     public function save_thread( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
         $user_id   = get_current_user_id();
         $thread_id = intval( $request['id'] );
@@ -2241,9 +2420,40 @@ class Cnw_Social_Bridge_REST_API {
         if ( ! empty( $search ) && strlen( $search ) >= 2 ) {
             $args['search']         = '*' . $search . '*';
             $args['search_columns'] = array( 'user_login', 'display_name', 'user_email' );
+
+            // Also include users matching phone number in usermeta
+            $phone_ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'cnw_phone' AND meta_value LIKE %s",
+                '%' . $wpdb->esc_like( $search ) . '%'
+            ) );
+            if ( ! empty( $phone_ids ) ) {
+                $args['include'] = $phone_ids;
+                unset( $args['search'], $args['search_columns'] );
+            }
         }
 
         $query = new WP_User_Query( $args );
+
+        // If we have phone matches, also run the name/email search and merge
+        if ( ! empty( $search ) && strlen( $search ) >= 2 && ! empty( $phone_ids ) ) {
+            $args2 = $args;
+            unset( $args2['include'] );
+            $args2['search']         = '*' . $search . '*';
+            $args2['search_columns'] = array( 'user_login', 'display_name', 'user_email' );
+            $query2 = new WP_User_Query( $args2 );
+            $merged = array();
+            $seen   = array();
+            foreach ( array_merge( $query->get_results(), $query2->get_results() ) as $mu ) {
+                if ( ! isset( $seen[ $mu->ID ] ) ) {
+                    $merged[]        = $mu;
+                    $seen[ $mu->ID ] = true;
+                }
+            }
+            // Replace query results with merged (use reflection or just process merged directly)
+            $query_results = $merged;
+        } else {
+            $query_results = $query->get_results();
+        }
         $users = array();
 
         // Bulk-load connection statuses for current user
@@ -2267,7 +2477,7 @@ class Cnw_Social_Bridge_REST_API {
             }
         }
 
-        foreach ( $query->get_results() as $u ) {
+        foreach ( $query_results as $u ) {
             $avatar = get_user_meta( $u->ID, 'cnw_avatar_url', true ) ?: CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             $reputation = (int) get_user_meta( $u->ID, 'cnw_reputation_total', true );
 
@@ -2282,9 +2492,11 @@ class Cnw_Social_Bridge_REST_API {
             $users[] = array(
                 'id'                 => $u->ID,
                 'name'               => $u->display_name,
+                'email'              => $u->user_email,
                 'avatar'             => $avatar,
                 'verified_label'     => get_user_meta( $u->ID, 'cnw_verified_label', true ),
                 'professional_title' => get_user_meta( $u->ID, 'cnw_professional_title', true ),
+                'phone'              => get_user_meta( $u->ID, 'cnw_phone', true ),
                 'reputation'         => $reputation,
                 'thread_count'       => $thread_count,
                 'reply_count'        => $reply_count,
@@ -2342,7 +2554,6 @@ class Cnw_Social_Bridge_REST_API {
             $user_id
         ) );
 
-        // Only show email/phone to the profile owner
         $is_own = get_current_user_id() === $user_id;
 
         return array(
@@ -2350,7 +2561,7 @@ class Cnw_Social_Bridge_REST_API {
             'display_name'    => $user->display_name,
             'first_name'      => $first_name,
             'last_name'       => $last_name,
-            'email'           => $is_own ? $user->user_email : '',
+            'email'           => $user->user_email,
             'phone'           => $is_own ? $phone : '',
             'bio'             => $bio,
             'avatar'          => $avatar,
@@ -2363,6 +2574,7 @@ class Cnw_Social_Bridge_REST_API {
             'verified_label'     => $verified_label,
             'professional_title' => $professional_title,
             'is_own'             => $is_own,
+            'suspension'         => $this->get_suspension_info( $user_id ),
         );
     }
 
@@ -2450,6 +2662,16 @@ class Cnw_Social_Bridge_REST_API {
         $user_id = get_current_user_id();
         $body    = $request->get_json_params();
 
+        if ( isset( $body['email'] ) ) {
+            $new_email = sanitize_email( $body['email'] );
+            if ( $new_email && is_email( $new_email ) ) {
+                $existing = get_user_by( 'email', $new_email );
+                if ( $existing && (int) $existing->ID !== $user_id ) {
+                    return new WP_Error( 'email_exists', 'This email address is already in use.', array( 'status' => 400 ) );
+                }
+                wp_update_user( array( 'ID' => $user_id, 'user_email' => $new_email ) );
+            }
+        }
         if ( isset( $body['first_name'] ) ) {
             update_user_meta( $user_id, 'first_name', sanitize_text_field( $body['first_name'] ) );
         }
@@ -2707,7 +2929,327 @@ class Cnw_Social_Bridge_REST_API {
      * REPORTS
      * ================================================================== */
 
+    /* ==================================================================
+     * MODERATION
+     * ================================================================== */
+
+    public function toggle_close_thread( WP_REST_Request $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $table = $wpdb->prefix . 'cnw_social_worker_threads';
+        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_closed FROM {$table} WHERE id = %d", $id ) );
+        if ( ! $thread ) {
+            return new WP_Error( 'not_found', 'Thread not found.', array( 'status' => 404 ) );
+        }
+        $new_val = $thread->is_closed ? 0 : 1;
+        $wpdb->update( $table, array( 'is_closed' => $new_val ), array( 'id' => $id ) );
+        return array( 'success' => true, 'is_closed' => (bool) $new_val );
+    }
+
+    public function toggle_pin_thread( WP_REST_Request $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $table = $wpdb->prefix . 'cnw_social_worker_threads';
+        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_pinned FROM {$table} WHERE id = %d", $id ) );
+        if ( ! $thread ) {
+            return new WP_Error( 'not_found', 'Thread not found.', array( 'status' => 404 ) );
+        }
+        $new_val = $thread->is_pinned ? 0 : 1;
+        $wpdb->update( $table, array( 'is_pinned' => $new_val ), array( 'id' => $id ) );
+        return array( 'success' => true, 'is_pinned' => (bool) $new_val );
+    }
+
+    public function get_reports( WP_REST_Request $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_reports';
+        $page = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+        $per_page = 10;
+        $offset = ( $page - 1 ) * $per_page;
+        $status_filter = sanitize_text_field( $request->get_param( 'status' ) ?: '' );
+
+        $where = '1=1';
+        if ( $status_filter ) {
+            $where = $wpdb->prepare( 'status = %s', $status_filter );
+        }
+
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" );
+        $reports = $wpdb->get_results( "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}" );
+
+        // Attach reporter info and thread_id for reply reports
+        foreach ( $reports as &$r ) {
+            $user = get_userdata( $r->user_id );
+            $r->reporter_name = $user ? $user->display_name : 'Unknown';
+            $r->reporter_avatar = $user ? ( get_user_meta( $r->user_id, 'cnw_avatar_url', true ) ?: '' ) : '';
+
+            // For reply reports, look up the thread_id
+            if ( ! empty( $r->content_type ) && $r->content_type === 'reply' && ! empty( $r->content_id ) ) {
+                $r->thread_id = (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d",
+                    (int) $r->content_id
+                ) );
+            }
+        }
+
+        return array( 'reports' => $reports, 'total' => $total, 'pages' => ceil( $total / $per_page ) );
+    }
+
+    public function update_report( WP_REST_Request $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $params = $request->get_json_params();
+        $table = $wpdb->prefix . 'cnw_social_worker_reports';
+
+        $report = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+        if ( ! $report ) {
+            return new WP_Error( 'not_found', 'Report not found.', array( 'status' => 404 ) );
+        }
+
+        $update = array( 'updated_at' => current_time( 'mysql' ) );
+        if ( isset( $params['status'] ) ) {
+            $update['status'] = sanitize_text_field( $params['status'] );
+        }
+        if ( isset( $params['admin_notes'] ) ) {
+            $update['admin_notes'] = wp_kses_post( $params['admin_notes'] );
+        }
+        $wpdb->update( $table, $update, array( 'id' => $id ) );
+        return array( 'success' => true );
+    }
+
+    public function warn_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id = (int) $request['id'];
+        $params = $request->get_json_params();
+
+        if ( empty( $params['reason'] ) ) {
+            return new WP_Error( 'missing_reason', 'A reason is required.', array( 'status' => 400 ) );
+        }
+
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            return new WP_Error( 'not_found', 'User not found.', array( 'status' => 404 ) );
+        }
+
+        $reason = sanitize_textarea_field( $params['reason'] );
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_warnings',
+            array(
+                'user_id'      => $user_id,
+                'moderator_id' => get_current_user_id(),
+                'type'         => 'warning',
+                'reason'       => $reason,
+                'is_active'    => 1,
+            )
+        );
+
+        $insert_id = $wpdb->insert_id;
+
+        // Send email notification
+        $site_name = get_bloginfo( 'name' );
+        $subject   = sprintf( '[%s] You have received a warning', $site_name );
+        $message   = sprintf(
+            "Hello %s,\n\nYou have received a warning from the moderation team at %s.\n\nReason: %s\n\nPlease review the community guidelines to avoid further action.\n\nRegards,\n%s Moderation Team",
+            $user->display_name,
+            $site_name,
+            $reason,
+            $site_name
+        );
+        wp_mail( $user->user_email, $subject, $message );
+
+        // Create in-app notification
+        $this->insert_notification(
+            $user_id,
+            get_current_user_id(),
+            'warning',
+            'user',
+            $user_id,
+            'You have received a warning from the moderation team.'
+        );
+
+        return array( 'success' => true, 'id' => $insert_id );
+    }
+
+    public function suspend_user( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id = (int) $request['id'];
+        $params = $request->get_json_params();
+
+        if ( empty( $params['reason'] ) ) {
+            return new WP_Error( 'missing_reason', 'A reason is required.', array( 'status' => 400 ) );
+        }
+
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            return new WP_Error( 'not_found', 'User not found.', array( 'status' => 404 ) );
+        }
+
+        $reason = sanitize_textarea_field( $params['reason'] );
+        $duration = isset( $params['duration'] ) ? (int) $params['duration'] : null;
+        $expires_at = null;
+        if ( $duration ) {
+            $expires_at = gmdate( 'Y-m-d H:i:s', time() + ( $duration * DAY_IN_SECONDS ) );
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_warnings',
+            array(
+                'user_id'      => $user_id,
+                'moderator_id' => get_current_user_id(),
+                'type'         => 'suspension',
+                'reason'       => $reason,
+                'duration'     => $duration,
+                'expires_at'   => $expires_at,
+                'is_active'    => 1,
+            )
+        );
+
+        $insert_id = $wpdb->insert_id;
+
+        // Mark user as suspended in user meta
+        update_user_meta( $user_id, 'cnw_suspended', 1 );
+        update_user_meta( $user_id, 'cnw_suspended_until', $expires_at );
+
+        // Send email notification
+        $site_name = get_bloginfo( 'name' );
+        if ( $duration ) {
+            $duration_text = sprintf( '%d day%s', $duration, $duration > 1 ? 's' : '' );
+            $subject = sprintf( '[%s] Your account has been suspended for %s', $site_name, $duration_text );
+            $message = sprintf(
+                "Hello %s,\n\nYour account on %s has been suspended for %s.\n\nReason: %s\n\nYour suspension will expire on: %s\n\nIf you believe this was a mistake, please contact the moderation team.\n\nRegards,\n%s Moderation Team",
+                $user->display_name,
+                $site_name,
+                $duration_text,
+                $reason,
+                wp_date( 'F j, Y \a\t g:i A', strtotime( $expires_at ) ),
+                $site_name
+            );
+        } else {
+            $subject = sprintf( '[%s] Your account has been permanently suspended', $site_name );
+            $message = sprintf(
+                "Hello %s,\n\nYour account on %s has been permanently suspended.\n\nReason: %s\n\nIf you believe this was a mistake, please contact the moderation team.\n\nRegards,\n%s Moderation Team",
+                $user->display_name,
+                $site_name,
+                $reason,
+                $site_name
+            );
+        }
+        wp_mail( $user->user_email, $subject, $message );
+
+        // Create in-app notification
+        $suspend_msg = $duration
+            ? sprintf( 'Your account has been suspended for %d day%s.', $duration, $duration > 1 ? 's' : '' )
+            : 'Your account has been permanently suspended.';
+        $this->insert_notification(
+            $user_id,
+            get_current_user_id(),
+            'suspension',
+            'user',
+            $user_id,
+            $suspend_msg
+        );
+
+        return array( 'success' => true, 'id' => $insert_id );
+    }
+
+    public function get_moderation_stats( WP_REST_Request $request ) {
+        global $wpdb;
+        $reports_table = $wpdb->prefix . 'cnw_social_worker_reports';
+        $warnings_table = $wpdb->prefix . 'cnw_social_worker_warnings';
+
+        $open_reports = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'open'" );
+        $in_progress_reports = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'in_progress'" );
+        $resolved_reports = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'resolved'" );
+        $total_reports = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table}" );
+        $closed_reports = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'closed'" );
+        $total_warnings = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$warnings_table} WHERE type = 'warning'" );
+        $active_suspensions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$warnings_table} WHERE type = 'suspension' AND is_active = 1" );
+
+        return array(
+            'open_reports'       => $open_reports,
+            'in_progress_reports'=> $in_progress_reports,
+            'resolved_reports'   => $resolved_reports,
+            'closed_reports'     => $closed_reports,
+            'total_reports'      => $total_reports,
+            'total_warnings'     => $total_warnings,
+            'active_suspensions' => $active_suspensions,
+        );
+    }
+
+    public function get_warnings( WP_REST_Request $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_warnings';
+        $page = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+        $per_page = 20;
+        $offset = ( $page - 1 ) * $per_page;
+
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+        $warnings = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}" );
+
+        foreach ( $warnings as &$w ) {
+            $user = get_userdata( $w->user_id );
+            $w->user_name = $user ? $user->display_name : 'Unknown';
+            $w->user_avatar = $user ? ( get_user_meta( $w->user_id, 'cnw_avatar_url', true ) ?: '' ) : '';
+            $mod = get_userdata( $w->moderator_id );
+            $w->moderator_name = $mod ? $mod->display_name : 'Unknown';
+        }
+
+        return array( 'warnings' => $warnings, 'total' => $total, 'pages' => ceil( $total / $per_page ) );
+    }
+
+    public function delete_warning( WP_REST_Request $request ) {
+        global $wpdb;
+        $id    = (int) $request['id'];
+        $table = $wpdb->prefix . 'cnw_social_worker_warnings';
+
+        $warning = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+        if ( ! $warning ) {
+            return new WP_Error( 'not_found', 'Warning not found.', array( 'status' => 404 ) );
+        }
+
+        // If deleting an active suspension, clear the user's suspended meta
+        if ( $warning->type === 'suspension' && (int) $warning->is_active === 1 ) {
+            delete_user_meta( (int) $warning->user_id, 'cnw_suspended' );
+            delete_user_meta( (int) $warning->user_id, 'cnw_suspended_until' );
+        }
+
+        $wpdb->delete( $table, array( 'id' => $id ) );
+
+        return array( 'success' => true );
+    }
+
+    public function get_user_warnings( WP_REST_Request $request ) {
+        global $wpdb;
+        $user_id  = (int) $request['id'];
+        $current  = get_current_user_id();
+        $table    = $wpdb->prefix . 'cnw_social_worker_warnings';
+
+        // Only the user themselves or a moderator can view warnings
+        if ( $current !== $user_id && ! current_user_can( 'cnw_close_threads' ) && ! current_user_can( 'manage_options' ) ) {
+            return new WP_Error( 'forbidden', 'You cannot view this user\'s warnings.', array( 'status' => 403 ) );
+        }
+
+        $page     = max( 1, (int) ( $request->get_param( 'page' ) ?: 1 ) );
+        $per_page = 20;
+        $offset   = ( $page - 1 ) * $per_page;
+
+        $total    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE user_id = %d", $user_id ) );
+        $warnings = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE user_id = %d ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            $user_id, $per_page, $offset
+        ) );
+
+        foreach ( $warnings as &$w ) {
+            $mod = get_userdata( $w->moderator_id );
+            $w->moderator_name = $mod ? $mod->display_name : 'Unknown';
+        }
+
+        return array( 'warnings' => $warnings, 'total' => $total, 'pages' => (int) ceil( $total / $per_page ) );
+    }
+
     public function create_report( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
 
         $params = $request->get_json_params();
@@ -2725,6 +3267,8 @@ class Cnw_Social_Bridge_REST_API {
                 'description' => wp_kses_post( $params['description'] ),
                 'link'        => isset( $params['link'] ) ? esc_url_raw( $params['link'] ) : null,
                 'priority'    => sanitize_text_field( $params['priority'] ?? 'medium' ),
+                'content_type' => isset( $params['content_type'] ) ? sanitize_text_field( $params['content_type'] ) : null,
+                'content_id'   => isset( $params['content_id'] ) ? (int) $params['content_id'] : null,
                 'status'      => 'open',
             )
         );
@@ -2982,6 +3526,9 @@ class Cnw_Social_Bridge_REST_API {
      * Send a connection request.
      */
     public function send_connection_request( WP_REST_Request $request ) {
+        $suspension = $this->get_suspension_error();
+        if ( is_wp_error( $suspension ) ) return $suspension;
+
         global $wpdb;
         $me       = get_current_user_id();
         $other    = intval( $request['user_id'] );
