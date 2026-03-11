@@ -25,7 +25,7 @@ if ( $action === 'edit' && $id ) {
 $forum_roles = array(
     'cnw_forum_member' => 'Forum Member',
     'cnw_moderator'    => 'Moderator',
-    'cnw_forum_admin'  => 'Forum Admin',
+    'cnw_forum_admin'  => 'Administrator',
 );
 ?>
 
@@ -80,9 +80,7 @@ $forum_roles = array(
                 </td></tr>
             <tr><th><label for="role">Role</label></th>
                 <td><select id="role" name="role">
-                    <?php
-                    $roles = wp_roles()->get_names();
-                    foreach ( $roles as $role_key => $role_name ) : ?>
+                    <?php foreach ( $forum_roles as $role_key => $role_name ) : ?>
                     <option value="<?php echo esc_attr( $role_key ); ?>" <?php selected( 'cnw_forum_member', $role_key ); ?>><?php echo esc_html( $role_name ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
@@ -144,9 +142,8 @@ $forum_roles = array(
             <tr><th><label for="role">Role</label></th>
                 <td><select id="role" name="role">
                     <?php
-                    $roles = wp_roles()->get_names();
                     $current_role = ! empty( $item->roles ) ? $item->roles[0] : '';
-                    foreach ( $roles as $role_key => $role_name ) : ?>
+                    foreach ( $forum_roles as $role_key => $role_name ) : ?>
                     <option value="<?php echo esc_attr( $role_key ); ?>" <?php selected( $current_role, $role_key ); ?>><?php echo esc_html( $role_name ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>

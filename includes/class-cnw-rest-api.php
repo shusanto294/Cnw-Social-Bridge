@@ -463,7 +463,7 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function can_manage_thread( WP_REST_Request $request ) {
-        if ( current_user_can( 'manage_options' ) ) {
+        if ( current_user_can( 'manage_options' ) || current_user_can( 'cnw_edit_any_post' ) || current_user_can( 'cnw_delete_any_post' ) ) {
             return true;
         }
         global $wpdb;
@@ -476,7 +476,7 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function can_manage_reply( WP_REST_Request $request ) {
-        if ( current_user_can( 'manage_options' ) ) {
+        if ( current_user_can( 'manage_options' ) || current_user_can( 'cnw_edit_any_post' ) || current_user_can( 'cnw_delete_any_post' ) ) {
             return true;
         }
         global $wpdb;
@@ -2401,6 +2401,11 @@ class Cnw_Social_Bridge_REST_API {
             "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'cnw_anonymous' AND meta_value = '1'"
         );
 
+        // Exclude permanently suspended users (active suspension with no expiry)
+        $perm_suspended_ids = $wpdb->get_col(
+            "SELECT DISTINCT user_id FROM {$wpdb->prefix}cnw_social_worker_warnings WHERE type = 'suspension' AND is_active = 1 AND expires_at IS NULL"
+        );
+
         $args = array(
             'number'  => $per_page,
             'paged'   => $page,
@@ -2408,7 +2413,7 @@ class Cnw_Social_Bridge_REST_API {
             'order'   => 'ASC',
         );
 
-        $exclude = $anon_ids;
+        $exclude = array_merge( $anon_ids, $perm_suspended_ids );
         $current = get_current_user_id();
         if ( $current ) {
             $exclude[] = $current;

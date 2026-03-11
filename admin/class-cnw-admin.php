@@ -58,7 +58,10 @@ class Cnw_Social_Bridge_Admin {
         add_action( 'admin_post_cnw_send_password_reset', array( $this, 'handle_send_password_reset' ) );
         add_action( 'admin_post_cnw_export_data',       array( $this, 'handle_export_data' ) );
         add_action( 'admin_post_cnw_import_data',       array( $this, 'handle_import_upload' ) );
+        add_action( 'admin_post_cnw_take_action_warn',    array( $this, 'handle_take_action_warn' ) );
+        add_action( 'admin_post_cnw_take_action_suspend', array( $this, 'handle_take_action_suspend' ) );
         add_action( 'wp_ajax_cnw_import_step',           array( $this, 'ajax_import_step' ) );
+        add_action( 'wp_ajax_cnw_search_users',          array( $this, 'ajax_search_users' ) );
     }
 
     /* ------------------------------------------------------------------
@@ -114,6 +117,7 @@ class Cnw_Social_Bridge_Admin {
             array( 'cnw-social-bridge', 'Reputation',  'cnw-reputation',    'page_reputation' ),
             array( 'cnw-social-bridge', 'Guidelines',  'cnw-guidelines',    'page_guidelines' ),
             array( 'cnw-social-bridge', $reports_label, 'cnw-reports',       'page_reports' ),
+            array( 'cnw-social-bridge', 'Take Action',  'cnw-take-action',   'page_take_action' ),
             array( 'cnw-social-bridge', 'Import / Export', 'cnw-import-export', 'page_import_export' ),
             array( 'cnw-social-bridge', 'Settings',    'cnw-settings',      'page_settings' ),
         );
@@ -177,7 +181,9 @@ class Cnw_Social_Bridge_Admin {
         // Select2 for searchable dropdowns on add/edit forms
         $page = isset( $_GET['page'] ) ? $_GET['page'] : '';
         $act  = isset( $_GET['action'] ) ? $_GET['action'] : '';
-        if ( strpos( $hook, 'cnw' ) !== false && in_array( $act, array( 'add', 'edit' ), true ) && $page !== 'cnw-settings' ) {
+        $need_select2 = ( strpos( $hook, 'cnw' ) !== false && in_array( $act, array( 'add', 'edit' ), true ) && $page !== 'cnw-settings' )
+                     || $page === 'cnw-take-action';
+        if ( $need_select2 ) {
             wp_enqueue_style(
                 'select2',
                 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
@@ -810,7 +816,11 @@ class Cnw_Social_Bridge_Admin {
         $last_name    = sanitize_text_field( $_POST['last_name'] ?? '' );
         $password     = $_POST['user_pass'] ?? '';
         $password_confirm = $_POST['user_pass_confirm'] ?? '';
-        $role         = sanitize_text_field( $_POST['role'] ?? 'cnw_forum_member' );
+        $allowed_roles = array( 'cnw_forum_member', 'cnw_moderator', 'cnw_forum_admin' );
+        $role = sanitize_text_field( $_POST['role'] ?? 'cnw_forum_member' );
+        if ( ! in_array( $role, $allowed_roles, true ) ) {
+            $role = 'cnw_forum_member';
+        }
 
         if ( $password !== $password_confirm ) {
             wp_redirect( add_query_arg( array( 'page' => 'cnw-users', 'action' => 'add', 'msg' => 'error_password' ), admin_url( 'admin.php' ) ) );
@@ -864,12 +874,15 @@ class Cnw_Social_Bridge_Admin {
             'last_name'    => sanitize_text_field( $_POST['last_name'] ?? '' ),
         );
 
-        $role = sanitize_text_field( $_POST['role'] ?? '' );
-        if ( $role ) {
-            $userdata['role'] = $role;
-        }
-
         wp_update_user( $userdata );
+
+        // Update role — only allow the three forum roles.
+        $allowed_roles = array( 'cnw_forum_member', 'cnw_moderator', 'cnw_forum_admin' );
+        $role = sanitize_text_field( $_POST['role'] ?? '' );
+        if ( $role && in_array( $role, $allowed_roles, true ) ) {
+            $user = new WP_User( $id );
+            $user->set_role( $role );
+        }
 
         // Save phone
         $phone = sanitize_text_field( $_POST['cnw_phone'] ?? '' );
@@ -1125,6 +1138,157 @@ class Cnw_Social_Bridge_Admin {
     }
 
     /* ------------------------------------------------------------------
+     * TAKE ACTION handlers (Warn / Suspend from admin dashboard)
+     * ------------------------------------------------------------------ */
+
+    public function handle_take_action_warn() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_take_action_warn' );
+
+        global $wpdb;
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        $reason  = sanitize_textarea_field( $_POST['reason'] ?? '' );
+
+        if ( ! $user_id || empty( $reason ) ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'error' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'error' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_warnings',
+            array(
+                'user_id'      => $user_id,
+                'moderator_id' => get_current_user_id(),
+                'type'         => 'warning',
+                'reason'       => $reason,
+                'is_active'    => 1,
+            )
+        );
+
+        // Send email notification
+        $site_name = get_bloginfo( 'name' );
+        $subject   = sprintf( '[%s] You have received a warning', $site_name );
+        $message   = sprintf(
+            "Hello %s,\n\nYou have received a warning from the moderation team at %s.\n\nReason: %s\n\nPlease review the community guidelines to avoid further action.\n\nRegards,\n%s Moderation Team",
+            $user->display_name,
+            $site_name,
+            $reason,
+            $site_name
+        );
+        wp_mail( $user->user_email, $subject, $message );
+
+        // Create in-app notification
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_notifications',
+            array(
+                'user_id'     => $user_id,
+                'actor_id'    => get_current_user_id(),
+                'type'        => 'warning',
+                'entity_type' => 'user',
+                'entity_id'   => $user_id,
+                'message'     => 'You have received a warning from the moderation team.',
+            )
+        );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'warned', 'msg_user' => urlencode( $user->display_name ) ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    public function handle_take_action_suspend() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        check_admin_referer( 'cnw_take_action_suspend' );
+
+        global $wpdb;
+        $user_id  = (int) ( $_POST['user_id'] ?? 0 );
+        $reason   = sanitize_textarea_field( $_POST['reason'] ?? '' );
+        $duration = (int) ( $_POST['duration'] ?? 0 );
+
+        if ( ! $user_id || empty( $reason ) ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'error' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'error' ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $expires_at = null;
+        if ( $duration ) {
+            $expires_at = gmdate( 'Y-m-d H:i:s', time() + ( $duration * DAY_IN_SECONDS ) );
+        }
+
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_warnings',
+            array(
+                'user_id'      => $user_id,
+                'moderator_id' => get_current_user_id(),
+                'type'         => 'suspension',
+                'reason'       => $reason,
+                'duration'     => $duration ?: null,
+                'expires_at'   => $expires_at,
+                'is_active'    => 1,
+            )
+        );
+
+        // Mark user as suspended in user meta
+        update_user_meta( $user_id, 'cnw_suspended', 1 );
+        update_user_meta( $user_id, 'cnw_suspended_until', $expires_at );
+
+        // Send email notification
+        $site_name = get_bloginfo( 'name' );
+        if ( $duration ) {
+            $duration_text = sprintf( '%d day%s', $duration, $duration > 1 ? 's' : '' );
+            $subject = sprintf( '[%s] Your account has been suspended for %s', $site_name, $duration_text );
+            $message = sprintf(
+                "Hello %s,\n\nYour account on %s has been suspended for %s.\n\nReason: %s\n\nYour suspension will expire on: %s\n\nIf you believe this was a mistake, please contact the moderation team.\n\nRegards,\n%s Moderation Team",
+                $user->display_name,
+                $site_name,
+                $duration_text,
+                $reason,
+                wp_date( 'F j, Y \a\t g:i A', strtotime( $expires_at ) ),
+                $site_name
+            );
+        } else {
+            $subject = sprintf( '[%s] Your account has been permanently suspended', $site_name );
+            $message = sprintf(
+                "Hello %s,\n\nYour account on %s has been permanently suspended.\n\nReason: %s\n\nIf you believe this was a mistake, please contact the moderation team.\n\nRegards,\n%s Moderation Team",
+                $user->display_name,
+                $site_name,
+                $reason,
+                $site_name
+            );
+        }
+        wp_mail( $user->user_email, $subject, $message );
+
+        // Create in-app notification
+        $suspend_msg = $duration
+            ? sprintf( 'Your account has been suspended for %d day%s.', $duration, $duration > 1 ? 's' : '' )
+            : 'Your account has been permanently suspended.';
+        $wpdb->insert(
+            $wpdb->prefix . 'cnw_social_worker_notifications',
+            array(
+                'user_id'     => $user_id,
+                'actor_id'    => get_current_user_id(),
+                'type'        => 'suspension',
+                'entity_type' => 'user',
+                'entity_id'   => $user_id,
+                'message'     => $suspend_msg,
+            )
+        );
+
+        wp_redirect( add_query_arg( array( 'page' => 'cnw-take-action', 'msg' => 'suspended', 'msg_user' => urlencode( $user->display_name ) ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /* ------------------------------------------------------------------
      * EXPORT / IMPORT handlers
      * ------------------------------------------------------------------ */
 
@@ -1355,6 +1519,38 @@ class Cnw_Social_Bridge_Admin {
         $redirect_args['import_ready'] = $import_id;
         wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
         exit;
+    }
+
+    /* ------------------------------------------------------------------
+     * AJAX — User search for Take Action page
+     * ------------------------------------------------------------------ */
+    public function ajax_search_users() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $term = sanitize_text_field( $_GET['q'] ?? '' );
+        $results = array();
+
+        if ( strlen( $term ) >= 2 ) {
+            $user_query = new WP_User_Query( array(
+                'search'         => '*' . $term . '*',
+                'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+                'number'         => 20,
+                'orderby'        => 'display_name',
+                'order'          => 'ASC',
+            ) );
+
+            foreach ( $user_query->get_results() as $u ) {
+                if ( user_can( $u, 'manage_options' ) ) continue; // skip admins
+                $results[] = array(
+                    'id'   => $u->ID,
+                    'text' => $u->display_name . ' (' . $u->user_email . ')',
+                );
+            }
+        }
+
+        wp_send_json( array( 'results' => $results ) );
     }
 
     /* ------------------------------------------------------------------
@@ -1905,6 +2101,7 @@ class Cnw_Social_Bridge_Admin {
     public function page_users()          { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-users.php'; }
     public function page_guidelines()     { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-guidelines.php'; }
     public function page_reports()        { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-reports.php'; }
+    public function page_take_action()    { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-take-action.php'; }
     public function page_import_export()  { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-import-export.php'; }
     public function page_settings()       { include CNW_SOCIAL_BRIDGE_PLUGIN_DIR . 'admin/pages/page-settings.php'; }
 }

@@ -41,6 +41,35 @@ if ( $action === 'view' && $id ) {
          WHERE r.id = %d", $id
     ) );
     if ( ! $item ) { $action = 'list'; }
+
+    // Build proper content link (mirrors frontend logic)
+    if ( $item ) {
+        // Find the page that contains the [cnw_social_bridge] shortcode
+        $cnw_page = get_posts( array(
+            'post_type'  => 'page',
+            'post_status' => 'publish',
+            's'          => '[cnw_social_bridge]',
+            'numberposts' => 1,
+        ) );
+        $base_url = ! empty( $cnw_page ) ? get_permalink( $cnw_page[0]->ID ) : home_url( '/' );
+        $base_url = trailingslashit( $base_url ) . '#';
+
+        if ( ! empty( $item->content_type ) && $item->content_type === 'reply' && ! empty( $item->content_id ) ) {
+            $thread_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d",
+                $item->content_id
+            ) );
+            if ( $thread_id ) {
+                $item->content_link = $base_url . '/thread/' . $thread_id . '?highlight_reply=' . $item->content_id;
+            }
+        } elseif ( ! empty( $item->content_type ) && $item->content_type === 'thread' && ! empty( $item->content_id ) ) {
+            $item->content_link = $base_url . '/thread/' . $item->content_id;
+        }
+
+        if ( empty( $item->content_link ) && ! empty( $item->link ) ) {
+            $item->content_link = $item->link;
+        }
+    }
 }
 
 // Status counts for tabs
@@ -80,8 +109,8 @@ $total_count = array_sum( $status_counts );
             <tr><th>Email</th><td><?php echo esc_html( $item->reporter_email ); ?></td></tr>
             <tr><th>Reputation</th><td><strong><?php echo esc_html( (int) $item->reporter_reputation ); ?></strong> points</td></tr>
             <tr><th>Type</th><td><?php echo esc_html( $type_labels[ $item->type ] ?? $item->type ); ?></td></tr>
-            <?php if ( ! empty( $item->link ) ) : ?>
-            <tr><th>Linked Content</th><td><a href="<?php echo esc_url( $item->link ); ?>" target="_blank"><?php echo esc_html( $item->link ); ?></a></td></tr>
+            <?php if ( ! empty( $item->content_link ) ) : ?>
+            <tr><th>Linked Content</th><td><a href="<?php echo esc_url( $item->content_link ); ?>" target="_blank"><?php echo esc_html( $item->content_link ); ?></a></td></tr>
             <?php endif; ?>
             <tr><th>Submitted</th><td><?php echo esc_html( $item->created_at ); ?></td></tr>
             <tr><th>Last Updated</th><td><?php echo esc_html( $item->updated_at ); ?></td></tr>
