@@ -91,7 +91,7 @@
               @keydown.enter="handleNotifClick(n)"
               :aria-label="n.message"
             >
-              <img :src="n.actor_avatar" class="notif-item-avatar" width="32" height="32" alt="" />
+              <img :src="n.actor_avatar" class="notif-item-avatar" width="32" height="32" alt="" loading="lazy" />
               <div class="notif-item-body">
                 <p class="notif-item-msg">{{ n.message }}</p>
                 <span class="notif-item-time">{{ timeAgo(n.created_at) }}</span>

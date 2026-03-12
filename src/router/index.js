@@ -1,18 +1,19 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import QuestionListView from '@/components/views/QuestionListView.vue';
-import ThreadDetailView from '@/components/views/ThreadDetailView.vue';
-import AskQuestionView from '@/components/views/AskQuestionView.vue';
-import MessagesView from '@/components/views/MessagesView.vue';
-import UsersView from '@/components/views/UsersView.vue';
-import TagsView from '@/components/views/TagsView.vue';
-import ActivityView from '@/components/views/ActivityView.vue';
-import SavedThreadsView from '@/components/views/SavedThreadsView.vue';
-import GuidelinesView from '@/components/views/GuidelinesView.vue';
-import ReportIssueView from '@/components/views/ReportIssueView.vue';
-import UserProfileView from '@/components/views/UserProfileView.vue';
-import LoginView from '@/components/views/LoginView.vue';
-import NotFoundView from '@/components/views/NotFoundView.vue';
-import ModerationView from '@/components/views/ModerationView.vue';
+
+const QuestionListView = () => import('@/components/views/QuestionListView.vue');
+const ThreadDetailView = () => import('@/components/views/ThreadDetailView.vue');
+const AskQuestionView = () => import('@/components/views/AskQuestionView.vue');
+const MessagesView = () => import('@/components/views/MessagesView.vue');
+const UsersView = () => import('@/components/views/UsersView.vue');
+const TagsView = () => import('@/components/views/TagsView.vue');
+const ActivityView = () => import('@/components/views/ActivityView.vue');
+const SavedThreadsView = () => import('@/components/views/SavedThreadsView.vue');
+const GuidelinesView = () => import('@/components/views/GuidelinesView.vue');
+const ReportIssueView = () => import('@/components/views/ReportIssueView.vue');
+const UserProfileView = () => import('@/components/views/UserProfileView.vue');
+const LoginView = () => import('@/components/views/LoginView.vue');
+const NotFoundView = () => import('@/components/views/NotFoundView.vue');
+const ModerationView = () => import('@/components/views/ModerationView.vue');
 
 const routes = [
   { path: '/', component: QuestionListView },

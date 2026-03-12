@@ -735,6 +735,11 @@ export default {
       try {
         this.user = await getUser(this.userId);
         this.buildTabs();
+        // Apply tab from query param now that tabs are built
+        const qTab = this.$route?.query?.tab;
+        if (qTab && this.tabs.some(t => t.key === qTab)) {
+          this.activeTab = qTab;
+        }
         if (!this.user.profile_restricted) {
           this.fetchReplies();
         }

@@ -627,6 +627,22 @@ class Cnw_Social_Bridge_REST_API {
         $total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT t.id) FROM {$wpdb->prefix}cnw_social_worker_threads t $join $where" );
         // phpcs:enable
 
+        // Batch fetch all tags for these threads (avoid N+1)
+        $thread_ids = array_map( function( $t ) { return (int) $t->id; }, $threads );
+        $tags_by_thread = array();
+        if ( ! empty( $thread_ids ) ) {
+            $ids_placeholder = implode( ',', array_map( 'intval', $thread_ids ) );
+            $all_tags = $wpdb->get_results(
+                "SELECT tt.thread_id, tg.name
+                 FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tg.id = tt.tag_id
+                 WHERE tt.thread_id IN ({$ids_placeholder})"
+            );
+            foreach ( $all_tags as $tag_row ) {
+                $tags_by_thread[ $tag_row->thread_id ][] = $tag_row->name;
+            }
+        }
+
         // Attach tags + avatar, handle anonymous, flag reply matches
         foreach ( $threads as &$thread ) {
             $thread->has_reply_match = false;
@@ -640,12 +656,7 @@ class Cnw_Social_Bridge_REST_API {
                 $thread->has_reply_match = $reply_match > 0;
             }
 
-            $thread->tags = $wpdb->get_col( $wpdb->prepare(
-                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
-                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
-                 WHERE tt.thread_id = %d",
-                $thread->id
-            ) );
+            $thread->tags = isset( $tags_by_thread[ $thread->id ] ) ? $tags_by_thread[ $thread->id ] : array();
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
@@ -1742,11 +1753,15 @@ class Cnw_Social_Bridge_REST_API {
      * ================================================================== */
 
     public function get_categories( WP_REST_Request $request ) {
-        global $wpdb;
-
-        return $wpdb->get_results(
-            "SELECT * FROM {$wpdb->prefix}cnw_social_worker_categories ORDER BY sort_order ASC, name ASC"
-        );
+        $cats = get_transient( 'cnw_categories' );
+        if ( false === $cats ) {
+            global $wpdb;
+            $cats = $wpdb->get_results(
+                "SELECT * FROM {$wpdb->prefix}cnw_social_worker_categories ORDER BY sort_order ASC, name ASC"
+            );
+            set_transient( 'cnw_categories', $cats, HOUR_IN_SECONDS );
+        }
+        return $cats;
     }
 
     public function get_category( WP_REST_Request $request ) {
@@ -1798,6 +1813,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to create category', array( 'status' => 500 ) );
         }
 
+        delete_transient( 'cnw_categories' );
+
         return array( 'success' => true, 'id' => $wpdb->insert_id );
     }
 
@@ -1827,6 +1844,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to update category', array( 'status' => 500 ) );
         }
 
+        delete_transient( 'cnw_categories' );
+
         return array( 'success' => true, 'id' => $id );
     }
 
@@ -1839,6 +1858,8 @@ class Cnw_Social_Bridge_REST_API {
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete category', array( 'status' => 500 ) );
         }
+
+        delete_transient( 'cnw_categories' );
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -2442,14 +2463,25 @@ class Cnw_Social_Bridge_REST_API {
             $offset
         ) );
 
+        // Batch fetch all tags for saved threads (avoid N+1)
+        $saved_thread_ids = array_map( function( $t ) { return (int) $t->id; }, $threads );
+        $saved_tags_by_thread = array();
+        if ( ! empty( $saved_thread_ids ) ) {
+            $ids_placeholder = implode( ',', array_map( 'intval', $saved_thread_ids ) );
+            $all_tags = $wpdb->get_results(
+                "SELECT tt.thread_id, tg.name
+                 FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tg.id = tt.tag_id
+                 WHERE tt.thread_id IN ({$ids_placeholder})"
+            );
+            foreach ( $all_tags as $tag_row ) {
+                $saved_tags_by_thread[ $tag_row->thread_id ][] = $tag_row->name;
+            }
+        }
+
         // Attach tags + avatar, handle anonymous
         foreach ( $threads as &$thread ) {
-            $thread->tags = $wpdb->get_col( $wpdb->prepare(
-                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
-                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
-                 WHERE tt.thread_id = %d",
-                $thread->id
-            ) );
+            $thread->tags = isset( $saved_tags_by_thread[ $thread->id ] ) ? $saved_tags_by_thread[ $thread->id ] : array();
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
@@ -2760,15 +2792,25 @@ class Cnw_Social_Bridge_REST_API {
             $user_id, $per_page, $offset
         ) );
 
+        // Batch fetch all tags for user threads (avoid N+1)
+        $ut_ids = array_map( function( $t ) { return (int) $t->id; }, $threads );
+        $ut_tags_by_thread = array();
+        if ( ! empty( $ut_ids ) ) {
+            $ids_placeholder = implode( ',', array_map( 'intval', $ut_ids ) );
+            $all_tags = $wpdb->get_results(
+                "SELECT tt.thread_id, tg.name
+                 FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tg.id = tt.tag_id
+                 WHERE tt.thread_id IN ({$ids_placeholder})"
+            );
+            foreach ( $all_tags as $tag_row ) {
+                $ut_tags_by_thread[ $tag_row->thread_id ][] = $tag_row->name;
+            }
+        }
+
         foreach ( $threads as &$thread ) {
             $thread->author_avatar = $this->get_user_avatar( (int) $thread->author_id, 80 );
-            $tag_names = $wpdb->get_col( $wpdb->prepare(
-                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_tags tg
-                 INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags tt ON tg.id = tt.tag_id
-                 WHERE tt.thread_id = %d",
-                $thread->id
-            ) );
-            $thread->tags = $tag_names;
+            $thread->tags = isset( $ut_tags_by_thread[ $thread->id ] ) ? $ut_tags_by_thread[ $thread->id ] : array();
         }
 
         $total = (int) $wpdb->get_var( $wpdb->prepare(
@@ -2799,16 +2841,25 @@ class Cnw_Social_Bridge_REST_API {
             $user_id, $per_page, $offset
         ) );
 
+        // Batch fetch all tags for reply parent threads (avoid N+1)
+        $reply_thread_ids = array_unique( array_map( function( $r ) { return (int) $r->thread_id; }, $replies ) );
+        $ur_tags_by_thread = array();
+        if ( ! empty( $reply_thread_ids ) ) {
+            $ids_placeholder = implode( ',', array_map( 'intval', $reply_thread_ids ) );
+            $all_tags = $wpdb->get_results(
+                "SELECT tt.thread_id, tg.name
+                 FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
+                 JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tg.id = tt.tag_id
+                 WHERE tt.thread_id IN ({$ids_placeholder})"
+            );
+            foreach ( $all_tags as $tag_row ) {
+                $ur_tags_by_thread[ $tag_row->thread_id ][] = $tag_row->name;
+            }
+        }
+
         foreach ( $replies as &$reply ) {
             $reply->author_avatar = $this->get_user_avatar( (int) $reply->author_id, 80 );
-            // Get tags from parent thread
-            $tag_names = $wpdb->get_col( $wpdb->prepare(
-                "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_tags tg
-                 INNER JOIN {$wpdb->prefix}cnw_social_worker_thread_tags tt ON tg.id = tt.tag_id
-                 WHERE tt.thread_id = %d",
-                $reply->thread_id
-            ) );
-            $reply->tags = $tag_names;
+            $reply->tags = isset( $ur_tags_by_thread[ $reply->thread_id ] ) ? $ur_tags_by_thread[ $reply->thread_id ] : array();
         }
 
         $total = (int) $wpdb->get_var( $wpdb->prepare(
@@ -3272,6 +3323,11 @@ class Cnw_Social_Bridge_REST_API {
             $update['admin_notes'] = wp_kses_post( $params['admin_notes'] );
         }
         $wpdb->update( $table, $update, array( 'id' => $id ) );
+
+        // Invalidate admin badge cache and notify moderators
+        delete_transient( 'cnw_admin_badge_counts' );
+        $this->notify_moderators_new_report();
+
         return array( 'success' => true );
     }
 
@@ -3537,7 +3593,33 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to submit report.', array( 'status' => 500 ) );
         }
 
+        // Invalidate admin badge cache
+        delete_transient( 'cnw_admin_badge_counts' );
+
+        // Notify all moderators in real-time so their report count updates
+        $this->notify_moderators_new_report();
+
         return array( 'success' => true, 'id' => $wpdb->insert_id );
+    }
+
+    /**
+     * Send a Pusher event to all moderators when a new report is filed.
+     */
+    private function notify_moderators_new_report() {
+        $moderators = get_users( array(
+            'role__in' => array( 'cnw_moderator', 'cnw_forum_admin', 'administrator' ),
+            'fields'   => 'ID',
+        ) );
+
+        $me = get_current_user_id();
+        foreach ( $moderators as $mod_id ) {
+            if ( (int) $mod_id === $me ) continue;
+            Cnw_Social_Bridge_Pusher::trigger(
+                'private-user-' . (int) $mod_id,
+                'new-report',
+                array( 'reporter_id' => $me )
+            );
+        }
     }
 
     /* ==================================================================

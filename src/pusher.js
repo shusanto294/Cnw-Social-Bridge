@@ -52,7 +52,7 @@ export function getPusher() {
   const nonce = window.cnwData?.nonce || '';
 
   // Enable Pusher logging in dev for debugging
-  Pusher.logToConsole = true;
+  Pusher.logToConsole = !!(window.cnwData?.isDev);
 
   const options = {
     cluster,

@@ -134,7 +134,9 @@ class Cnw_Social_Bridge {
             PRIMARY KEY (id),
             KEY author_id  (author_id),
             KEY status     (status),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY author_status (author_id, status),
+            KEY status_pinned (status, is_pinned)
         ) $charset_collate;";
 
         $sql_replies = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_replies (
@@ -153,7 +155,9 @@ class Cnw_Social_Bridge {
             KEY author_id  (author_id),
             KEY parent_id  (parent_id),
             KEY status     (status),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY thread_status (thread_id, status),
+            KEY parent_status (parent_id, status)
         ) $charset_collate;";
 
         $sql_messages = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_messages (
@@ -170,7 +174,9 @@ class Cnw_Social_Bridge {
             KEY recipient_id (recipient_id),
             KEY parent_id    (parent_id),
             KEY is_read      (is_read),
-            KEY created_at   (created_at)
+            KEY created_at   (created_at),
+            KEY sender_recipient (sender_id, recipient_id),
+            KEY recipient_read (recipient_id, is_read)
         ) $charset_collate;";
 
         $sql_categories = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_categories (
@@ -230,6 +236,7 @@ class Cnw_Social_Bridge {
             created_at  datetime            DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY user_target (user_id, target_type, target_id),
+            UNIQUE KEY user_vote (target_type, target_id, user_id),
             KEY target_type (target_type),
             KEY target_id   (target_id),
             KEY vote_type   (vote_type)
@@ -289,7 +296,8 @@ class Cnw_Social_Bridge {
                 thread_id  bigint(20) unsigned NOT NULL,
                 created_at datetime            DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (user_id, thread_id),
-                KEY thread_id (thread_id)
+                KEY thread_id (thread_id),
+                UNIQUE KEY user_thread (user_id, thread_id)
             ) $charset_collate"
         );
 
@@ -306,7 +314,9 @@ class Cnw_Social_Bridge {
             PRIMARY KEY (id),
             KEY user_id    (user_id),
             KEY is_read    (is_read),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY user_read  (user_id, is_read),
+            KEY user_emailed (user_id, emailed)
         ) $charset_collate;";
         dbDelta( $sql_notifications );
 
@@ -382,7 +392,8 @@ class Cnw_Social_Bridge {
             KEY moderator_id (moderator_id),
             KEY type        (type),
             KEY is_active   (is_active),
-            KEY expires_at  (expires_at)
+            KEY expires_at  (expires_at),
+            KEY user_active (user_id, is_active)
         ) $charset_collate;";
         dbDelta( $sql_warnings );
 
@@ -460,8 +471,14 @@ class Cnw_Social_Bridge {
 
     /**
      * Run DB migrations and schedule cron if not yet done.
+     * Gated by a version check so ALTER/SHOW queries don't run on every page load.
      */
     public function maybe_run_upgrades() {
+        $db_version = get_option( 'cnw_db_version', '0' );
+        if ( $db_version === '1.3' ) {
+            return; // Current version, skip all upgrade checks
+        }
+
         global $wpdb;
 
         // Add emailed column if missing
@@ -476,6 +493,71 @@ class Cnw_Social_Bridge {
         if ( ! wp_next_scheduled( 'cnw_send_email_notifications' ) ) {
             wp_schedule_event( time(), 'cnw_every_5_min', 'cnw_send_email_notifications' );
         }
+
+        // Add composite indexes for existing installations
+        $this->maybe_add_indexes();
+
+        update_option( 'cnw_db_version', '1.3' );
+    }
+
+    /**
+     * Add composite indexes to existing tables (runs once).
+     */
+    private function maybe_add_indexes() {
+        global $wpdb;
+
+        if ( get_option( 'cnw_indexes_added', false ) ) {
+            return;
+        }
+
+        $prefix = $wpdb->prefix . 'cnw_social_worker_';
+
+        $indexes = array(
+            $prefix . 'threads' => array(
+                'author_status' => "ALTER TABLE `{$prefix}threads` ADD INDEX `author_status` (`author_id`, `status`)",
+                'status_pinned' => "ALTER TABLE `{$prefix}threads` ADD INDEX `status_pinned` (`status`, `is_pinned`)",
+            ),
+            $prefix . 'replies' => array(
+                'thread_status' => "ALTER TABLE `{$prefix}replies` ADD INDEX `thread_status` (`thread_id`, `status`)",
+                'parent_status' => "ALTER TABLE `{$prefix}replies` ADD INDEX `parent_status` (`parent_id`, `status`)",
+            ),
+            $prefix . 'messages' => array(
+                'sender_recipient' => "ALTER TABLE `{$prefix}messages` ADD INDEX `sender_recipient` (`sender_id`, `recipient_id`)",
+                'recipient_read'   => "ALTER TABLE `{$prefix}messages` ADD INDEX `recipient_read` (`recipient_id`, `is_read`)",
+            ),
+            $prefix . 'saved_threads' => array(
+                'user_thread' => "ALTER TABLE `{$prefix}saved_threads` ADD UNIQUE INDEX `user_thread` (`user_id`, `thread_id`)",
+            ),
+            $prefix . 'votes' => array(
+                'user_vote' => "ALTER TABLE `{$prefix}votes` ADD UNIQUE INDEX `user_vote` (`target_type`, `target_id`, `user_id`)",
+            ),
+            $prefix . 'notifications' => array(
+                'user_read'    => "ALTER TABLE `{$prefix}notifications` ADD INDEX `user_read` (`user_id`, `is_read`)",
+                'user_emailed' => "ALTER TABLE `{$prefix}notifications` ADD INDEX `user_emailed` (`user_id`, `emailed`)",
+            ),
+            $prefix . 'warnings' => array(
+                'user_active' => "ALTER TABLE `{$prefix}warnings` ADD INDEX `user_active` (`user_id`, `is_active`)",
+            ),
+        );
+
+        foreach ( $indexes as $table => $idx_sqls ) {
+            // Get existing indexes for this table
+            $existing = $wpdb->get_results( "SHOW INDEX FROM `{$table}`", ARRAY_A );
+            $existing_names = array();
+            if ( $existing ) {
+                foreach ( $existing as $row ) {
+                    $existing_names[ $row['Key_name'] ] = true;
+                }
+            }
+
+            foreach ( $idx_sqls as $idx_name => $sql ) {
+                if ( ! isset( $existing_names[ $idx_name ] ) ) {
+                    $wpdb->query( $sql );
+                }
+            }
+        }
+
+        update_option( 'cnw_indexes_added', '1' );
     }
 
     /**
@@ -531,21 +613,27 @@ class Cnw_Social_Bridge {
         global $wpdb;
 
         $table         = $wpdb->prefix . 'cnw_social_worker_notifications';
-        $batch_size    = 50;  // Process oldest 50 notifications per run
+        $user_batch    = 50;  // Process 50 users per cron run
         $max_in_email  = 20;  // Max items shown in one email
 
         // Mark any already-read notifications as emailed so they stop showing up
         $wpdb->query( "UPDATE {$table} SET emailed = 1 WHERE emailed = 0 AND is_read = 1" );
 
-        // Fetch the oldest 50 un-emailed, unread notifications
-        $notifications = $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM {$table} WHERE emailed = 0 AND is_read = 0 ORDER BY created_at ASC LIMIT %d",
-            $batch_size
+        // Find the next 50 users who have un-emailed, unread notifications
+        $user_ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT user_id FROM {$table} WHERE emailed = 0 AND is_read = 0 ORDER BY user_id ASC LIMIT %d",
+            $user_batch
         ) );
 
-        if ( empty( $notifications ) ) {
+        if ( empty( $user_ids ) ) {
             return;
         }
+
+        // Fetch ALL un-emailed, unread notifications for these users
+        $id_placeholders = implode( ',', array_map( 'intval', $user_ids ) );
+        $notifications = $wpdb->get_results(
+            "SELECT * FROM {$table} WHERE emailed = 0 AND is_read = 0 AND user_id IN ({$id_placeholders}) ORDER BY created_at ASC"
+        );
 
         // Group by user_id
         $by_user = array();
@@ -563,11 +651,10 @@ class Cnw_Social_Bridge {
         foreach ( $by_user as $user_id => $user_notifs ) {
             $user = get_userdata( $user_id );
 
-            // Collect all IDs in this batch for this user
+            // Collect all IDs for this user
             $all_ids = array_map( function( $n ) { return (int) $n->id; }, $user_notifs );
 
             if ( ! $user || ! $user->user_email ) {
-                // No valid user — mark as emailed and skip
                 $this->mark_notifs_emailed( $table, $all_ids );
                 continue;
             }
@@ -576,7 +663,6 @@ class Cnw_Social_Bridge {
             $email_setting = isset( $prefs['email_notifications'] ) ? $prefs['email_notifications'] : 'inactive';
 
             if ( $email_setting === 'none' ) {
-                // User opted out — mark as emailed, no email
                 $this->mark_notifs_emailed( $table, $all_ids );
                 continue;
             }
@@ -817,6 +903,7 @@ class Cnw_Social_Bridge {
         wp_localize_script( 'cnw-app-script', 'cnwData', array(
             'restUrl'     => esc_url_raw( rest_url( 'cnw-social-bridge/v1' ) ),
             'siteUrl'     => esc_url_raw( home_url( '/' ) ),
+            'distUrl'     => CNW_SOCIAL_BRIDGE_PLUGIN_URL . 'dist/',
             'nonce'       => wp_create_nonce( 'wp_rest' ),
             'defaultAvatar' => CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR,
             'pusherKey'     => get_option( 'cnw_pusher_key', '' ),

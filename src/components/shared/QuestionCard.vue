@@ -13,6 +13,7 @@
               :alt="thread.author_name"
               class="cnw-social-worker-avatar qcard-avatar"
               width="34" height="34"
+              loading="lazy"
             />
           </router-link>
           <router-link :to="'/users/' + thread.author_id" class="qcard-author qcard-author-link" @click.stop>{{ thread.author_name }}</router-link>
@@ -525,6 +526,10 @@ export default {
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
+}
+.qcard-meta-right {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .qcard-meta-left img{
   width: 25px;

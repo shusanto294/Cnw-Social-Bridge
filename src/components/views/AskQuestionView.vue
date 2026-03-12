@@ -480,51 +480,7 @@ export default {
   justify-content: flex-end;
 }
 
-.ask-anon-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  background: var(--bg);
-  border: none;
-  border-radius: var(--radius-m);
-  padding: var(--space-3xs) var(--space-xs);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: #000;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.ask-anon-toggle.is-active {
-  color: var(--primary);
-}
-
-/* Toggle switch */
-.toggle-track {
-  display: inline-block;
-  width: 32px;
-  height: 18px;
-  border-radius: 9px;
-  background: #ccc;
-  position: relative;
-  transition: background 0.2s;
-}
-.toggle-track.on {
-  background: var(--primary);
-}
-.toggle-thumb {
-  display: block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: left 0.2s;
-}
-.toggle-track.on .toggle-thumb {
-  left: 16px;
-}
+/* Shared .ask-anon-toggle and .toggle-track/.toggle-thumb styles are in main.css */
 
 /* Form */
 .ask-form {

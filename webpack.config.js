@@ -7,6 +7,8 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'js/app.js',
+    chunkFilename: 'js/[name].[contenthash:8].js',
+    publicPath: '',
     clean: true,
   },
   module: {
@@ -36,6 +38,13 @@ module.exports = {
     extensions: ['.js', '.vue'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
+    },
+  },
+  optimization: {
+    splitChunks: {
+      chunks: 'async',
+      minSize: 10000,
+      maxSize: 250000,
     },
   },
   performance: {

@@ -1,0 +1,403 @@
+
+/* ── Card container ──────────────────────────────────────────── */
+.question-card {
+  background: var(--white);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  border: var(--radius-xs) solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* ── Header: avatar + name + verified + date ─────────────────── */
+.qcard-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.qcard-meta-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+.qcard-meta-right {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.qcard-meta-left img{
+  width: 25px;
+  height: 25px;
+  object-fit: cover;
+}
+.qcard-avatar {
+  border-radius: 50%;
+}
+.qcard-anon-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary, #3aa9da);
+  flex-shrink: 0;
+}
+.qcard-anon-avatar-sm {
+  width: 24px;
+  height: 24px;
+}
+.qcard-anon-avatar-sm svg {
+  width: 12px;
+  height: 12px;
+}
+.qcard-author {
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #000;
+  white-space: nowrap;
+  line-height: 16px;
+}
+.qcard-author-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.qcard-author-link:hover {
+  color: var(--primary);
+}
+.qcard-date {
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: #999;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+/* ── Title ────────────────────────────────────────────────────── */
+.qcard-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  line-height: 24.5px;
+  cursor: pointer;
+}
+.qcard-title:hover {
+  color: var(--teal-dark);
+}
+
+/* ── Excerpt ──────────────────────────────────────────────────── */
+.qcard-excerpt {
+  font-size: var(--text-m);
+  font-weight: 300;
+  color: #000;
+  line-height: 1.32;
+}
+
+/* ── Tags — gradient badges ───────────────────────────────────── */
+.qcard-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.qcard-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xs) var(--space-2xs);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--white);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+}
+
+/* ── Stats rows ───────────────────────────────────────────────── */
+.qcard-stats-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+.stat-btn {
+  background: none;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  padding: 0;
+  padding-bottom: var(--space-4xs);
+  line-height: 16px;
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+.stat-btn:hover {
+  color: var(--text-dark);
+}
+.vote-btn:hover {
+  color: var(--secondary);
+}
+.vote-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.vote-active-up {
+  color: var(--secondary) !important;
+}
+.vote-active-up svg {
+  fill: var(--secondary);
+  stroke: var(--secondary);
+}
+.vote-active-down {
+  color: var(--red) !important;
+}
+.vote-active-down svg {
+  fill: var(--red);
+  stroke: var(--red);
+}
+
+/* Save/love button */
+.save-btn:hover {
+  color: #e74c3c;
+}
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.save-active {
+  color: #e74c3c !important;
+}
+
+/* Teal vertical divider */
+.stat-divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Views */
+.stat-views {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.stat-views-label {
+  color: #999;
+}
+.stat-views-value {
+  color: var(--text-body);
+}
+
+/* Reply link with underline */
+.reply-link {
+  color: var(--text-body);
+  border-bottom: var(--radius-xs) solid var(--primary);
+}
+.reply-link:hover {
+  color: var(--teal-dark);
+}
+
+/* Answered badge — simple dot + text */
+.answered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-body);
+  line-height: 16px;
+  white-space: nowrap;
+  padding-bottom: var(--space-4xs);
+}
+
+/* ── Inline replies ───────────────────────────────────────────── */
+.qcard-replies {
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--space-m);
+}
+
+/* Write message box — matches Figma */
+.qcard-login-prompt {
+  padding: var(--space-xs) var(--space-m);
+  font-size: 0.92em;
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+}
+.qcard-login-prompt a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.qcard-login-prompt a:hover {
+  text-decoration: underline;
+}
+.qcard-replies > .inline-reply-form {
+  margin-top: var(--space-xs);
+}
+.inline-reply-form {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+}
+.inline-reply-form img{
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+}
+.inline-reply-input-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  background: var(--bg);
+  border-radius: var(--radius-m);
+  padding: var(--space-2xs) var(--space-xs);
+}
+.inline-reply-input {
+  width: 100%;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  color: #999;
+  background: transparent;
+  resize: none;
+  line-height: 16px;
+}
+.inline-reply-input:focus {
+  outline: none;
+  color: var(--text-body);
+}
+.inline-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.inline-reply-send-btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-3xs) var(--space-s);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  font-family: inherit;
+  line-height: 16px;
+  cursor: pointer;
+}
+.inline-reply-send-btn:hover {
+  background: var(--secondary);
+}
+.inline-reply-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 760px) {
+.question-card {
+    padding: var(--space-xs);
+}
+.qcard-meta {
+    align-items: flex-start;
+}
+.qcard-meta-left {
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+.qcard-date {
+    width: 100%;
+    margin-top: 2px;
+    white-space: normal;
+}
+.qcard-tag {
+    padding: 3px 8px;
+    font-size: 11px;
+    line-height: 14px;
+}
+.qcard-tags {
+    gap: var(--space-3xs);
+}
+.qcard-stats-row {
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+}
+.qcard-title {
+    font-size: 16px;
+    line-height: 22px;
+}
+.qcard-replies {
+    padding-left: var(--space-xs);
+}
+}
+@media (max-width: 480px) {
+.question-card {
+    padding: var(--space-2xs);
+    gap: var(--space-3xs);
+}
+.qcard-meta-left {
+    gap: var(--space-3xs);
+}
+.qcard-meta-right {
+    gap: var(--space-3xs);
+}
+.qcard-date {
+    font-size: 11px;
+}
+.qcard-title {
+    font-size: 15px;
+    line-height: 20px;
+}
+.qcard-excerpt {
+    font-size: 13px;
+}
+.stat-btn span:last-child {
+    display: none;
+}
+.stat-views-label {
+    display: none;
+}
+.answered-badge span {
+    font-size: 11px;
+}
+.qcard-replies {
+    padding-left: var(--space-2xs);
+}
+.td-modal {
+    width: auto;
+    max-width: 95vw;
+    margin: 0 8px;
+}
+.td-modal-sm {
+    width: auto;
+}
+}
+
+
+.cnw-social-worker-saved-view { display: flex; flex-direction: column; gap: 16px;
+}
+.cnw-social-worker-view-heading { font-size: 20px; font-weight: 800; color: var(--text-dark);
+}
+.cnw-social-worker-placeholder-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 60px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-light);
+  font-size: 15px;
+}
+

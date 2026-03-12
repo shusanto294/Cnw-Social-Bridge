@@ -79,27 +79,38 @@ class Cnw_Social_Bridge_Admin {
             30
         );
 
-        // Count open reports for menu badge
+        // Count open reports / pending content for menu badges (cached 5 min)
         global $wpdb;
-        $open_reports = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_reports WHERE status = 'open'"
-        );
+        $cached_counts = get_transient( 'cnw_admin_badge_counts' );
+        if ( false === $cached_counts ) {
+            $cached_counts = array(
+                'open_reports'    => (int) $wpdb->get_var(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_reports WHERE status = 'open'"
+                ),
+                'pending_threads' => (int) $wpdb->get_var(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE status = 'pending'"
+                ),
+                'pending_replies' => (int) $wpdb->get_var(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE status = 'pending'"
+                ),
+            );
+            set_transient( 'cnw_admin_badge_counts', $cached_counts, 5 * MINUTE_IN_SECONDS );
+        }
+
+        $open_reports    = $cached_counts['open_reports'];
+        $pending_threads = $cached_counts['pending_threads'];
+        $pending_replies = $cached_counts['pending_replies'];
+
         $reports_label = 'Reports';
         if ( $open_reports > 0 ) {
             $reports_label = sprintf( 'Reports <span class="awaiting-mod">%d</span>', $open_reports );
         }
 
-        $pending_threads = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_threads WHERE status = 'pending'"
-        );
         $threads_label = 'Threads';
         if ( $pending_threads > 0 ) {
             $threads_label = sprintf( 'Threads <span class="awaiting-mod">%d</span>', $pending_threads );
         }
 
-        $pending_replies = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE status = 'pending'"
-        );
         $replies_label = 'Replies';
         if ( $pending_replies > 0 ) {
             $replies_label = sprintf( 'Replies <span class="awaiting-mod">%d</span>', $pending_replies );

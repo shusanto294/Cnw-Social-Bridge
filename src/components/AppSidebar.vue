@@ -259,15 +259,22 @@ export default {
     const channel = getUserChannel();
     if (channel) {
       channel.bind('new-message', () => {
-        // Small delay so the server has written the row before we count
         setTimeout(this._refreshUnread, 300);
       });
       channel.bind('messages-read', this._refreshUnread);
       channel.bind('new-notification', (data) => {
-        if (data.type === 'connection_request') {
+        if (data.type === 'connection_request' || data.type === 'connection_accepted') {
           setTimeout(this._refreshConnectionRequests, 300);
         }
       });
+      // Connection changes from the other side
+      channel.bind('connection-removed', () => { setTimeout(this._refreshConnectionRequests, 300); });
+      channel.bind('connection-blocked', () => { setTimeout(this._refreshConnectionRequests, 300); });
+
+      // Report count updates for moderators
+      if (this.canModerate && this._refreshOpenReports) {
+        channel.bind('new-report', () => { setTimeout(this._refreshOpenReports, 300); });
+      }
     }
 
     // Listen for local event when user reads messages in MessagesView
