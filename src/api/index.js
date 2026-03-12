@@ -334,12 +334,52 @@ export async function getConversation(userId, { before = 0 } = {}) {
   return apiFetch(`/conversations/${userId}`, params);
 }
 
-export async function sendMessage({ recipient_id, content }) {
+export async function sendMessage({ recipient_id, content, attachment_url, attachment_name, attachment_type }) {
   const url = apiUrl('/messages');
+  const body = { recipient_id, content };
+  if (attachment_url) {
+    body.attachment_url = attachment_url;
+    body.attachment_name = attachment_name;
+    body.attachment_type = attachment_type;
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ recipient_id, content }),
+    body: JSON.stringify(body),
+  });
+  return handleResponse(res);
+}
+
+export async function editMessage(id, { content }) {
+  const url = apiUrl(`/messages/${id}`);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ content }),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteMessage(id) {
+  const url = apiUrl(`/messages/${id}`);
+  const res = await fetch(url, { method: 'DELETE', headers: headers() });
+  return handleResponse(res);
+}
+
+export async function togglePinMessage(id) {
+  const url = apiUrl(`/messages/${id}/pin`);
+  const res = await fetch(url, { method: 'POST', headers: headers() });
+  return handleResponse(res);
+}
+
+export async function uploadMessageAttachment(file) {
+  const url = apiUrl('/messages/upload');
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-WP-Nonce': NONCE },
+    body: formData,
   });
   return handleResponse(res);
 }

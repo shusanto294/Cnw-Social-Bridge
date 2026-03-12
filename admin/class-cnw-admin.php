@@ -1345,6 +1345,16 @@ class Cnw_Social_Bridge_Admin {
         foreach ( $table_data['connections'] as $r )           { $user_ids[ (int) $r['sender_id'] ] = true; $user_ids[ (int) $r['receiver_id'] ] = true; }
         foreach ( $table_data['restrictions'] as $r )          { $user_ids[ (int) $r['restricter_id'] ] = true; $user_ids[ (int) $r['restricted_id'] ] = true; }
         foreach ( $table_data['warnings'] as $r )              { $user_ids[ (int) $r['user_id'] ] = true; $user_ids[ (int) $r['moderator_id'] ] = true; }
+
+        // Include ALL users with CNW roles (admins, moderators, forum members) even if they have no activity.
+        $cnw_roles = array( 'cnw_forum_member', 'cnw_moderator', 'cnw_forum_admin', 'administrator' );
+        foreach ( $cnw_roles as $role ) {
+            $role_users = get_users( array( 'role' => $role, 'fields' => 'ID' ) );
+            foreach ( $role_users as $rid ) {
+                $user_ids[ (int) $rid ] = true;
+            }
+        }
+
         unset( $user_ids[0] );
 
         // Build users array with all CNW meta.
@@ -1797,13 +1807,17 @@ class Cnw_Social_Bridge_Admin {
                     $old_id = (int) $row['id'];
                     $parent = empty( $row['parent_id'] ) ? null : ( $state['msg_map'][ (int) $row['parent_id'] ] ?? null );
                     $wpdb->insert( $p . 'messages', array(
-                        'sender_id'    => $ru( $row['sender_id'] ),
-                        'recipient_id' => $ru( $row['recipient_id'] ),
-                        'subject'      => $row['subject'] ?? null,
-                        'content'      => $row['content'],
-                        'is_read'      => (int) ( $row['is_read'] ?? 0 ),
-                        'parent_id'    => $parent,
-                        'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
+                        'sender_id'       => $ru( $row['sender_id'] ),
+                        'recipient_id'    => $ru( $row['recipient_id'] ),
+                        'subject'         => $row['subject'] ?? null,
+                        'content'         => $row['content'] ?? '',
+                        'is_read'         => (int) ( $row['is_read'] ?? 0 ),
+                        'is_pinned'       => (int) ( $row['is_pinned'] ?? 0 ),
+                        'attachment_url'  => $row['attachment_url'] ?? null,
+                        'attachment_name' => $row['attachment_name'] ?? null,
+                        'attachment_type' => $row['attachment_type'] ?? null,
+                        'parent_id'       => $parent,
+                        'created_at'      => $row['created_at'] ?? current_time( 'mysql' ),
                     ) );
                     $state['msg_map'][ $old_id ] = (int) $wpdb->insert_id;
                     $count++;
@@ -1933,6 +1947,7 @@ class Cnw_Social_Bridge_Admin {
                         'reference_id'   => $ref_id,
                         'message'        => $row['message'],
                         'is_read'        => (int) ( $row['is_read'] ?? 0 ),
+                        'emailed'        => (int) ( $row['emailed'] ?? 0 ),
                         'created_at'     => $row['created_at'] ?? current_time( 'mysql' ),
                     ) );
                     $count++;

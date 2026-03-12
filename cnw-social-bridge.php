@@ -2,8 +2,9 @@
 /**
  * Plugin Name: Cnw Social Bridge
  * Description: A social forum plugin with threads, replies, messages, and user roles.
- * Version: 1.0.12
- * Author: CNW
+ * Version: 1.0.13
+ * Author: Cloud Nine Web
+ * Author URI: https://cloudnineweb.co/
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: cnw-social-bridge
@@ -14,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.12' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.13' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
@@ -411,6 +412,19 @@ class Cnw_Social_Bridge {
         if ( empty( $row ) ) {
             $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
             $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
+        }
+
+        // ── Add is_pinned and attachment columns to messages ──────────
+        $messages_table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'is_pinned'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER is_read" );
+        }
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'attachment_url'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_url text DEFAULT NULL AFTER is_pinned" );
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_name varchar(255) DEFAULT NULL AFTER attachment_url" );
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_type varchar(50) DEFAULT NULL AFTER attachment_name" );
         }
 
         $this->create_user_roles();

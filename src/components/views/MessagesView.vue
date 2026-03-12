@@ -71,9 +71,18 @@
             <svg width="14" height="14" viewBox="0 0 10.82 10.8779" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10.675 3.98125L6.825 0.13125C6.65 -0.04375 6.3875 -0.04375 6.2125 0.13125L4.8125 1.53125C4.59375 1.75 4.68125 2.0125 4.8125 2.14375L5.11875 2.45L3.80625 3.7625C3.15 3.63125 1.35625 3.325 0.39375 4.2875C0.21875 4.4625 0.21875 4.725 0.39375 4.9L2.8875 7.39375L0.13125 10.15C-0.04375 10.325 -0.04375 10.5875 0.13125 10.7625C0.30625 10.9375 0.6125 10.8938 0.74375 10.7625L3.5 8.00625L5.99375 10.5C6.25625 10.7188 6.51875 10.6313 6.60625 10.5C7.56875 9.5375 7.2625 7.74375 7.13125 7.0875L8.44375 5.775L8.75 6.08125C8.925 6.25625 9.1875 6.25625 9.3625 6.08125L10.7625 4.68125C10.85 4.41875 10.85 4.15625 10.675 3.98125Z" fill="#414141"/>
             </svg>
-            <span>View Pinned Message</span>
+            <span>View Pinned Messages</span>
           </div>
-          <div v-if="showPinnedMessages" class="cnw-msg-profile-section-notice">No pinned messages in this conversation</div>
+          <template v-if="showPinnedMessages">
+            <div v-if="pinnedMessages.length" class="cnw-msg-profile-pinned-list">
+              <div v-for="pm in pinnedMessages" :key="'pin-'+pm.id" class="cnw-msg-profile-pinned-item" @click="scrollToMessage(pm.id)">
+                <div class="cnw-msg-profile-search-result-name">{{ pm.sender_name }}</div>
+                <div class="cnw-msg-profile-search-result-text">{{ truncate(pm.content, 80) || shortFileName(pm.attachment_name) || 'Attachment' }}</div>
+                <div class="cnw-msg-profile-search-result-time">{{ formatTime(pm.created_at) }}</div>
+              </div>
+            </div>
+            <div v-else class="cnw-msg-profile-section-notice">No pinned messages in this conversation</div>
+          </template>
         </template>
       </div>
       <!-- Media Files section -->
@@ -93,14 +102,30 @@
             </svg>
             <span>Media</span>
           </div>
-          <div v-if="showMediaGallery" class="cnw-msg-profile-section-notice">No shared media yet</div>
+          <template v-if="showMediaGallery">
+            <div v-if="mediaMessages.length" class="cnw-msg-profile-media-grid">
+              <img v-for="mm in mediaMessages" :key="'media-'+mm.id" :src="mm.attachment_url" :alt="mm.attachment_name" class="cnw-msg-profile-media-thumb" @click="openAttachment(mm.attachment_url)" />
+            </div>
+            <div v-else class="cnw-msg-profile-section-notice">No shared media yet</div>
+          </template>
           <div class="cnw-msg-profile-section-item" @click="showSharedFiles = !showSharedFiles">
-            <svg width="14" height="14" viewBox="0 0 10.82 10.8779" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10.675 3.98125L6.825 0.13125C6.65 -0.04375 6.3875 -0.04375 6.2125 0.13125L4.8125 1.53125C4.59375 1.75 4.68125 2.0125 4.8125 2.14375L5.11875 2.45L3.80625 3.7625C3.15 3.63125 1.35625 3.325 0.39375 4.2875C0.21875 4.4625 0.21875 4.725 0.39375 4.9L2.8875 7.39375L0.13125 10.15C-0.04375 10.325 -0.04375 10.5875 0.13125 10.7625C0.30625 10.9375 0.6125 10.8938 0.74375 10.7625L3.5 8.00625L5.99375 10.5C6.25625 10.7188 6.51875 10.6313 6.60625 10.5C7.56875 9.5375 7.2625 7.74375 7.13125 7.0875L8.44375 5.775L8.75 6.08125C8.925 6.25625 9.1875 6.25625 9.3625 6.08125L10.7625 4.68125C10.85 4.41875 10.85 4.15625 10.675 3.98125Z" fill="#414141"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#414141" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
             </svg>
             <span>Files</span>
           </div>
-          <div v-if="showSharedFiles" class="cnw-msg-profile-section-notice">No shared files yet</div>
+          <template v-if="showSharedFiles">
+            <div v-if="fileMessages.length" class="cnw-msg-profile-files-list">
+              <a v-for="fm in fileMessages" :key="'file-'+fm.id" :href="fm.attachment_url" target="_blank" rel="noopener" class="cnw-msg-profile-file-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#414141" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <div class="cnw-msg-profile-file-info">
+                  <span class="cnw-msg-profile-file-name">{{ fm.attachment_name }}</span>
+                  <span class="cnw-msg-profile-file-time">{{ formatTime(fm.created_at) }}</span>
+                </div>
+              </a>
+            </div>
+            <div v-else class="cnw-msg-profile-section-notice">No shared files yet</div>
+          </template>
         </template>
       </div>
       <!-- Privacy & Support section -->
@@ -313,7 +338,7 @@
             class="cnw-msg-bubble-wrap"
             :class="{ mine: Number(msg.sender_id) === currentUserId }"
           >
-            <div class="cnw-msg-bubble-card" :data-msg-id="msg.id">
+            <div class="cnw-msg-bubble-card" :data-msg-id="msg.id" :class="{ 'cnw-msg-pinned': parseInt(msg.is_pinned) }">
               <template v-if="Number(msg.sender_id) !== currentUserId">
                 <div class="cnw-msg-conv-avatar-wrap">
                   <img
@@ -333,13 +358,42 @@
                   </div>
                   <div class="cnw-msg-conv-name">{{ msg.sender_name }}</div>
                 </template>
-                <p class="cnw-msg-conv-preview">{{ msg.content }}</p>
+                <p class="cnw-msg-conv-preview" v-html="highlightMsgText(msg)"></p>
+                <!-- Attachment display -->
+                <div v-if="msg.attachment_url" class="cnw-msg-attachment">
+                  <template v-if="msg.attachment_type === 'image'">
+                    <img :src="msg.attachment_url" :alt="msg.attachment_name" class="cnw-msg-attachment-img" @click="openAttachment(msg.attachment_url)" />
+                  </template>
+                  <template v-else>
+                    <a :href="msg.attachment_url" target="_blank" rel="noopener" class="cnw-msg-attachment-file">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span>{{ msg.attachment_name || 'File' }}</span>
+                    </a>
+                  </template>
+                </div>
+                <div v-if="parseInt(msg.is_pinned)" class="cnw-msg-pin-badge">
+                  <svg width="10" height="10" viewBox="0 0 10.82 10.8779" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.675 3.98125L6.825 0.13125C6.65 -0.04375 6.3875 -0.04375 6.2125 0.13125L4.8125 1.53125C4.59375 1.75 4.68125 2.0125 4.8125 2.14375L5.11875 2.45L3.80625 3.7625C3.15 3.63125 1.35625 3.325 0.39375 4.2875C0.21875 4.4625 0.21875 4.725 0.39375 4.9L2.8875 7.39375L0.13125 10.15C-0.04375 10.325 -0.04375 10.5875 0.13125 10.7625C0.30625 10.9375 0.6125 10.8938 0.74375 10.7625L3.5 8.00625L5.99375 10.5C6.25625 10.7188 6.51875 10.6313 6.60625 10.5C7.56875 9.5375 7.2625 7.74375 7.13125 7.0875L8.44375 5.775L8.75 6.08125C8.925 6.25625 9.1875 6.25625 9.3625 6.08125L10.7625 4.68125C10.85 4.41875 10.85 4.15625 10.675 3.98125Z" fill="currentColor"/></svg>
+                  <span>Pinned</span>
+                </div>
                 <div class="cnw-msg-conv-meta">
                   <span class="cnw-msg-conv-time">{{ formatTime(msg.created_at) }}</span>
+                  <span v-if="msg._edited" class="cnw-msg-edited-label">edited</span>
                   <span v-if="Number(msg.sender_id) === currentUserId" class="cnw-msg-conv-read-badge" :class="(!isRestrictedUser && parseInt(msg.is_read)) ? 'read' : 'unread'">
                     {{ (!isRestrictedUser && parseInt(msg.is_read)) ? 'Read' : 'Sent' }}
                   </span>
                 </div>
+              </div>
+              <!-- Hover action icons -->
+              <div class="cnw-msg-hover-actions">
+                <button class="cnw-msg-hover-btn" :class="{ 'cnw-msg-hover-pinned': parseInt(msg.is_pinned) }" @click="handlePinMsg(msg)" :title="parseInt(msg.is_pinned) ? 'Unpin' : 'Pin'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V16a1 1 0 001 1h12a1 1 0 001-1v-.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V7a1 1 0 011-1 1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v1a1 1 0 001 1 1 1 0 011 1z"/></svg>
+                </button>
+                <button v-if="Number(msg.sender_id) === currentUserId" class="cnw-msg-hover-btn" @click="startEdit(msg)" title="Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                </button>
+                <button v-if="Number(msg.sender_id) === currentUserId" class="cnw-msg-hover-btn cnw-msg-hover-delete" @click="handleDeleteMsg(msg)" title="Delete">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -357,16 +411,47 @@
 
         <!-- Input -->
         <div v-if="isConnected" class="cnw-msg-input-bar">
+          <!-- Editing banner -->
+          <div v-if="editingMsgId" class="cnw-msg-editing-banner">
+            <div class="cnw-msg-editing-banner-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              <span>Editing message</span>
+            </div>
+            <button class="cnw-msg-editing-banner-close" @click="cancelEdit" title="Cancel editing">&times;</button>
+          </div>
+          <!-- Attachment preview -->
+          <div v-if="!editingMsgId && pendingAttachment" class="cnw-msg-attachment-preview">
+            <template v-if="pendingAttachment.type === 'image'">
+              <img :src="pendingAttachment.url" alt="Attachment preview" class="cnw-msg-attachment-preview-img" />
+            </template>
+            <template v-else>
+              <div class="cnw-msg-attachment-preview-file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>{{ pendingAttachment.name }}</span>
+              </div>
+            </template>
+            <button class="cnw-msg-attachment-preview-remove" @click="pendingAttachment = null" title="Remove">&times;</button>
+          </div>
           <textarea
             v-model="newMessage"
-            @keydown.enter.exact.prevent="sendMsg"
-            @input="onTyping"
-            placeholder="Write Message:"
+            @keydown.enter.exact.prevent="editingMsgId ? saveEdit() : sendMsg()"
+            @keydown.esc="editingMsgId ? cancelEdit() : null"
+            @input="editingMsgId ? null : onTyping()"
+            :placeholder="editingMsgId ? 'Edit your message...' : 'Write Message:'"
             class="cnw-msg-input"
+            ref="msgInput"
             name="message"
             aria-label="Write a message"
           ></textarea>
-          <button class="cnw-msg-send-btn" @click="sendMsg">Send</button>
+          <div class="cnw-msg-input-actions">
+            <button v-if="!editingMsgId" class="cnw-msg-attach-btn" @click="$refs.fileInput.click()" title="Attach file" :disabled="uploading">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button v-if="editingMsgId" class="cnw-msg-send-btn cnw-msg-update-btn" @click="saveEdit()">Update</button>
+            <button v-else class="cnw-msg-send-btn" @click="sendMsg">Send</button>
+          </div>
+          <input type="file" ref="fileInput" class="cnw-msg-file-hidden" @change="onFileSelect" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt" />
+          <div v-if="uploading" class="cnw-msg-uploading">Uploading...</div>
         </div>
         <div v-else class="cnw-msg-not-connected">
           <div class="cnw-msg-not-connected-line">
@@ -442,7 +527,7 @@
 </template>
 
 <script>
-import { getConversations, getConversation, sendMessage, markConversationRead, setTyping, getConnections, removeConnection, submitReport, restrictUser, unrestrictUser, getRestrictions } from '@/api';
+import { getConversations, getConversation, sendMessage, markConversationRead, setTyping, getConnections, removeConnection, submitReport, restrictUser, unrestrictUser, getRestrictions, editMessage, deleteMessage, togglePinMessage, uploadMessageAttachment } from '@/api';
 import { getUserChannel } from '@/pusher';
 
 export default {
@@ -483,6 +568,7 @@ export default {
       profileSearchMessages: false,
       profileSearchQuery: '',
       profileSearchResults: [],
+      highlightedMsgId: null,
       showPinnedMessages: false,
       showMediaGallery: false,
       showSharedFiles: false,
@@ -494,6 +580,9 @@ export default {
       composeSearch: '',
       composeFilteredUsers: [],
       composeSearchTimeout: null,
+      editingMsgId: null,
+      pendingAttachment: null,
+      uploading: false,
     };
   },
   computed: {
@@ -502,6 +591,15 @@ export default {
     },
     isRestrictedUser() {
       return this.restrictedUsers.includes(this.activeUserId) || this.restrictedByUsers.includes(this.activeUserId);
+    },
+    pinnedMessages() {
+      return this.messages.filter(m => parseInt(m.is_pinned));
+    },
+    mediaMessages() {
+      return this.messages.filter(m => m.attachment_url && m.attachment_type === 'image');
+    },
+    fileMessages() {
+      return this.messages.filter(m => m.attachment_url && m.attachment_type !== 'image');
     },
   },
   async mounted() {
@@ -587,19 +685,95 @@ export default {
     },
     scrollToMessage(msgId) {
       this.showProfile = false;
+      this.highlightedMsgId = msgId;
       this.$nextTick(() => {
         const container = this.$refs.messagesContainer;
         if (!container) return;
         const el = container.querySelector(`.cnw-msg-bubble-wrap [data-msg-id="${msgId}"]`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('cnw-msg-highlight');
-          setTimeout(() => el.classList.remove('cnw-msg-highlight'), 2000);
+          setTimeout(() => { this.highlightedMsgId = null; }, 3000);
         }
       });
     },
+    highlightMsgText(msg) {
+      const text = msg.content || '';
+      const escaped = this.escapeHtml(text);
+      if (this.highlightedMsgId && String(this.highlightedMsgId) === String(msg.id) && this.profileSearchQuery.trim()) {
+        const q = this.profileSearchQuery.trim();
+        const regex = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        return escaped.replace(regex, '<mark class="cnw-search-highlight">$1</mark>');
+      }
+      return escaped;
+    },
+    escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    },
     viewPinnedMessages() {
       this.showPinnedMessages = !this.showPinnedMessages;
+    },
+    async handlePinMsg(msg) {
+      try {
+        const result = await togglePinMessage(msg.id);
+        msg.is_pinned = result.is_pinned ? 1 : 0;
+      } catch { /* silent */ }
+    },
+    startEdit(msg) {
+      this.editingMsgId = msg.id;
+      this.newMessage = msg.content;
+      this.$nextTick(() => {
+        if (this.$refs.msgInput) {
+          this.$refs.msgInput.focus();
+        }
+      });
+    },
+    cancelEdit() {
+      this.editingMsgId = null;
+      this.newMessage = '';
+    },
+    async saveEdit() {
+      if (!this.newMessage.trim() || !this.editingMsgId) return;
+      const msgId = this.editingMsgId;
+      const content = this.newMessage.trim();
+      try {
+        await editMessage(msgId, { content });
+        const msg = this.messages.find(m => Number(m.id) === Number(msgId));
+        if (msg) {
+          msg.content = content;
+          msg._edited = true;
+        }
+        this.cancelEdit();
+      } catch { /* silent */ }
+    },
+    async handleDeleteMsg(msg) {
+      if (!confirm('Delete this message?')) return;
+      try {
+        await deleteMessage(msg.id);
+        const idx = this.messages.findIndex(m => m.id === msg.id);
+        if (idx > -1) this.messages.splice(idx, 1);
+      } catch { /* silent */ }
+    },
+    async onFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      this.$refs.fileInput.value = '';
+      this.uploading = true;
+      try {
+        const result = await uploadMessageAttachment(file);
+        this.pendingAttachment = {
+          url: result.attachment_url,
+          name: result.attachment_name,
+          type: result.attachment_type,
+        };
+      } catch {
+        alert('Failed to upload file.');
+      }
+      this.uploading = false;
+    },
+    openAttachment(url) {
+      window.open(url, '_blank');
     },
     async loadRestrictions() {
       try {
@@ -926,7 +1100,21 @@ export default {
         }
       } catch { this.messages = []; }
       this.loadingMessages = false;
-      this.$nextTick(() => this.scrollToBottom());
+      this.$nextTick(() => {
+        this.$nextTick(() => {
+          this.scrollToBottom();
+          // Scroll again after images load
+          const el = this.$refs.messagesContainer;
+          if (el) {
+            const imgs = el.querySelectorAll('img');
+            imgs.forEach(img => {
+              if (!img.complete) img.addEventListener('load', () => this.scrollToBottom(), { once: true });
+            });
+          }
+          // Final fallback
+          setTimeout(() => this.scrollToBottom(), 150);
+        });
+      });
     },
     onMessagesScroll() {
       const container = this.$refs.messagesContainer;
@@ -955,12 +1143,22 @@ export default {
       this.loadingOlder = false;
     },
     async sendMsg() {
-      if (!this.newMessage.trim() || this.sending) return;
+      const hasContent = this.newMessage.trim();
+      const hasAttachment = !!this.pendingAttachment;
+      if ((!hasContent && !hasAttachment) || this.sending) return;
       this.sending = true;
-      const content = this.newMessage.trim();
+      const content = this.newMessage.trim() || (hasAttachment ? '' : '');
+      const attachment = this.pendingAttachment;
       this.newMessage = '';
+      this.pendingAttachment = null;
       try {
-        const result = await sendMessage({ recipient_id: this.activeUserId, content });
+        const payload = { recipient_id: this.activeUserId, content };
+        if (attachment) {
+          payload.attachment_url = attachment.url;
+          payload.attachment_name = attachment.name;
+          payload.attachment_type = attachment.type;
+        }
+        const result = await sendMessage(payload);
         if (result.id) {
           this.messages.push({
             id: result.id,
@@ -969,11 +1167,14 @@ export default {
             sender_avatar: window.cnwData?.currentUser?.avatar || '',
             content,
             is_read: 0,
+            is_pinned: 0,
+            attachment_url: attachment ? attachment.url : null,
+            attachment_name: attachment ? attachment.name : null,
+            attachment_type: attachment ? attachment.type : null,
             created_at: new Date().toISOString(),
           });
           this.$nextTick(() => this.scrollToBottom());
-          // Update own conversation list locally
-          this.updateOwnConversation(content);
+          this.updateOwnConversation(content || (attachment ? attachment.name : ''));
         }
       } catch { /* silent */ }
       this.sending = false;
@@ -1048,6 +1249,15 @@ export default {
     truncate(str, len) {
       if (!str) return '';
       return str.length > len ? str.substring(0, len) + '..' : str;
+    },
+    shortFileName(name, maxLen = 24) {
+      if (!name) return '';
+      if (name.length <= maxLen) return name;
+      const dot = name.lastIndexOf('.');
+      const ext = dot > -1 ? name.slice(dot) : '';
+      const base = dot > -1 ? name.slice(0, dot) : name;
+      const keep = maxLen - ext.length - 2;
+      return keep > 0 ? '...' + base.slice(-keep) + ext : '...' + name.slice(-maxLen);
     },
     syncHeightWithSidebar() {
       const sidebar = document.querySelector('.cnw-social-worker-sidebar');
@@ -1289,15 +1499,6 @@ main.cnw-social-worker-main.messages-view
   margin-top: 2px;
 }
 
-/* Message highlight when scrolled to from search */
-@keyframes cnw-msg-highlight-fade {
-  0% { background: rgba(59, 189, 212, 0.25); }
-  100% { background: transparent; }
-}
-.cnw-msg-highlight {
-  animation: cnw-msg-highlight-fade 2s ease-out;
-  border-radius: var(--radius);
-}
 
 /* Clickable header avatar/name */
 .cnw-msg-header-clickable { cursor: pointer; }
@@ -1707,9 +1908,6 @@ main.cnw-social-worker-main.messages-view
 }
 .cnw-msg-input:focus { border: none; outline: none; }
 .cnw-msg-send-btn {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
   padding: 8px 24px;
   background: var(--primary);
   color: #fff;
@@ -1896,6 +2094,272 @@ main.cnw-social-worker-main.messages-view
 .cnw-msg-conversations::-webkit-scrollbar,
 .cnw-msg-detail-messages::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
+}
+
+/* ── Hover action icons on messages ──────────────────────── */
+.cnw-msg-bubble-card {
+  position: relative;
+}
+@keyframes cnw-msg-actions-pop {
+  0% { opacity: 0; transform: translateY(4px) scale(0.9); }
+  50% { transform: translateY(-1px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cnw-msg-hover-actions {
+  position: absolute;
+  top: -14px;
+  right: 8px;
+  display: flex;
+  gap: 1px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 3px 4px;
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+.cnw-msg-bubble-card:hover .cnw-msg-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+  animation: cnw-msg-actions-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.cnw-msg-hover-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px 7px;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s, transform 0.2s;
+}
+.cnw-msg-hover-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+  transform: scale(1.15);
+}
+.cnw-msg-hover-btn:active { transform: scale(0.92); }
+.cnw-msg-hover-btn.cnw-msg-hover-pinned { color: var(--primary); }
+.cnw-msg-hover-btn.cnw-msg-hover-delete:hover { color: #ff6b6b; background: rgba(255,107,107,0.15); }
+
+/* ── Pinned message badge ───────────────────────────────── */
+.cnw-msg-pin-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--primary);
+  margin-top: 4px;
+}
+.cnw-msg-pin-badge svg { flex-shrink: 0; }
+.cnw-msg-bubble-card.cnw-msg-pinned {
+  border-color: var(--primary);
+}
+
+/* ── Editing banner above textarea ──────────────────────── */
+.cnw-msg-editing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-left: 3px solid var(--primary);
+}
+.cnw-msg-editing-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+.cnw-msg-editing-banner-left svg { stroke: #fff; }
+.cnw-msg-editing-banner-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+.cnw-msg-editing-banner-close:hover { color: #fff; }
+.cnw-msg-editing-banner + .cnw-msg-input {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+.cnw-msg-update-btn {
+  background: var(--secondary) !important;
+}
+.cnw-msg-update-btn:hover { background: var(--primary) !important; }
+
+/* ── Edited label ───────────────────────────────────────── */
+.cnw-msg-edited-label {
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* ── Attachment display in bubbles ──────────────────────── */
+.cnw-msg-attachment {
+  margin-top: 8px;
+}
+.cnw-msg-attachment-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 6px;
+  cursor: pointer;
+  object-fit: cover;
+  display: block;
+}
+.cnw-msg-attachment-img:hover { opacity: 0.9; }
+.cnw-msg-attachment-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 12px;
+}
+.cnw-msg-attachment-file:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Input bar attachment button & preview ──────────────── */
+.cnw-msg-input-actions {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cnw-msg-send-btn {
+  position: static;
+}
+.cnw-msg-attach-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+.cnw-msg-attach-btn:hover { color: var(--primary); }
+.cnw-msg-attach-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cnw-msg-file-hidden { display: none; }
+.cnw-msg-uploading {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 0;
+}
+.cnw-msg-attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f7f7f7;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  position: relative;
+}
+.cnw-msg-attachment-preview-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.cnw-msg-attachment-preview-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #414141;
+}
+.cnw-msg-attachment-preview-remove {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #999;
+  line-height: 1;
+}
+.cnw-msg-attachment-preview-remove:hover { color: #dc3545; }
+
+/* ── Profile panel: pinned messages list ────────────────── */
+.cnw-msg-profile-pinned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cnw-msg-profile-pinned-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.cnw-msg-profile-pinned-item:hover { background: #f5f5f5; }
+
+/* ── Profile panel: media grid ──────────────────────────── */
+.cnw-msg-profile-media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.cnw-msg-profile-media-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cnw-msg-profile-media-thumb:hover { opacity: 0.8; }
+
+/* ── Profile panel: files list ──────────────────────────── */
+.cnw-msg-profile-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cnw-msg-profile-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: #414141;
+}
+.cnw-msg-profile-file-item:hover { background: #f5f5f5; }
+.cnw-msg-profile-file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cnw-msg-profile-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cnw-msg-profile-file-time {
+  font-size: 11px;
+  color: #999;
 }
 
 /* Responsive */

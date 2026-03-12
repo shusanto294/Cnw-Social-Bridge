@@ -79,8 +79,14 @@ class Cnw_Social_Bridge_REST_API {
         ) );
         register_rest_route( $ns, '/messages/(?P<id>\d+)', array(
             array( 'methods' => 'GET',      'callback' => array( $this, 'get_message' ),    'permission_callback' => array( $this, 'can_manage' ) ),
-            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_message' ), 'permission_callback' => array( $this, 'can_manage' ) ),
-            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_message' ), 'permission_callback' => array( $this, 'can_manage' ) ),
+            array( 'methods' => 'PUT,PATCH', 'callback' => array( $this, 'update_message' ), 'permission_callback' => array( $this, 'can_send_message' ) ),
+            array( 'methods' => 'DELETE',    'callback' => array( $this, 'delete_message' ), 'permission_callback' => array( $this, 'can_send_message' ) ),
+        ) );
+        register_rest_route( $ns, '/messages/(?P<id>\d+)/pin', array(
+            'methods' => 'POST', 'callback' => array( $this, 'toggle_pin_message' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+        register_rest_route( $ns, '/messages/upload', array(
+            'methods' => 'POST', 'callback' => array( $this, 'upload_message_attachment' ), 'permission_callback' => array( $this, 'can_send_message' ),
         ) );
 
         // ── User-facing conversations ────────────────────────────────
@@ -1272,8 +1278,10 @@ class Cnw_Social_Bridge_REST_API {
 
         $params = $request->get_json_params();
 
-        if ( empty( $params['recipient_id'] ) || empty( $params['content'] ) ) {
-            return new WP_Error( 'missing_fields', 'recipient_id and content are required', array( 'status' => 400 ) );
+        $has_content    = ! empty( $params['content'] );
+        $has_attachment = ! empty( $params['attachment_url'] );
+        if ( empty( $params['recipient_id'] ) || ( ! $has_content && ! $has_attachment ) ) {
+            return new WP_Error( 'missing_fields', 'recipient_id and content or attachment are required', array( 'status' => 400 ) );
         }
 
         // Check recipient's message_privacy preference
@@ -1292,9 +1300,12 @@ class Cnw_Social_Bridge_REST_API {
                 'sender_id'    => get_current_user_id(),
                 'recipient_id' => intval( $params['recipient_id'] ),
                 'subject'      => isset( $params['subject'] ) ? sanitize_text_field( $params['subject'] ) : null,
-                'content'      => wp_kses_post( $params['content'] ),
+                'content'      => isset( $params['content'] ) ? wp_kses_post( $params['content'] ) : '',
                 'is_read'      => 0,
                 'parent_id'    => isset( $params['parent_id'] ) ? intval( $params['parent_id'] ) : null,
+                'attachment_url'  => isset( $params['attachment_url'] ) ? esc_url_raw( $params['attachment_url'] ) : null,
+                'attachment_name' => isset( $params['attachment_name'] ) ? sanitize_text_field( $params['attachment_name'] ) : null,
+                'attachment_type' => isset( $params['attachment_type'] ) ? sanitize_text_field( $params['attachment_type'] ) : null,
             )
         );
 
@@ -1317,8 +1328,11 @@ class Cnw_Social_Bridge_REST_API {
                 'sender_name'   => $sender ? $sender->display_name : 'Unknown',
                 'sender_avatar' => $sender_avatar,
                 'recipient_id'  => $recipient_id,
-                'content'       => wp_kses_post( $params['content'] ),
+                'content'       => isset( $params['content'] ) ? wp_kses_post( $params['content'] ) : '',
                 'created_at'    => current_time( 'mysql' ),
+                'attachment_url'  => isset( $params['attachment_url'] ) ? esc_url_raw( $params['attachment_url'] ) : null,
+                'attachment_name' => isset( $params['attachment_name'] ) ? sanitize_text_field( $params['attachment_name'] ) : null,
+                'attachment_type' => isset( $params['attachment_type'] ) ? sanitize_text_field( $params['attachment_type'] ) : null,
             )
         );
 
@@ -1327,8 +1341,18 @@ class Cnw_Social_Bridge_REST_API {
 
     public function update_message( WP_REST_Request $request ) {
         global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $id    = intval( $request['id'] );
+        $me    = get_current_user_id();
 
-        $id     = intval( $request['id'] );
+        // Check ownership (admins can edit any)
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $msg = $wpdb->get_row( $wpdb->prepare( "SELECT sender_id FROM {$table} WHERE id = %d", $id ) );
+            if ( ! $msg || (int) $msg->sender_id !== $me ) {
+                return new WP_Error( 'forbidden', 'You can only edit your own messages', array( 'status' => 403 ) );
+            }
+        }
+
         $params = $request->get_json_params();
         $data   = array();
 
@@ -1340,7 +1364,7 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'no_data', 'No fields to update', array( 'status' => 400 ) );
         }
 
-        $result = $wpdb->update( $wpdb->prefix . 'cnw_social_worker_messages', $data, array( 'id' => $id ) );
+        $result = $wpdb->update( $table, $data, array( 'id' => $id ) );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to update message', array( 'status' => 500 ) );
@@ -1351,15 +1375,87 @@ class Cnw_Social_Bridge_REST_API {
 
     public function delete_message( WP_REST_Request $request ) {
         global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $id    = intval( $request['id'] );
+        $me    = get_current_user_id();
 
-        $id     = intval( $request['id'] );
-        $result = $wpdb->delete( $wpdb->prefix . 'cnw_social_worker_messages', array( 'id' => $id ) );
+        // Check ownership (admins can delete any)
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $msg = $wpdb->get_row( $wpdb->prepare( "SELECT sender_id FROM {$table} WHERE id = %d", $id ) );
+            if ( ! $msg || (int) $msg->sender_id !== $me ) {
+                return new WP_Error( 'forbidden', 'You can only delete your own messages', array( 'status' => 403 ) );
+            }
+        }
+
+        $result = $wpdb->delete( $table, array( 'id' => $id ) );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete message', array( 'status' => 500 ) );
         }
 
         return array( 'success' => true, 'deleted' => $id );
+    }
+
+    public function toggle_pin_message( WP_REST_Request $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'cnw_social_worker_messages';
+        $id = intval( $request['id'] );
+        $me = get_current_user_id();
+
+        $msg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT id, sender_id, recipient_id, is_pinned FROM {$table} WHERE id = %d", $id
+        ) );
+
+        if ( ! $msg ) {
+            return new WP_Error( 'not_found', 'Message not found', array( 'status' => 404 ) );
+        }
+
+        // Only participants can pin
+        if ( (int) $msg->sender_id !== $me && (int) $msg->recipient_id !== $me ) {
+            return new WP_Error( 'forbidden', 'You are not a participant', array( 'status' => 403 ) );
+        }
+
+        $new_val = $msg->is_pinned ? 0 : 1;
+        $wpdb->update( $table, array( 'is_pinned' => $new_val ), array( 'id' => $id ) );
+
+        return array( 'success' => true, 'is_pinned' => (bool) $new_val );
+    }
+
+    public function upload_message_attachment( WP_REST_Request $request ) {
+        $files = $request->get_file_params();
+
+        if ( empty( $files['file'] ) ) {
+            return new WP_Error( 'no_file', 'No file uploaded.', array( 'status' => 400 ) );
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        $attachment_id = media_handle_upload( 'file', 0 );
+
+        if ( is_wp_error( $attachment_id ) ) {
+            return new WP_Error( 'upload_failed', $attachment_id->get_error_message(), array( 'status' => 500 ) );
+        }
+
+        $url  = wp_get_attachment_url( $attachment_id );
+        $name = basename( $files['file']['name'] );
+        $mime = get_post_mime_type( $attachment_id );
+
+        // Determine type category
+        $type = 'file';
+        if ( strpos( $mime, 'image/' ) === 0 ) {
+            $type = 'image';
+        } elseif ( strpos( $mime, 'video/' ) === 0 ) {
+            $type = 'video';
+        }
+
+        return array(
+            'success'         => true,
+            'attachment_url'  => $url,
+            'attachment_name' => $name,
+            'attachment_type' => $type,
+        );
     }
 
     /* ==================================================================

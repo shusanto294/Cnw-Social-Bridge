@@ -50,10 +50,24 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
                     <option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $item->recipient_id ?? '', $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option>
                     <?php endforeach; ?>
                 </select></td></tr>
-            <tr><th><label for="subject">Subject</label></th>
-                <td><input type="text" id="subject" name="subject" class="regular-text" value="<?php echo esc_attr( $item->subject ?? '' ); ?>"></td></tr>
             <tr><th><label for="content">Content</label></th>
-                <td><textarea id="content" name="content" rows="5" class="large-text" required><?php echo esc_textarea( $item->content ?? '' ); ?></textarea></td></tr>
+                <td><textarea id="content" name="content" rows="5" class="large-text"><?php echo esc_textarea( $item->content ?? '' ); ?></textarea></td></tr>
+            <?php if ( $item ) : ?>
+            <tr><th>Attachment</th>
+                <td>
+                    <?php if ( ! empty( $item->attachment_url ) ) : ?>
+                        <?php if ( $item->attachment_type === 'image' ) : ?>
+                            <div style="margin-bottom:10px"><img src="<?php echo esc_url( $item->attachment_url ); ?>" style="max-width:300px;max-height:200px;border-radius:6px;display:block" /></div>
+                        <?php endif; ?>
+                        <p>
+                            <strong>File:</strong> <a href="<?php echo esc_url( $item->attachment_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $item->attachment_name ); ?></a>
+                            <br><strong>Type:</strong> <?php echo esc_html( $item->attachment_type ); ?>
+                        </p>
+                    <?php else : ?>
+                        <span style="color:#999">No attachment</span>
+                    <?php endif; ?>
+                </td></tr>
+            <?php endif; ?>
             <tr><th><label for="is_read">Read?</label></th>
                 <td><select id="is_read" name="is_read">
                     <option value="0" <?php selected( $item->is_read ?? 0, 0 ); ?>>Unread</option>
@@ -125,7 +139,20 @@ $users = $wpdb->get_results( "SELECT ID, display_name FROM {$wpdb->users} ORDER 
                     <td><?php echo esc_html( $row->id ); ?></td>
                     <td><?php echo esc_html( $row->sender_name . ' (#' . $row->sender_id . ')' ); ?></td>
                     <td><?php echo esc_html( $row->recipient_name . ' (#' . $row->recipient_id . ')' ); ?></td>
-                    <td><?php echo esc_html( $row->content ); ?></td>
+                    <td>
+                        <?php echo esc_html( $row->content ); ?>
+                        <?php if ( ! empty( $row->attachment_name ) ) : ?>
+                            <?php if ( $row->content ) echo '<br>'; ?>
+                            <span style="color:#666;font-size:12px">
+                                <?php if ( $row->attachment_type === 'image' ) : ?>
+                                    &#128247;
+                                <?php else : ?>
+                                    &#128206;
+                                <?php endif; ?>
+                                <a href="<?php echo esc_url( $row->attachment_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $row->attachment_name ); ?></a>
+                            </span>
+                        <?php endif; ?>
+                    </td>
                     <td><?php echo $row->is_read ? '<span style="color:green">Yes</span>' : '<span style="color:#999">No</span>'; ?></td>
                     <td><?php echo esc_html( $row->created_at ); ?></td>
                     <td>
