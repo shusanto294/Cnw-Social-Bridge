@@ -81,4 +81,24 @@ class Cnw_Social_Bridge_Pusher {
         }
         return $pusher->authorizeChannel( $channel_name, $socket_id );
     }
+
+    /**
+     * Verify a Pusher webhook signature.
+     * Pusher signs webhooks with HMAC SHA-256 using the app secret.
+     *
+     * @param string $body      Raw request body.
+     * @param string $signature The X-Pusher-Signature header value.
+     * @return bool
+     */
+    public static function verify_webhook( $body, $signature ) {
+        if ( ! $signature || ! $body ) {
+            return false;
+        }
+        $secret = get_option( 'cnw_pusher_secret', '' );
+        if ( ! $secret ) {
+            return false;
+        }
+        $expected = hash_hmac( 'sha256', $body, $secret );
+        return hash_equals( $expected, $signature );
+    }
 }

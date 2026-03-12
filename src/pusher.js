@@ -6,8 +6,37 @@ let userChannel = null;
 let pusherConnected = false;
 
 /**
+ * Send offline status using sendBeacon (reliable on page close) with fetch fallback.
+ */
+function sendOfflineBeacon() {
+  const url = (window.cnwData?.restUrl || '') + '/pusher/status';
+  const nonce = window.cnwData?.nonce || '';
+  const body = JSON.stringify({ status: 'offline' });
+
+  // sendBeacon is more reliable during page unload
+  if (navigator.sendBeacon) {
+    const blob = new Blob([body], { type: 'application/json' });
+    navigator.sendBeacon(url + '?_wpnonce=' + encodeURIComponent(nonce), blob);
+  }
+
+  // Also try fetch with keepalive as backup
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+    body,
+    keepalive: true,
+  }).catch(() => {});
+}
+
+/**
  * Get or create the shared Pusher instance.
  * Returns null if Pusher credentials are not configured.
+ *
+ * Online/offline detection:
+ * - Connected  → broadcast online to partners
+ * - beforeunload / pagehide → best-effort offline via sendBeacon
+ * - WebSocket drops (browser crash, network loss, tab close) →
+ *   Pusher fires channel_vacated webhook → server marks user offline & broadcasts
  */
 export function getPusher() {
   if (pusherInstance) return pusherInstance;
@@ -61,16 +90,13 @@ export function getPusher() {
     pusherConnected = false;
   });
 
-  // Broadcast offline when leaving the page
+  // Best-effort instant offline on page close (backup for webhook)
   window.addEventListener('beforeunload', () => {
-    const url = (window.cnwData?.restUrl || '') + '/pusher/status';
-    const nonce = window.cnwData?.nonce || '';
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
-      body: JSON.stringify({ status: 'offline' }),
-      keepalive: true,
-    }).catch(() => {});
+    sendOfflineBeacon();
+  });
+
+  window.addEventListener('pagehide', () => {
+    sendOfflineBeacon();
   });
 
   return pusherInstance;

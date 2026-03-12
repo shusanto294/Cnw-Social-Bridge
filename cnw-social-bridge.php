@@ -53,6 +53,9 @@ class Cnw_Social_Bridge {
         // Hide WP admin bar for forum-only roles.
         add_action( 'init', array( $this, 'maybe_hide_admin_bar' ) );
 
+        // Mark user offline on WordPress logout
+        add_action( 'wp_logout', array( $this, 'on_user_logout' ) );
+
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
         new Cnw_Social_Bridge_REST_API();
@@ -72,6 +75,33 @@ class Cnw_Social_Bridge {
         // If every role the user has is a CNW forum role, hide the admin bar.
         if ( ! empty( $user_roles ) && empty( array_diff( $user_roles, $cnw_roles ) ) ) {
             show_admin_bar( false );
+        }
+    }
+
+    /**
+     * On WordPress logout — mark user offline and broadcast via Pusher instantly.
+     */
+    public function on_user_logout( $user_id ) {
+        global $wpdb;
+
+        update_user_meta( $user_id, 'cnw_is_online', 0 );
+
+        // Broadcast offline to all conversation partners via Pusher
+        $table    = $wpdb->prefix . 'cnw_social_worker_messages';
+        $partners = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT CASE WHEN sender_id = %d THEN recipient_id ELSE sender_id END AS partner_id
+             FROM {$table}
+             WHERE sender_id = %d OR recipient_id = %d",
+            $user_id, $user_id, $user_id
+        ) );
+
+        $payload = array( 'user_id' => $user_id, 'status' => 'offline' );
+        foreach ( $partners as $partner_id ) {
+            Cnw_Social_Bridge_Pusher::trigger(
+                'private-user-' . (int) $partner_id,
+                'user-status',
+                $payload
+            );
         }
     }
 

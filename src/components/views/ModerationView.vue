@@ -453,6 +453,7 @@ export default {
         await updateReport(report.id, { status: report._newStatus, admin_notes: report._notes });
         report.status = report._newStatus;
         this.loadStats();
+        window.dispatchEvent(new CustomEvent('cnw-moderation-updated'));
       } catch {} finally {
         report._saving = false;
       }

@@ -1,9 +1,36 @@
 <template>
   <div class="cnw-users-view">
     <div class="cnw-users-header">
-      <h1 class="cnw-users-title">Community Members</h1>
+      <div class="cnw-users-header-text">
+        <h1 class="cnw-users-title">Community Members</h1>
+        <p class="cnw-users-subtitle">Find and connect with community members</p>
+      </div>
+    </div>
+
+    <!-- Toolbar: tabs + search -->
+    <div class="cnw-users-toolbar">
+      <div v-if="isLoggedIn" class="cnw-users-tabs">
+        <button
+          class="cnw-users-tab"
+          :class="{ active: tab === 'all' }"
+          @click="switchTab('all')"
+        >All Members</button>
+        <button
+          class="cnw-users-tab"
+          :class="{ active: tab === 'connections' }"
+          @click="switchTab('connections')"
+        >My Connections</button>
+        <button
+          class="cnw-users-tab"
+          :class="{ active: tab === 'requests' }"
+          @click="switchTab('requests')"
+        >
+          Requests
+          <span v-if="requestCount > 0" class="cnw-users-tab-badge">{{ requestCount }}</span>
+        </button>
+      </div>
       <div class="cnw-users-search-wrap">
-        <svg class="cnw-users-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="cnw-users-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
           v-model="search"
           @input="onSearch"
@@ -11,29 +38,10 @@
           placeholder="Search members..."
           class="cnw-users-search"
         />
+        <button v-if="search" class="cnw-users-search-clear" @click="search = ''; onSearch()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-    </div>
-
-    <!-- Tabs -->
-    <div v-if="isLoggedIn" class="cnw-users-tabs">
-      <button
-        class="cnw-users-tab"
-        :class="{ active: tab === 'all' }"
-        @click="switchTab('all')"
-      >All Members</button>
-      <button
-        class="cnw-users-tab"
-        :class="{ active: tab === 'connections' }"
-        @click="switchTab('connections')"
-      >My Connections</button>
-      <button
-        class="cnw-users-tab"
-        :class="{ active: tab === 'requests' }"
-        @click="switchTab('requests')"
-      >
-        Requests
-        <span v-if="requestCount > 0" class="cnw-users-tab-badge">{{ requestCount }}</span>
-      </button>
     </div>
 
     <div v-if="loading" class="cnw-social-worker-loading">Loading members...</div>
@@ -489,62 +497,119 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
+}
+.cnw-users-header-text {
+  flex: 1;
 }
 .cnw-users-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text-dark);
+  margin: 0;
+  line-height: 1.2;
+}
+.cnw-users-subtitle {
+  font-size: 13px;
+  color: var(--text-light);
+  margin: 2px 0 0;
+  font-weight: 400;
 }
 .cnw-users-search-wrap {
-  position: relative;
-  width: 280px;
-  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  min-width: 200px;
+  max-width: 280px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cnw-users-search-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(58, 169, 218, 0.1);
 }
 .cnw-users-search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  flex-shrink: 0;
   color: var(--text-light);
-  pointer-events: none;
 }
 .cnw-users-search {
-  width: 100%;
-  padding: 9px 12px 9px 36px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  flex: 1;
+  padding: 0;
+  border: none;
   font-size: 13px;
+  font-weight: 400;
   font-family: inherit;
-  outline: none;
-  background: #fff;
+  color: var(--text-body);
+  background: transparent;
+  line-height: 1;
+  min-width: 0;
 }
-.cnw-users-search:focus { border-color: var(--teal); }
-
-/* Tabs */
-.cnw-users-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--border);
+.cnw-users-search::placeholder {
+  color: var(--text-light);
+  font-weight: 400;
 }
-.cnw-users-tab {
-  position: relative;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-med);
+.cnw-users-search:focus { outline: none; }
+.cnw-users-search-clear {
   background: none;
   border: none;
+  color: var(--text-light);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s;
+  line-height: 1;
+  padding: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  transition: all 0.15s;
 }
-.cnw-users-tab:hover { color: var(--teal); }
+.cnw-users-search-clear:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* Toolbar: tabs + search */
+.cnw-users-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--white);
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.cnw-users-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cnw-users-tab {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-med);
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cnw-users-tab:hover {
+  background: var(--bg);
+  color: var(--text-dark);
+}
 .cnw-users-tab.active {
-  color: var(--teal);
-  border-bottom-color: var(--teal);
+  background: var(--primary);
+  color: #fff;
 }
 .cnw-users-tab-badge {
   display: inline-flex;
@@ -558,7 +623,9 @@ export default {
   height: 18px;
   border-radius: 9px;
   padding: 0 5px;
-  margin-left: 6px;
+}
+.cnw-users-tab.active .cnw-users-tab-badge {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Grid */
@@ -837,12 +904,16 @@ export default {
   gap: 10px;
 }
 
-@media (max-width: 600px) {
-  .cnw-users-header { flex-direction: column; align-items: stretch; }
-  .cnw-users-search-wrap { width: 100%; }
+@media (max-width: 760px) {
+  .cnw-users-header { flex-wrap: wrap; }
+  .cnw-users-toolbar { flex-direction: column; align-items: stretch; }
+  .cnw-users-search-wrap { max-width: 100%; min-width: auto; }
+}
+@media (max-width: 480px) {
+  .cnw-users-header { gap: 10px; }
+  .cnw-users-title { font-size: 18px; }
   .cnw-users-grid { grid-template-columns: 1fr; }
-  .cnw-users-tabs { flex-direction: column; border-bottom: none; }
-  .cnw-users-tab { white-space: nowrap; padding: 10px 14px; border-bottom: none; border-left: 2px solid transparent; text-align: left; }
-  .cnw-users-tab.active { border-bottom-color: transparent; border-left-color: var(--teal); }
+  .cnw-users-tabs { width: 100%; }
+  .cnw-users-tab { padding: 6px 10px; font-size: 12px; }
 }
 </style>

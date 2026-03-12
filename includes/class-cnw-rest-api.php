@@ -16,7 +16,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     /**
-     * Check if a user is currently online via Pusher.
+     * Check if a user is currently online via their cnw_is_online flag.
+     * The flag is set/cleared by: Pusher webhook (channel_vacated), beforeunload,
+     * WP logout hook, and the /pusher/status endpoint.
      */
     private function is_user_online( $user_id ) {
         return (bool) get_user_meta( $user_id, 'cnw_is_online', true );
@@ -98,6 +100,11 @@ class Cnw_Social_Bridge_REST_API {
         // ── Pusher status broadcast ─────────────────────────────────────
         register_rest_route( $ns, '/pusher/status', array(
             'methods' => 'POST', 'callback' => array( $this, 'pusher_broadcast_status' ), 'permission_callback' => array( $this, 'can_send_message' ),
+        ) );
+
+        // ── Pusher webhook (channel_vacated → mark user offline) ─────────
+        register_rest_route( $ns, '/pusher/webhook', array(
+            'methods' => 'POST', 'callback' => array( $this, 'pusher_webhook' ), 'permission_callback' => '__return_true',
         ) );
 
         // ── Categories ───────────────────────────────────────────────
@@ -1585,10 +1592,13 @@ class Cnw_Social_Bridge_REST_API {
         global $wpdb;
 
         $params = $request->get_json_params();
+        if ( empty( $params ) ) {
+            $params = json_decode( $request->get_body(), true ) ?: array();
+        }
         $status = sanitize_text_field( $params['status'] ?? 'online' );
         $me     = get_current_user_id();
 
-        // Persist the online flag so initial page loads can read it
+        // Persist the online flag
         update_user_meta( $me, 'cnw_is_online', $status === 'online' ? 1 : 0 );
 
         $table  = $wpdb->prefix . 'cnw_social_worker_messages';
@@ -1625,6 +1635,71 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         return array( 'success' => true );
+    }
+
+    /**
+     * Pusher webhook handler — called by Pusher when channels are vacated.
+     * When a user's private channel is vacated (WebSocket closed), mark them offline
+     * and broadcast to all conversation partners instantly.
+     */
+    public function pusher_webhook( WP_REST_Request $request ) {
+        global $wpdb;
+
+        // Verify the webhook signature from Pusher
+        $body      = $request->get_body();
+        $signature = $request->get_header( 'X-Pusher-Signature' );
+
+        if ( ! Cnw_Social_Bridge_Pusher::verify_webhook( $body, $signature ) ) {
+            return new WP_Error( 'invalid_signature', 'Invalid webhook signature', array( 'status' => 401 ) );
+        }
+
+        $payload = json_decode( $body, true );
+        if ( empty( $payload['events'] ) || ! is_array( $payload['events'] ) ) {
+            return array( 'ok' => true );
+        }
+
+        foreach ( $payload['events'] as $event ) {
+            $event_name  = $event['name'] ?? '';
+            $channel     = $event['channel'] ?? '';
+
+            // Only handle channel_vacated for private-user-{id} channels
+            if ( $event_name !== 'channel_vacated' ) {
+                continue;
+            }
+            if ( ! preg_match( '/^private-user-(\d+)$/', $channel, $m ) ) {
+                continue;
+            }
+
+            $user_id = (int) $m[1];
+
+            // Already offline — skip
+            if ( ! get_user_meta( $user_id, 'cnw_is_online', true ) ) {
+                continue;
+            }
+
+            // Mark offline
+            update_user_meta( $user_id, 'cnw_is_online', 0 );
+
+            // Broadcast offline to all conversation partners
+            $table    = $wpdb->prefix . 'cnw_social_worker_messages';
+            $partners = $wpdb->get_col( $wpdb->prepare(
+                "SELECT DISTINCT CASE WHEN sender_id = %d THEN recipient_id ELSE sender_id END AS partner_id
+                 FROM {$table}
+                 WHERE sender_id = %d OR recipient_id = %d",
+                $user_id, $user_id, $user_id
+            ) );
+
+            $offline_payload = array( 'user_id' => $user_id, 'status' => 'offline' );
+            foreach ( $partners as $partner_id ) {
+                Cnw_Social_Bridge_Pusher::trigger(
+                    'private-user-' . (int) $partner_id,
+                    'user-status',
+                    $offline_payload
+                );
+            }
+        }
+
+        return array( 'ok' => true );
     }
 
     /* ==================================================================

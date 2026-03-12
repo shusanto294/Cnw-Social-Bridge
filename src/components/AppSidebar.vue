@@ -274,12 +274,18 @@ export default {
     window.addEventListener('cnw-messages-read', this._refreshUnread);
     // Listen for local event when user accepts/declines a connection request
     window.addEventListener('cnw-connections-updated', this._refreshConnectionRequests);
+    if (this.canModerate) {
+      window.addEventListener('cnw-moderation-updated', this._refreshOpenReports);
+    }
   },
   beforeUnmount() {
     window.removeEventListener('cnw-avatar-updated', this._onAvatarUpdated);
     window.removeEventListener('cnw-anonymous-updated', this._onAnonUpdated);
     window.removeEventListener('cnw-messages-read', this._refreshUnread);
     window.removeEventListener('cnw-connections-updated', this._refreshConnectionRequests);
+    if (this._refreshOpenReports) {
+      window.removeEventListener('cnw-moderation-updated', this._refreshOpenReports);
+    }
   },
   computed: {
     displayName() {
