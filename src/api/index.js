@@ -360,6 +360,20 @@ export async function getTyping(userId) {
   return apiFetch(`/typing/${userId}`);
 }
 
+export async function getPreferences() {
+  return apiFetch('/users/me/preferences');
+}
+
+export async function updatePreferences(prefs) {
+  const url = apiUrl('/users/me/preferences');
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(prefs),
+  });
+  return handleResponse(res);
+}
+
 export async function broadcastStatus(status) {
   const url = apiUrl('/pusher/status');
   const res = await fetch(url, {

@@ -19,8 +19,19 @@ class Cnw_Social_Bridge_REST_API {
      * Check if a user is currently online via their cnw_is_online flag.
      * The flag is set/cleared by: Pusher webhook (channel_vacated), beforeunload,
      * WP logout hook, and the /pusher/status endpoint.
+     *
+     * Respects the target user's show_online_status preference.
+     * If the user has disabled it, only they themselves can see their own status.
      */
-    private function is_user_online( $user_id ) {
+    private function is_user_online( $user_id, $requesting_user_id = 0 ) {
+        // If the target user has hidden their online status, return false
+        // (unless the requester is the user themselves)
+        if ( $requesting_user_id !== $user_id ) {
+            $prefs = $this->get_user_preferences( $user_id );
+            if ( empty( $prefs['show_online_status'] ) ) {
+                return false;
+            }
+        }
         return (bool) get_user_meta( $user_id, 'cnw_is_online', true );
     }
 
@@ -238,6 +249,10 @@ class Cnw_Social_Bridge_REST_API {
         ) );
         register_rest_route( $ns, '/users/me/avatar', array(
             'methods' => 'POST', 'callback' => array( $this, 'upload_avatar' ), 'permission_callback' => 'is_user_logged_in',
+        ) );
+        register_rest_route( $ns, '/users/me/preferences', array(
+            array( 'methods' => 'GET',  'callback' => array( $this, 'get_preferences' ),    'permission_callback' => 'is_user_logged_in' ),
+            array( 'methods' => 'PUT',  'callback' => array( $this, 'update_preferences' ), 'permission_callback' => 'is_user_logged_in' ),
         ) );
 
         // ── Activity ────────────────────────────────────────────────
@@ -514,7 +529,13 @@ class Cnw_Social_Bridge_REST_API {
 
         if ( $search ) {
             $like   = '%' . $wpdb->esc_like( $search ) . '%';
-            $where .= $wpdb->prepare( ' AND (t.title LIKE %s OR t.content LIKE %s)', $like, $like );
+            $where .= $wpdb->prepare(
+                " AND (t.title LIKE %s OR t.content LIKE %s OR EXISTS (
+                    SELECT 1 FROM {$wpdb->prefix}cnw_social_worker_replies rs
+                    WHERE rs.thread_id = t.id AND rs.status = 'approved' AND rs.content LIKE %s
+                ))",
+                $like, $like, $like
+            );
         }
 
         switch ( $filter ) {
@@ -606,8 +627,19 @@ class Cnw_Social_Bridge_REST_API {
         $total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT t.id) FROM {$wpdb->prefix}cnw_social_worker_threads t $join $where" );
         // phpcs:enable
 
-        // Attach tags + avatar, handle anonymous
+        // Attach tags + avatar, handle anonymous, flag reply matches
         foreach ( $threads as &$thread ) {
+            $thread->has_reply_match = false;
+            if ( $search ) {
+                $reply_like  = '%' . $wpdb->esc_like( $search ) . '%';
+                $reply_match = (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies rs
+                     WHERE rs.thread_id = %d AND rs.status = 'approved' AND rs.content LIKE %s",
+                    $thread->id, $reply_like
+                ) );
+                $thread->has_reply_match = $reply_match > 0;
+            }
+
             $thread->tags = $wpdb->get_col( $wpdb->prepare(
                 "SELECT tg.name FROM {$wpdb->prefix}cnw_social_worker_thread_tags tt
                  JOIN {$wpdb->prefix}cnw_social_worker_tags tg ON tt.tag_id = tg.id
@@ -1233,11 +1265,14 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'recipient_id and content are required', array( 'status' => 400 ) );
         }
 
-        // Only connected users can message each other
-        $sender = get_current_user_id();
+        // Check recipient's message_privacy preference
+        $sender    = get_current_user_id();
         $recipient = intval( $params['recipient_id'] );
-        if ( ! current_user_can( 'manage_options' ) && ! $this->are_connected( $sender, $recipient ) ) {
-            return new WP_Error( 'not_connected', 'You must be connected with this user to send a message.', array( 'status' => 403 ) );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $recipient_prefs = $this->get_user_preferences( $recipient );
+            if ( $recipient_prefs['message_privacy'] === 'connections' && ! $this->are_connected( $sender, $recipient ) ) {
+                return new WP_Error( 'not_connected', 'This user only accepts messages from connections.', array( 'status' => 403 ) );
+            }
         }
 
         $result = $wpdb->insert(
@@ -1377,7 +1412,7 @@ class Cnw_Social_Bridge_REST_API {
             // If I have restricted the other user, hide their info from me
             $restricted_by_other = $this->has_restricted( $other_id, $me );
             $restricted_by_me    = $this->has_restricted( $me, $other_id );
-            $row->is_online    = ( $restricted_by_other || $restricted_by_me ) ? false : $this->is_user_online( $other_id );
+            $row->is_online    = ( $restricted_by_other || $restricted_by_me ) ? false : $this->is_user_online( $other_id, $me );
             $row->is_connected = $this->are_connected( $me, $other_id );
             $row->blocked_by   = $this->get_blocked_by( $me, $other_id );
             if ( $restricted_by_other || $restricted_by_me ) {
@@ -1470,7 +1505,7 @@ class Cnw_Social_Bridge_REST_API {
 
         // Hide online status and read receipts if either side has restricted the other
         $any_restriction = $this->has_restricted( $other, $me ) || $this->has_restricted( $me, $other );
-        $is_online = $any_restriction ? false : $this->is_user_online( $other );
+        $is_online = $any_restriction ? false : $this->is_user_online( $other, $me );
 
         if ( $any_restriction ) {
             foreach ( $messages as &$msg ) {
@@ -2581,7 +2616,7 @@ class Cnw_Social_Bridge_REST_API {
                 'thread_count'       => $thread_count,
                 'reply_count'        => $reply_count,
                 'user_registered'    => $u->user_registered,
-                'is_online'          => $any_restriction ? false : $this->is_user_online( $u->ID ),
+                'is_online'          => $any_restriction ? false : $this->is_user_online( $u->ID, $current ),
                 'connection_status'  => $conn_map[ $u->ID ] ?? 'none',
             );
         }
@@ -2634,7 +2669,50 @@ class Cnw_Social_Bridge_REST_API {
             $user_id
         ) );
 
-        $is_own = get_current_user_id() === $user_id;
+        $current_user_id = get_current_user_id();
+        $is_own          = $current_user_id === $user_id;
+        $is_admin        = current_user_can( 'manage_options' );
+        $target_prefs    = $this->get_user_preferences( $user_id );
+
+        // Enforce profile_visibility: if set to "connections" and viewer is not connected (and not own/admin), return limited data
+        $profile_restricted = false;
+        if ( ! $is_own && ! $is_admin && $target_prefs['profile_visibility'] === 'connections' ) {
+            if ( ! $current_user_id || ! $this->are_connected( $current_user_id, $user_id ) ) {
+                $profile_restricted = true;
+            }
+        }
+
+        // Enforce show_activity: if user disabled it, hide from others
+        $show_activity = $is_own || $is_admin || ! empty( $target_prefs['show_activity'] );
+
+        // Determine if current user can message this user
+        $can_message = false;
+        if ( $is_own ) {
+            $can_message = false; // can't message yourself
+        } elseif ( $is_admin ) {
+            $can_message = true;
+        } elseif ( $current_user_id ) {
+            if ( $target_prefs['message_privacy'] === 'everyone' ) {
+                $can_message = true;
+            } else {
+                $can_message = $this->are_connected( $current_user_id, $user_id );
+            }
+        }
+
+        if ( $profile_restricted ) {
+            // Return minimal profile data
+            return array(
+                'id'                 => (int) $user->ID,
+                'display_name'       => $user->display_name,
+                'avatar'             => $avatar,
+                'verified_label'     => $verified_label,
+                'professional_title' => $professional_title,
+                'is_own'             => false,
+                'profile_restricted' => true,
+                'suspension'         => $this->get_suspension_info( $user_id ),
+                'preferences'        => null,
+            );
+        }
 
         return array(
             'id'              => (int) $user->ID,
@@ -2654,7 +2732,10 @@ class Cnw_Social_Bridge_REST_API {
             'verified_label'     => $verified_label,
             'professional_title' => $professional_title,
             'is_own'             => $is_own,
+            'show_activity'      => $show_activity,
+            'can_message'        => $can_message,
             'suspension'         => $this->get_suspension_info( $user_id ),
+            'preferences'        => $is_own ? $this->get_user_preferences( $user_id ) : null,
         );
     }
 
@@ -2774,6 +2855,83 @@ class Cnw_Social_Bridge_REST_API {
         $this->log_activity( $user_id, 'profile_updated', 'Updated profile information', 0, 'No points for profile update' );
 
         return array( 'success' => true );
+    }
+
+    /* ------------------------------------------------------------------
+     * User Preferences (privacy + notifications)
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Internal helper to read preferences for a given user.
+     */
+    private function get_user_preferences( $user_id ) {
+        $saved = get_user_meta( $user_id, 'cnw_preferences', true );
+        return is_array( $saved ) ? array_merge( self::$preference_defaults, $saved ) : self::$preference_defaults;
+    }
+
+    /** Default preference values. */
+    private static $preference_defaults = array(
+        // Privacy
+        'profile_visibility'  => 'everyone',     // everyone | connections
+        'message_privacy'     => 'everyone',     // everyone | connections
+        'show_online_status'  => true,
+        'show_activity'       => true,
+        // Notifications
+        'notify_replies'      => true,
+        'notify_mentions'     => true,
+        'notify_votes'        => true,
+        'notify_solutions'    => true,
+        'notify_connections'  => true,
+        'notify_messages'     => true,
+        'email_notifications' => 'inactive',     // always | inactive | none
+    );
+
+    /**
+     * Get preferences for the current user.
+     */
+    public function get_preferences( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+        $saved   = get_user_meta( $user_id, 'cnw_preferences', true );
+        $prefs   = is_array( $saved ) ? array_merge( self::$preference_defaults, $saved ) : self::$preference_defaults;
+
+        return $prefs;
+    }
+
+    /**
+     * Update preferences for the current user.
+     */
+    public function update_preferences( WP_REST_Request $request ) {
+        $user_id = get_current_user_id();
+        $body    = $request->get_json_params();
+        $saved   = get_user_meta( $user_id, 'cnw_preferences', true );
+        $prefs   = is_array( $saved ) ? array_merge( self::$preference_defaults, $saved ) : self::$preference_defaults;
+
+        // Whitelist allowed keys
+        $allowed_strings = array(
+            'profile_visibility'  => array( 'everyone', 'connections' ),
+            'message_privacy'     => array( 'everyone', 'connections' ),
+            'email_notifications' => array( 'always', 'inactive', 'none' ),
+        );
+        foreach ( $allowed_strings as $key => $valid ) {
+            if ( isset( $body[ $key ] ) && in_array( $body[ $key ], $valid, true ) ) {
+                $prefs[ $key ] = $body[ $key ];
+            }
+        }
+
+        $allowed_booleans = array(
+            'show_online_status', 'show_activity',
+            'notify_replies', 'notify_mentions', 'notify_votes',
+            'notify_solutions', 'notify_connections', 'notify_messages',
+        );
+        foreach ( $allowed_booleans as $key ) {
+            if ( isset( $body[ $key ] ) ) {
+                $prefs[ $key ] = (bool) $body[ $key ];
+            }
+        }
+
+        update_user_meta( $user_id, 'cnw_preferences', $prefs );
+
+        return $prefs;
     }
 
     /**
@@ -2961,12 +3119,34 @@ class Cnw_Social_Bridge_REST_API {
     /**
      * Insert a notification row.
      */
+    /** Notification type → user preference key mapping. */
+    private static $notif_pref_map = array(
+        'reply'               => 'notify_replies',
+        'vote'                => 'notify_votes',
+        'save'                => 'notify_votes',
+        'solution'            => 'notify_solutions',
+        'solution_removed'    => 'notify_solutions',
+        'connection_request'  => 'notify_connections',
+        'connection_accepted' => 'notify_connections',
+        'mention'             => 'notify_mentions',
+    );
+
     private function insert_notification( $user_id, $actor_id, $type, $ref_type, $ref_id, $message ) {
         global $wpdb;
 
         // Don't notify yourself.
         if ( (int) $user_id === (int) $actor_id ) {
             return;
+        }
+
+        // Check user's notification preference for this type
+        // Moderation types (warning, suspension) always go through
+        if ( isset( self::$notif_pref_map[ $type ] ) ) {
+            $prefs    = $this->get_user_preferences( (int) $user_id );
+            $pref_key = self::$notif_pref_map[ $type ];
+            if ( empty( $prefs[ $pref_key ] ) ) {
+                return; // User has disabled this notification type
+            }
         }
 
         $wpdb->insert(
@@ -3853,7 +4033,7 @@ class Cnw_Social_Bridge_REST_API {
                 'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
                 ) ),
-                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid ),
+                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid, $me ),
                 'connected_since'    => $row->connected_since,
                 'connection_status'  => 'connected',
             );
@@ -3896,7 +4076,7 @@ class Cnw_Social_Bridge_REST_API {
                 'reply_count'        => (int) $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$wpdb->prefix}cnw_social_worker_replies WHERE author_id = %d", $uid
                 ) ),
-                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid ),
+                'is_online'          => ( $this->has_restricted( $me, $uid ) || $this->has_restricted( $uid, $me ) ) ? false : $this->is_user_online( $uid, $me ),
                 'created_at'         => $row->created_at,
             );
         }

@@ -4,7 +4,7 @@
     <div class="qcard-meta">
       <div class="qcard-meta-left">
         <span v-if="isAnonymous" class="qcard-anon-avatar" title="Anonymous">
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
         </span>
         <template v-else>
           <router-link :to="'/users/' + thread.author_id" class="qcard-author-link" @click.stop>
@@ -17,29 +17,29 @@
           </router-link>
           <router-link :to="'/users/' + thread.author_id" class="qcard-author qcard-author-link" @click.stop>{{ thread.author_name }}</router-link>
         </template>
-        <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
+        <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified" aria-label="Verified user">✓</span>
         <span v-if="!isAnonymous && thread.author_reputation" class="cnw-reputation-badge" :title="thread.author_reputation + ' reputation points'">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           {{ formatReputation(thread.author_reputation) }}
         </span>
         <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
       </div>
       <div class="qcard-meta-right">
-        <button v-if="isLoggedIn" class="td-action-btn td-report-btn" @click.stop="showReportModal = true" title="Report">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <button v-if="isLoggedIn" class="td-action-btn td-report-btn" @click.stop="showReportModal = true" title="Report" aria-label="Report this thread">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         </button>
       </div>
     </div>
 
     <!-- Title -->
-    <h2 class="qcard-title" @click="open">{{ thread.title }}</h2>
+    <h2 class="qcard-title" @click="open" @keydown.enter="open" role="link" tabindex="0" v-html="highlightText(thread.title)"></h2>
     <div v-if="isPinned || isClosed" class="thread-badges">
       <span v-if="isPinned" class="thread-badge badge-pinned">Pinned</span>
       <span v-if="isClosed" class="thread-badge badge-closed">Closed</span>
     </div>
 
     <!-- Excerpt -->
-    <p class="qcard-excerpt">{{ truncate(thread.content, 200) }}</p>
+    <p class="qcard-excerpt" v-html="highlightText(truncate(thread.content, 200))"></p>
 
     <!-- Tags -->
     <div class="qcard-tags">
@@ -48,20 +48,20 @@
 
     <!-- Stats row 1: Upvote/Downvote + Helpful + Views -->
     <div class="qcard-stats-row">
-      <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click.stop="vote(1)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click.stop="vote(1)" aria-label="Upvote" :aria-pressed="userVote === 1">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
         <span>{{ localUpvotes }}</span>
         <span>Upvote</span>
       </button>
       <span class="stat-divider"></span>
-      <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click.stop="vote(-1)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+      <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click.stop="vote(-1)" aria-label="Downvote" :aria-pressed="userVote === -1">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
         <span>{{ localDownvotes }}</span>
         <span>Downvote</span>
       </button>
       <span class="stat-divider"></span>
-      <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click.stop="toggleSave">
-        <svg width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click.stop="toggleSave" aria-label="Mark as helpful" :aria-pressed="isSaved">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         <span>{{ localSavesCount }}</span>
         <span>Helpful</span>
       </button>
@@ -74,8 +74,8 @@
 
     <!-- Stats row 2: Replies + Reply + Answered -->
     <div class="qcard-stats-row">
-      <button class="stat-btn" @click.stop="toggleExpand">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <button class="stat-btn" @click.stop="toggleExpand" aria-label="Toggle replies" :aria-expanded="expanded">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
         <g clip-path="url(#clip0_20026_7995)">
           <path d="M9.06276 6.21553L9.05248 1.2279C9.05108 0.55084 8.49909 0 7.82201 0H1.23047C0.551988 0 0 0.551988 0 1.23044V6.20687C0 6.88532 0.551988 7.43731 1.23047 7.43731H2.07813V8.25759C2.07813 8.59482 2.4643 8.78825 2.73438 8.58572L4.26508 7.43772L7.82857 7.44849C8.52048 7.44849 9.06415 6.89106 9.06276 6.21553ZM4.51172 5.76939C4.2852 5.76939 4.10156 5.58575 4.10156 5.35924C4.10156 5.13272 4.2852 4.94908 4.51172 4.94908C4.73823 4.94908 4.92188 5.13272 4.92188 5.35924C4.92188 5.58575 4.73823 5.76939 4.51172 5.76939ZM4.94922 4.05844V4.10145C4.94922 4.32797 4.76558 4.51161 4.53906 4.51161C4.31255 4.51161 4.12891 4.32797 4.12891 4.10145V3.84554C4.12891 3.57465 4.33024 3.34203 4.59722 3.30444C4.7979 3.27619 4.94922 3.10163 4.94922 2.89833C4.94922 2.59943 4.61984 2.34314 4.24298 2.58429C4.05212 2.70635 3.79851 2.65059 3.67645 2.45982C3.55439 2.26901 3.61011 2.01537 3.80092 1.89328C4.22393 1.62269 4.72049 1.59477 5.12933 1.81852C5.5242 2.03473 5.76953 2.44847 5.76953 2.89836C5.76953 3.42497 5.43028 3.88746 4.94922 4.05844Z" fill="#3AA9DA"/>
           <path d="M12.7695 5.76929H9.88214L9.88307 6.21373C9.88515 7.22644 9.15988 8.04822 8.23058 8.23017H11.9219C12.1484 8.23017 12.332 8.41381 12.332 8.64033C12.332 8.86684 12.1484 9.05048 11.9219 9.05048H7C6.77348 9.05048 6.58984 8.86684 6.58984 8.64033C6.58984 8.47312 6.69006 8.32954 6.83356 8.26569L4.94922 8.25997V11.9488C4.94922 12.6273 5.50121 13.1793 6.17969 13.1793H8.95396L10.508 13.9563C10.7799 14.0922 11.1016 13.8942 11.1016 13.5894V13.1793H12.7695C13.448 13.1793 14 12.6273 14 11.9488V6.99973C14 6.32125 13.448 5.76929 12.7695 5.76929ZM11.9219 10.691H7C6.77348 10.691 6.58984 10.5074 6.58984 10.2809C6.58984 10.0544 6.77348 9.87071 7 9.87071H11.9219C12.1484 9.87071 12.332 10.0544 12.332 10.2809C12.332 10.5074 12.1484 10.691 11.9219 10.691Z" fill="#3AA9DA"/>
@@ -90,8 +90,8 @@
         <span>Replies</span>
       </button>
       <span class="stat-divider"></span>
-      <button class="stat-btn reply-link" @click.stop="toggleExpand">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
+      <button class="stat-btn reply-link" @click.stop="toggleExpand" aria-label="Reply to thread" :aria-expanded="expanded">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
         <span>Reply</span>
       </button>
       <span class="stat-divider"></span>
@@ -107,7 +107,16 @@
 
     <!-- Inline replies (expanded) -->
     <div v-if="expanded" class="qcard-replies">
-      <div v-if="loadingReplies" class="cnw-social-worker-loading" style="padding:16px">Loading replies…</div>
+      <div v-if="loadingReplies" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div v-for="n in 2" :key="n" class="cnw-skeleton-card" style="padding:10px;gap:8px">
+          <div class="cnw-skeleton-row">
+            <div class="cnw-skeleton cnw-skeleton-circle" style="width:24px;height:24px"></div>
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:25%"></div>
+          </div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:85%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:40%"></div>
+        </div>
+      </div>
       <template v-else>
         <ReplyCard
           v-for="(reply, idx) in topLevelReplies"
@@ -118,12 +127,13 @@
           :is-last="idx === topLevelReplies.length - 1"
           :thread-id="thread.id"
           :thread-author-id="thread.author_id"
+          :search-query="searchQuery"
           @reply-submitted="refreshReplies"
         />
         <!-- Write message box (logged-in only) -->
         <div v-if="isLoggedIn" class="inline-reply-form">
           <span v-if="isCurrentUserAnonymous" class="qcard-anon-avatar qcard-anon-avatar-sm">
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
           </span>
           <img
             v-else
@@ -139,6 +149,8 @@
               placeholder="Write Message:"
               class="inline-reply-input"
               rows="3"
+              id="qcard-reply-input"
+              aria-label="Write a reply"
               @keydown.enter.ctrl.prevent="submitInlineReply"
             ></textarea>
             <div class="inline-reply-actions">
@@ -146,6 +158,7 @@
                 class="inline-reply-send-btn"
                 :disabled="!replyDraft.trim() || submitting"
                 @click="submitInlineReply"
+                aria-label="Submit reply"
               >Reply</button>
             </div>
           </div>
@@ -157,12 +170,12 @@
     </div>
 
     <!-- Edit Modal -->
-    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal">
+    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal" role="dialog" aria-modal="true" aria-labelledby="edit-thread-title">
       <div class="td-modal">
         <div class="td-modal-header">
-          <h3>Edit Thread</h3>
-          <button class="td-modal-close" @click="closeEditModal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="edit-thread-title">Edit Thread</h3>
+          <button class="td-modal-close" @click="closeEditModal" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -181,12 +194,12 @@
     </div>
 
     <!-- Delete Confirmation -->
-    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false">
+    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false" role="dialog" aria-modal="true" aria-labelledby="delete-thread-title">
       <div class="td-modal td-modal-sm">
         <div class="td-modal-header">
-          <h3>Delete Thread</h3>
-          <button class="td-modal-close" @click="showDeleteConfirm = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="delete-thread-title">Delete Thread</h3>
+          <button class="td-modal-close" @click="showDeleteConfirm = false" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -202,12 +215,12 @@
     </div>
 
     <!-- Report Modal -->
-    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
+    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false" role="dialog" aria-modal="true" aria-labelledby="report-thread-title">
       <div class="td-modal">
         <div class="td-modal-header">
-          <h3>Report Thread</h3>
-          <button class="td-modal-close" @click="showReportModal = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="report-thread-title">Report Thread</h3>
+          <button class="td-modal-close" @click="showReportModal = false" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -244,6 +257,7 @@ export default {
   components: { ReplyCard },
   props: {
     thread: { type: Object, required: true },
+    searchQuery: { type: String, default: '' },
   },
   emits: ['open', 'deleted'],
   data() {
@@ -305,6 +319,11 @@ export default {
       return !!(parseInt(this.thread.is_closed));
     },
   },
+  mounted() {
+    if (this.thread.has_reply_match && this.searchQuery) {
+      this.expandReplies();
+    }
+  },
   methods: {
     openLoginModal() {
       window.dispatchEvent(new CustomEvent('cnw-open-login'));
@@ -360,13 +379,23 @@ export default {
     async toggleExpand() {
       this.expanded = !this.expanded;
       if (this.expanded && this.replies.length === 0) {
-        this.loadingReplies = true;
-        try {
-          const data = await getReplies(this.thread.id);
-          this.replies = data.replies || [];
-        } catch (e) { /* silent */ } finally {
-          this.loadingReplies = false;
-        }
+        await this.loadRepliesData();
+      }
+    },
+    async expandReplies() {
+      if (this.expanded) return;
+      this.expanded = true;
+      if (this.replies.length === 0) {
+        await this.loadRepliesData();
+      }
+    },
+    async loadRepliesData() {
+      this.loadingReplies = true;
+      try {
+        const data = await getReplies(this.thread.id);
+        this.replies = data.replies || [];
+      } catch (e) { /* silent */ } finally {
+        this.loadingReplies = false;
       }
     },
     focusReplyBox() {
@@ -374,8 +403,7 @@ export default {
     },
     async refreshReplies() {
       try {
-        const data = await getReplies(this.thread.id);
-        this.replies = data.replies || [];
+        await this.loadRepliesData();
       } catch (e) { /* silent */ }
     },
     async submitInlineReply() {
@@ -441,6 +469,19 @@ export default {
     truncate(str, len) {
       if (!str) return '';
       return str.length > len ? str.slice(0, len) + '…' : str;
+    },
+    highlightText(text) {
+      if (!text) return '';
+      const q = this.searchQuery?.trim();
+      if (!q) return this.escapeHtml(text);
+      const escaped = this.escapeHtml(text);
+      const regex = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      return escaped.replace(regex, '<mark class="cnw-search-highlight">$1</mark>');
+    },
+    escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
     },
     formatDate(d) {
       if (!d) return '';

@@ -12,22 +12,24 @@
           @click="setFilter(tab.id)"
         >{{ tab.label }}</button>
         <div v-if="isLoggedIn" class="more-dropdown-wrap">
-          <button class="filter-tab more-btn" :class="{ 'is-active': moreFilters.some(f => f.id === activeFilter) }" @click.stop="moreOpen = !moreOpen">
+          <button class="filter-tab more-btn" :class="{ 'is-active': moreFilters.some(f => f.id === activeFilter) }" @click.stop="moreOpen = !moreOpen" aria-haspopup="listbox" :aria-expanded="moreOpen">
             {{ moreLabel }}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <div v-if="moreOpen" class="more-dropdown">
+          <div v-if="moreOpen" class="more-dropdown" role="listbox">
             <button
               v-for="opt in moreFilters"
               :key="opt.id"
               class="more-dropdown-item"
               :class="{ 'is-active': activeFilter === opt.id }"
               @click="setFilter(opt.id); moreOpen = false"
+              role="option"
+              :aria-selected="activeFilter === opt.id"
             >{{ opt.label }}</button>
           </div>
         </div>
-        <button class="filter-dots-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
+        <button class="filter-dots-btn" aria-label="More options">
+          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
             <g clip-path="url(#clip0_20234_601)">
               <path d="M3.72969 6.125H4.26875C4.6375 6.125 4.93594 6.42344 4.93594 6.79219V7.33125C4.93594 7.7 4.6375 7.99844 4.26875 7.99844H3.72969C3.36094 7.99844 3.0625 7.7 3.0625 7.33125V6.79219C3.0625 6.425 3.36094 6.125 3.72969 6.125Z" fill="white"/>
               <path d="M3.72969 3.0625H4.26875C4.6375 3.0625 4.93594 3.36094 4.93594 3.72969V4.26875C4.93594 4.6375 4.6375 4.93594 4.26875 4.93594H3.72969C3.36094 4.93594 3.0625 4.6375 3.0625 4.26875V3.72969C3.0625 3.36094 3.36094 3.0625 3.72969 3.0625Z" fill="white"/>
@@ -50,9 +52,10 @@
         type="text"
         placeholder="Search"
         class="search-input"
+        aria-label="Search questions"
         @input="onSearch"
       />
-      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </div>
 
     <!-- New Question link -->
@@ -60,8 +63,33 @@
       <button class="new-question-btn" @click="$router.push('/ask')">New Question</button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="cnw-social-worker-loading">Loading questions…</div>
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="questions-list">
+      <div v-for="n in 4" :key="n" class="cnw-skeleton-card">
+        <div class="cnw-skeleton-row">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:34px;height:34px"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:30%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+          </div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line-xl" style="width:75%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:60%"></div>
+        <div class="cnw-skeleton-row" style="gap:6px">
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:50px;height:20px;border-radius:var(--radius-pill)"></div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:20px;border-radius:var(--radius-pill)"></div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:45%"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="loadError" class="cnw-error-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>Failed to load questions.</p>
+      <button class="cnw-error-retry-btn" @click="fetchThreads">Retry</button>
+    </div>
 
     <!-- Empty -->
     <div v-else-if="threads.length === 0" class="cnw-social-worker-empty">No questions found.</div>
@@ -72,30 +100,35 @@
         v-for="thread in threads"
         :key="thread.id"
         :thread="thread"
+        :search-query="searchQuery"
         @deleted="onThreadDeleted"
       />
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="pagination">
+    <nav v-if="totalPages > 1" class="pagination" aria-label="Pagination">
       <button
         class="page-btn"
         :disabled="currentPage <= 1"
         @click="goToPage(currentPage - 1)"
+        aria-label="Previous page"
       >‹</button>
       <button
         v-for="p in visiblePages"
         :key="p"
         class="page-btn"
         :class="{ 'is-active': p === currentPage }"
+        :aria-current="p === currentPage ? 'page' : undefined"
+        :aria-label="'Page ' + p"
         @click="goToPage(p)"
       >{{ p }}</button>
       <button
         class="page-btn"
         :disabled="currentPage >= totalPages"
         @click="goToPage(currentPage + 1)"
+        aria-label="Next page"
       >›</button>
-    </div>
+    </nav>
   </div>
 </template>
 
@@ -125,6 +158,7 @@ export default {
       searchQuery: '',
       threads: [],
       loading: true,
+      loadError: false,
       currentPage: 1,
       totalPages: 1,
       searchTimer: null,
@@ -157,6 +191,7 @@ export default {
     },
     async fetchThreads() {
       this.loading = true;
+      this.loadError = false;
       try {
         const data = await getThreads({
           page: this.currentPage,
@@ -167,6 +202,7 @@ export default {
         this.totalPages = data.pages || 1;
       } catch (e) {
         console.error(e);
+        this.loadError = true;
       } finally {
         this.loading = false;
       }

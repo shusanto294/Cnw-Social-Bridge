@@ -18,7 +18,7 @@
           <div class="reply-user-info">
             <div class="reply-avatar-wrap">
               <span v-if="isAnonymous" class="reply-anon-avatar" title="Anonymous">
-                <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
               </span>
               <router-link v-else :to="'/users/' + reply.author_id" class="qcard-author-link">
                 <img
@@ -31,9 +31,9 @@
             </div>
             <router-link v-if="!isAnonymous" :to="'/users/' + reply.author_id" class="reply-author qcard-author-link">{{ reply.author_name }}</router-link>
             <span v-else class="reply-author">{{ reply.author_name }}</span>
-            <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified">✓</span>
+            <span v-if="!isAnonymous" class="cnw-social-worker-verified" title="Verified" aria-label="Verified user">✓</span>
             <span v-if="!isAnonymous && reply.author_reputation" class="cnw-reputation-badge" :title="reply.author_reputation + ' reputation points'">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               {{ formatReputation(reply.author_reputation) }}
             </span>
           </div>
@@ -42,42 +42,42 @@
           </div>
         </div>
         <span v-if="localIsSolution" class="reply-best-answer-badge">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           Best Answer
         </span>
         <div class="reply-actions">
-          <button v-if="isLoggedIn" class="td-action-btn td-report-btn reply-report-btn" @click="showReportModal = true" title="Report">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          <button v-if="isLoggedIn" class="td-action-btn td-report-btn reply-report-btn" @click="showReportModal = true" title="Report" aria-label="Report this reply">
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
           </button>
-          <button v-if="isOwner || canModerate" class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <button v-if="isOwner || canModerate" class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit" aria-label="Edit this reply">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button v-if="isOwner || canModerate" class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <button v-if="isOwner || canModerate" class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete" aria-label="Delete this reply">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
       </div>
 
       <!-- Body text -->
-      <p class="reply-body">{{ localContent }}</p>
+      <p class="reply-body" v-html="highlightedContent"></p>
 
       <!-- Vote buttons -->
       <div class="reply-helpful">
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" aria-label="Upvote" :aria-pressed="userVote === 1">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
           <span>{{ localUpvotes }}</span>
           <span>Upvote</span>
         </button>
         <span class="reply-divider"></span>
-        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+        <button class="reply-stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" aria-label="Downvote" :aria-pressed="userVote === -1">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
           <span>{{ localDownvotes }}</span>
           <span>Downvote</span>
         </button>
         <template v-if="canAccept || localIsSolution">
           <span class="reply-divider"></span>
-          <button class="reply-stat-btn accept-btn" :class="{ 'accept-active': localIsSolution }" @click="toggleSolution" :disabled="!canAccept || markingSolution" :title="acceptTooltip">
-            <svg width="14" height="14" viewBox="0 0 24 24" :fill="localIsSolution ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <button class="reply-stat-btn accept-btn" :class="{ 'accept-active': localIsSolution }" @click="toggleSolution" :disabled="!canAccept || markingSolution" :title="acceptTooltip" :aria-label="acceptTooltip" :aria-pressed="localIsSolution">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" :fill="localIsSolution ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             <span>{{ localIsSolution ? 'Accepted' : 'Accept' }}</span>
           </button>
         </template>
@@ -85,14 +85,14 @@
 
       <!-- Footer: Replies | Reply -->
       <div class="reply-footer">
-        <button class="reply-stat-btn" @click="toggleNested">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <button class="reply-stat-btn" @click="toggleNested" aria-label="Toggle nested replies">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span>{{ nestedReplies.length || reply.reply_count || 0 }}</span>
           <span>Replies</span>
         </button>
         <span class="reply-divider"></span>
-        <button class="reply-stat-btn" @click="handleReplyClick">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
+        <button class="reply-stat-btn" @click="handleReplyClick" aria-label="Reply to this comment" :aria-expanded="showReplyBox">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4l-4 4V6c0-1.1.9-2 2-2z"/></svg>
           <span>Reply</span>
         </button>
       </div>
@@ -105,7 +105,7 @@
       <!-- Inline reply box for THIS specific reply -->
       <div v-if="showReplyBox && isLoggedIn" class="reply-inline-form">
         <span v-if="isCurrentUserAnonymous" class="reply-anon-avatar">
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.556 5.91c.504-.334.887-.822 1.093-1.391a2.97 2.97 0 0 0-.653-3.16A2.97 2.97 0 0 0 6 .747a2.97 2.97 0 0 0-1.68.555 2.97 2.97 0 0 0-1.016 1.448 2.97 2.97 0 0 0 1.14 3.16 4.47 4.47 0 0 0-3.114 4.185v.78c0 .1.04.195.11.265a.375.375 0 0 0 .265.11h8.19a.375.375 0 0 0 .375-.375v-.78a4.47 4.47 0 0 0-2.734-4.185zM6.259 5.25a.376.376 0 0 1-.529 0 .376.376 0 0 1 0-.533.375.375 0 0 1 .529 0 .376.376 0 0 1 0 .533zm.112-1.305v.191a.375.375 0 0 1-.75 0v-.491a.375.375 0 0 1 .375-.375.296.296 0 0 0 .296-.296.296.296 0 0 0-.296-.297.296.296 0 0 0-.3.3.375.375 0 0 1-.75 0 1.046 1.046 0 1 1 1.425.968z" fill="#fff"/></svg>
         </span>
         <img
           v-else
@@ -121,12 +121,14 @@
             placeholder="Write Message:"
             class="reply-inline-input"
             rows="3"
+            aria-label="Write a reply"
           ></textarea>
           <div class="reply-inline-actions">
             <button
               class="reply-inline-send-btn"
               :disabled="!replyDraft.trim() || submitting"
               @click="submitReply"
+              aria-label="Submit reply"
             >Reply</button>
           </div>
         </div>
@@ -134,12 +136,12 @@
     </div>
 
     <!-- Edit Reply Modal -->
-    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal">
+    <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal" role="dialog" aria-modal="true" aria-labelledby="edit-reply-title">
       <div class="td-modal">
         <div class="td-modal-header">
-          <h3>Edit Reply</h3>
-          <button class="td-modal-close" @click="closeEditModal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="edit-reply-title">Edit Reply</h3>
+          <button class="td-modal-close" @click="closeEditModal" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -156,12 +158,12 @@
     </div>
 
     <!-- Delete Reply Confirmation -->
-    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false">
+    <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false" role="dialog" aria-modal="true" aria-labelledby="delete-reply-title">
       <div class="td-modal td-modal-sm">
         <div class="td-modal-header">
-          <h3>Delete Reply</h3>
-          <button class="td-modal-close" @click="showDeleteConfirm = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="delete-reply-title">Delete Reply</h3>
+          <button class="td-modal-close" @click="showDeleteConfirm = false" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -177,12 +179,12 @@
     </div>
 
     <!-- Report Reply Modal -->
-    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
+    <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false" role="dialog" aria-modal="true" aria-labelledby="report-reply-title">
       <div class="td-modal">
         <div class="td-modal-header">
-          <h3>Report Reply</h3>
-          <button class="td-modal-close" @click="showReportModal = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="report-reply-title">Report Reply</h3>
+          <button class="td-modal-close" @click="showReportModal = false" aria-label="Close">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -219,6 +221,7 @@
         :is-last="idx === nestedReplies.length - 1"
         :thread-id="threadId"
         :thread-author-id="threadAuthorId"
+        :search-query="searchQuery"
         :highlight-reply-id="highlightReplyId"
         @reply-submitted="$emit('reply-submitted')"
       />
@@ -239,6 +242,7 @@ export default {
     threadId: { type: [Number, String], default: 0 },
     threadAuthorId: { type: [Number, String], default: 0 },
     highlightReplyId: { type: [Number, String], default: 0 },
+    searchQuery: { type: String, default: '' },
   },
   emits: ['reply-submitted'],
   mounted() {
@@ -278,6 +282,14 @@ export default {
     };
   },
   computed: {
+    highlightedContent() {
+      const text = this.localContent || '';
+      const q = this.searchQuery?.trim();
+      if (!q) return this.escapeHtml(text);
+      const escaped = this.escapeHtml(text);
+      const regex = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      return escaped.replace(regex, '<mark class="cnw-search-highlight">$1</mark>');
+    },
     isHighlighted() {
       return this.highlightReplyId && String(this.highlightReplyId) === String(this.reply.id);
     },
@@ -321,6 +333,11 @@ export default {
     },
   },
   methods: {
+    escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    },
     handleReplyClick() {
       this.showReplyBox = !this.showReplyBox;
     },

@@ -2,7 +2,20 @@
   <div class="cnw-social-worker-saved-view">
     <h1 class="cnw-social-worker-view-heading">Saved Threads</h1>
 
-    <div v-if="loading" class="cnw-social-worker-loading">Loading…</div>
+    <template v-if="loading">
+      <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="gap:12px;margin-bottom:12px">
+        <div class="cnw-skeleton-row">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:34px;height:34px"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:30%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+          </div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line-xl" style="width:70%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:90%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:40%"></div>
+      </div>
+    </template>
 
     <template v-else-if="threads.length">
       <QuestionCard
@@ -14,7 +27,7 @@
     </template>
 
     <div v-else class="cnw-social-worker-placeholder-card">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       <p>Your saved threads will appear here!</p>
     </div>
   </div>

@@ -10,37 +10,37 @@
 
     <!-- Stats cards -->
     <div class="mod-stats">
-      <div class="mod-stat-card mod-stat-open" @click="showFiltered('reports', 'open')">
+      <div class="mod-stat-card mod-stat-open" role="button" tabindex="0" @click="showFiltered('reports', 'open')" @keydown.enter="showFiltered('reports', 'open')" aria-label="View open reports">
         <div class="mod-stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
         <span class="mod-stat-num">{{ stats.open_reports || 0 }}</span>
         <span class="mod-stat-label">Open Reports</span>
       </div>
-      <div class="mod-stat-card mod-stat-progress" @click="showFiltered('reports', 'in_progress')">
+      <div class="mod-stat-card mod-stat-progress" role="button" tabindex="0" @click="showFiltered('reports', 'in_progress')" @keydown.enter="showFiltered('reports', 'in_progress')" aria-label="View in progress reports">
         <div class="mod-stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <span class="mod-stat-num">{{ stats.in_progress_reports || 0 }}</span>
         <span class="mod-stat-label">In Progress</span>
       </div>
-      <div class="mod-stat-card mod-stat-warn" @click="showFiltered('warnings', 'warning')">
+      <div class="mod-stat-card mod-stat-warn" role="button" tabindex="0" @click="showFiltered('warnings', 'warning')" @keydown.enter="showFiltered('warnings', 'warning')" aria-label="View warnings">
         <div class="mod-stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <span class="mod-stat-num">{{ stats.total_warnings || 0 }}</span>
         <span class="mod-stat-label">Warnings</span>
       </div>
-      <div class="mod-stat-card mod-stat-suspend" @click="showFiltered('warnings', 'suspension')">
+      <div class="mod-stat-card mod-stat-suspend" role="button" tabindex="0" @click="showFiltered('warnings', 'suspension')" @keydown.enter="showFiltered('warnings', 'suspension')" aria-label="View suspensions">
         <div class="mod-stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
         </div>
         <span class="mod-stat-num">{{ stats.active_suspensions || 0 }}</span>
         <span class="mod-stat-label">Suspensions</span>
       </div>
-      <div class="mod-stat-card mod-stat-closed" @click="showFiltered('reports', 'closed')">
+      <div class="mod-stat-card mod-stat-closed" role="button" tabindex="0" @click="showFiltered('reports', 'closed')" @keydown.enter="showFiltered('reports', 'closed')" aria-label="View closed reports">
         <div class="mod-stat-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         </div>
         <span class="mod-stat-num">{{ stats.closed_reports || 0 }}</span>
         <span class="mod-stat-label">Closed</span>
@@ -48,17 +48,17 @@
     </div>
 
     <!-- Tabs -->
-    <div class="mod-tabs">
-      <button class="mod-tab" :class="{ active: tab === 'reports' }" @click="tab = 'reports'">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <div class="mod-tabs" role="tablist">
+      <button class="mod-tab" :class="{ active: tab === 'reports' }" @click="tab = 'reports'" role="tab" :aria-selected="tab === 'reports'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Reports
       </button>
-      <button class="mod-tab" :class="{ active: tab === 'warnings' }" @click="tab = 'warnings'">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <button class="mod-tab" :class="{ active: tab === 'warnings' }" @click="tab = 'warnings'" role="tab" :aria-selected="tab === 'warnings'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Warnings &amp; Suspensions
       </button>
-      <button class="mod-tab" :class="{ active: tab === 'actions' }" @click="tab = 'actions'">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <button class="mod-tab" :class="{ active: tab === 'actions' }" @click="tab = 'actions'" role="tab" :aria-selected="tab === 'actions'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Take Action
       </button>
     </div>
@@ -74,9 +74,19 @@
           <option value="closed">Closed</option>
         </select>
       </div>
-      <div v-if="loadingReports" class="cnw-social-worker-loading">Loading reports...</div>
+      <div v-if="loadingReports" class="mod-report-list">
+        <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:14px;gap:10px">
+          <div class="cnw-skeleton-row" style="gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:22px;border-radius:var(--radius-pill)"></div>
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:50px;height:22px;border-radius:var(--radius-pill)"></div>
+          </div>
+          <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:55%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:90%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:25%"></div>
+        </div>
+      </div>
       <div v-else-if="reports.length === 0" class="mod-empty">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span>No reports found.</span>
       </div>
       <div v-else class="mod-report-list">
@@ -117,7 +127,7 @@
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
-            <input v-model="report._notes" class="mod-input-sm" placeholder="Admin notes..." />
+            <input v-model="report._notes" class="mod-input-sm" placeholder="Admin notes..." aria-label="Admin notes" />
             <button class="mod-btn mod-btn-primary" @click="handleUpdateReport(report)" :disabled="report._saving">
               {{ report._saving ? 'Saving...' : 'Update' }}
             </button>
@@ -125,17 +135,17 @@
         </div>
       </div>
       <!-- Pagination -->
-      <div v-if="!loadingReports && reports.length > 0 && reportTotalPages > 1" class="mod-pagination">
-        <button class="mod-page-btn" :disabled="reportPage <= 1" @click="goReportPage(reportPage - 1)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <nav v-if="!loadingReports && reports.length > 0 && reportTotalPages > 1" class="mod-pagination" aria-label="Reports pagination">
+        <button class="mod-page-btn" :disabled="reportPage <= 1" @click="goReportPage(reportPage - 1)" aria-label="Previous page">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <template v-for="p in reportTotalPages" :key="p">
-          <button class="mod-page-btn" :class="{ 'mod-page-active': p === reportPage }" @click="goReportPage(p)">{{ p }}</button>
+          <button class="mod-page-btn" :class="{ 'mod-page-active': p === reportPage }" @click="goReportPage(p)" :aria-label="'Page ' + p" :aria-current="p === reportPage ? 'page' : undefined">{{ p }}</button>
         </template>
-        <button class="mod-page-btn" :disabled="reportPage >= reportTotalPages" @click="goReportPage(reportPage + 1)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <button class="mod-page-btn" :disabled="reportPage >= reportTotalPages" @click="goReportPage(reportPage + 1)" aria-label="Next page">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-      </div>
+      </nav>
     </div>
 
     <!-- Warnings Tab -->
@@ -151,6 +161,7 @@
             v-model="warningUserSearch"
             class="mod-input"
             placeholder="Filter by user name..."
+            aria-label="Filter warnings by user name"
             @input="searchWarningUsers"
             @focus="warningUserDropdownOpen = true"
           />
@@ -178,9 +189,18 @@
           </div>
         </div>
       </div>
-      <div v-if="loadingWarnings" class="cnw-social-worker-loading">Loading...</div>
+      <div v-if="loadingWarnings" style="display:flex;flex-direction:column;gap:10px">
+        <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:12px;gap:8px">
+          <div class="cnw-skeleton-row" style="gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:55px;height:20px;border-radius:var(--radius-pill)"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:30%"></div>
+          </div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:75%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+        </div>
+      </div>
       <div v-else-if="filteredWarnings.length === 0" class="mod-empty">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span>No {{ warningTypeFilter || 'warnings or suspensions' }} found.</span>
       </div>
       <div v-else class="mod-warning-list">
@@ -196,8 +216,8 @@
               <span class="mod-badge" :class="w.type === 'suspension' ? 'mod-badge-suspension' : 'mod-badge-warning'">{{ w.type }}</span>
               <span class="mod-warning-user">{{ w.user_name }}</span>
               <span class="mod-warning-date">{{ formatDate(w.created_at) }}</span>
-              <button class="mod-btn-icon mod-btn-icon-delete" @click="confirmDeleteWarning(w)" :disabled="w._deleting" title="Delete">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              <button class="mod-btn-icon mod-btn-icon-delete" @click="confirmDeleteWarning(w)" :disabled="w._deleting" title="Delete" aria-label="Delete warning">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
               </button>
             </div>
             <p class="mod-warning-reason">{{ w.reason }}</p>
@@ -233,6 +253,7 @@
                 v-model="suspendSearch"
                 class="mod-input"
                 placeholder="Search by name, email or phone..."
+                aria-label="Search user to suspend"
                 @input="searchSuspendUsers"
                 @focus="suspendDropdownOpen = true"
               />
@@ -275,7 +296,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
               {{ suspendSending ? 'Suspending...' : 'Suspend User' }}
             </button>
-            <div v-if="suspendSuccess" class="mod-success">
+            <div v-if="suspendSuccess" class="mod-success" aria-live="polite">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               User suspended successfully.
             </div>
@@ -296,6 +317,7 @@
                 v-model="warnSearch"
                 class="mod-input"
                 placeholder="Search by name, email or phone..."
+                aria-label="Search user to warn"
                 @input="searchWarnUsers"
                 @focus="warnDropdownOpen = true"
               />
@@ -329,7 +351,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               {{ warnSending ? 'Sending...' : 'Send Warning' }}
             </button>
-            <div v-if="warnSuccess" class="mod-success">
+            <div v-if="warnSuccess" class="mod-success" aria-live="polite">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               Warning sent successfully.
             </div>

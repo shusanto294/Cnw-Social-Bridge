@@ -2,9 +2,17 @@
   <div class="cnw-social-worker-activity-view">
     <h1 class="cnw-social-worker-view-heading">My Activity</h1>
 
-    <div v-if="loading" class="cnw-social-worker-loading" style="padding:20px">Loading activity...</div>
+    <div v-if="loading" class="activity-list">
+      <div v-for="n in 5" :key="n" class="cnw-skeleton-card" style="flex-direction:row;padding:12px;gap:10px">
+        <div class="cnw-skeleton cnw-skeleton-circle" style="width:36px;height:36px"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="cnw-skeleton cnw-skeleton-line" :style="{width: [70,55,80,60,75][n-1]+'%'}"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:25%"></div>
+        </div>
+      </div>
+    </div>
     <div v-else-if="activities.length === 0" class="activity-empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <p>No activity yet. Your actions will be recorded here.</p>
     </div>
     <div v-else class="activity-list">
@@ -35,11 +43,11 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="activity-pagination">
-      <button :disabled="page <= 1" @click="fetchActivity(page - 1)">&laquo; Prev</button>
-      <button v-for="p in totalPages" :key="p" class="activity-page-btn" :class="{ 'is-active': p === page }" @click="fetchActivity(p)">{{ p }}</button>
-      <button :disabled="page >= totalPages" @click="fetchActivity(page + 1)">Next &raquo;</button>
-    </div>
+    <nav v-if="totalPages > 1" class="activity-pagination" aria-label="Pagination">
+      <button :disabled="page <= 1" @click="fetchActivity(page - 1)" aria-label="Previous page">&laquo; Prev</button>
+      <button v-for="p in totalPages" :key="p" class="activity-page-btn" :class="{ 'is-active': p === page }" @click="fetchActivity(p)" :aria-label="'Page ' + p" :aria-current="p === page ? 'page' : undefined">{{ p }}</button>
+      <button :disabled="page >= totalPages" @click="fetchActivity(page + 1)" aria-label="Next page">Next &raquo;</button>
+    </nav>
   </div>
 </template>
 

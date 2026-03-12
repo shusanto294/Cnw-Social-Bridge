@@ -14,9 +14,9 @@
       <template v-else>
         <!-- Anonymous toggle -->
         <div class="ask-anon-row">
-          <button type="button" class="ask-anon-toggle" :class="{ 'is-active': isAnonymous }" @click="isAnonymous = !isAnonymous">
+          <button type="button" class="ask-anon-toggle" :class="{ 'is-active': isAnonymous }" @click="isAnonymous = !isAnonymous" role="switch" :aria-checked="isAnonymous.toString()">
             <span>Anonymous</span>
-            <span class="toggle-track" :class="{ on: isAnonymous }">
+            <span class="toggle-track" :class="{ on: isAnonymous }" aria-hidden="true">
               <span class="toggle-thumb"></span>
             </span>
           </button>
@@ -37,6 +37,7 @@
                 type="text"
                 placeholder="Question title"
                 class="ask-title-input"
+                aria-label="Question title"
                 required
               />
               <textarea
@@ -44,6 +45,7 @@
                 placeholder="Briefly describe what you need help with:"
                 class="ask-textarea"
                 rows="6"
+                aria-label="Question details"
                 required
               ></textarea>
             </div>
@@ -51,16 +53,16 @@
 
           <!-- Action buttons row -->
           <div class="ask-actions-row">
-            <button type="button" class="ask-gradient-btn" @click="showTagInput = !showTagInput">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <button type="button" class="ask-gradient-btn" @click="showTagInput = !showTagInput" :aria-expanded="showTagInput">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
               Add Tags
             </button>
 
             <!-- Category picker -->
             <div class="ask-category-wrap" ref="categoryWrap">
-              <button type="button" class="ask-gradient-btn" @click="toggleCategoryDropdown">
+              <button type="button" class="ask-gradient-btn" @click="toggleCategoryDropdown" aria-haspopup="listbox" :aria-expanded="showCategoryDropdown">
                 {{ selectedCategory ? selectedCategory.name : 'Category' }}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div v-if="showCategoryDropdown" class="ask-category-dropdown">
                 <input
@@ -107,7 +109,7 @@
                 class="ask-tag-chip"
               >
                 {{ tag.name }}
-                <button type="button" class="ask-tag-remove" @click="removeTag(tag)">×</button>
+                <button type="button" class="ask-tag-remove" @click="removeTag(tag)" :aria-label="'Remove tag ' + tag.name">×</button>
               </span>
             </div>
 
@@ -118,6 +120,7 @@
                 type="text"
                 :placeholder="selectedTagObjects.length >= 10 ? 'Max 10 tags reached' : 'Type a tag name…'"
                 class="ask-tag-field"
+                aria-label="Search or create tags"
                 :disabled="selectedTagObjects.length >= 10"
                 @focus="showTagDropdown = true"
                 @blur="onTagSearchBlur"
@@ -150,11 +153,11 @@
 
     <!-- Tag Detail Modal (shown after creating a new tag) -->
     <div v-if="showTagModal" class="td-modal-overlay" @click.self="closeTagModal">
-      <div class="td-modal">
+      <div class="td-modal" role="dialog" aria-modal="true" aria-labelledby="tag-modal-title">
         <div class="td-modal-header">
-          <h3>Tag Details</h3>
-          <button class="td-modal-close" @click="closeTagModal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="tag-modal-title">Tag Details</h3>
+          <button class="td-modal-close" @click="closeTagModal" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body" style="display:flex;flex-direction:column;gap:14px;">

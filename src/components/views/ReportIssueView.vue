@@ -5,16 +5,16 @@
       Help us keep the community safe and welcoming. Use this form to report inappropriate content, technical problems, or any other concerns. All reports are reviewed by our moderation team.
     </p>
 
-    <div v-if="submitted" class="cnw-report-success">
+    <div v-if="submitted" class="cnw-report-success" aria-live="polite">
       <div class="cnw-report-success-icon">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22a55b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22a55b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       </div>
       <h3>Report Submitted Successfully</h3>
       <p>Thank you for helping us maintain a safe community. Our moderation team will review your report and take appropriate action. You may be contacted for additional details if needed.</p>
       <button class="cnw-report-btn" @click="resetForm">Submit Another Report</button>
     </div>
 
-    <div v-if="error" class="cnw-report-error">{{ error }}</div>
+    <div v-if="error" class="cnw-report-error" role="alert">{{ error }}</div>
 
     <form v-if="!submitted" class="cnw-report-form" @submit.prevent="submitReport">
       <div class="cnw-report-field">

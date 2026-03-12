@@ -2,8 +2,8 @@
   <div class="cnw-msg" :class="{ 'mobile-show-detail': mobileShowDetail, 'show-profile': showProfile }">
     <!-- Short Profile Panel -->
     <div v-if="showProfile && activeUserId" class="cnw-msg-profile-panel">
-      <button class="cnw-msg-profile-close" @click="showProfile = false" title="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button class="cnw-msg-profile-close" @click="showProfile = false" title="Close" aria-label="Close profile panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
       <!-- Avatar + Name -->
       <div class="cnw-msg-profile-top">
@@ -14,14 +14,14 @@
       </div>
       <!-- Action buttons: Mute + Search -->
       <div class="cnw-msg-profile-actions">
-        <div class="cnw-msg-profile-action-btn" :class="{ 'cnw-muted': isMutedUser }" @click="toggleMuteUser">
+        <div class="cnw-msg-profile-action-btn" :class="{ 'cnw-muted': isMutedUser }" @click="toggleMuteUser" role="button" tabindex="0" @keydown.enter="toggleMuteUser">
           <svg width="24" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19.379 16.913C17.867 15.635 17 13.767 17 11.788V9C17 5.481 14.386 2.568 11 2.08V1C11 0.447 10.552 0 10 0C9.448 0 9 0.447 9 1V2.08C5.613 2.568 3 5.481 3 9V11.788C3 13.767 2.133 15.635 0.612 16.921C0.223 17.254 0 17.738 0 18.25C0 19.215 0.785 20 1.75 20H18.25C19.215 20 20 19.215 20 18.25C20 17.738 19.777 17.254 19.379 16.913Z" :fill="isMutedUser ? '#999' : '#414141'"/>
             <path d="M10 24C11.811 24 13.326 22.709 13.674 21H6.326C6.674 22.709 8.189 24 10 24Z" :fill="isMutedUser ? '#999' : '#414141'"/>
           </svg>
           <span>{{ isMutedUser ? 'Unmute' : 'Mute' }}</span>
         </div>
-        <div class="cnw-msg-profile-action-btn" :class="{ 'cnw-active-action': profileSearchMessages }" @click="toggleProfileSearch">
+        <div class="cnw-msg-profile-action-btn" :class="{ 'cnw-active-action': profileSearchMessages }" @click="toggleProfileSearch" role="button" tabindex="0" @keydown.enter="toggleProfileSearch">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M9.65925 19.3084C11.8044 19.3084 13.8882 18.5927 15.5806 17.2745L21.9653 23.6593C22.4423 24.12 23.2023 24.1067 23.663 23.6298C24.1123 23.1645 24.1123 22.4269 23.663 21.9617L17.2782 15.5769C20.5491 11.3664 19.7874 5.30149 15.5769 2.03058C11.3663 -1.24033 5.30149 -0.478645 2.03058 3.7319C-1.24033 7.94244 -0.478646 14.0073 3.7319 17.2782C5.42702 18.5951 7.51269 19.3095 9.65925 19.3084ZM4.52915 4.52545C7.36245 1.6921 11.9561 1.69204 14.7895 4.52535C17.6229 7.35866 17.6229 11.9524 14.7896 14.7857C11.9563 17.6191 7.36261 17.6191 4.52925 14.7858C4.5292 14.7858 4.5292 14.7858 4.52915 14.7857C1.69584 11.973 1.67915 7.3961 4.49181 4.56279C4.50424 4.55031 4.51667 4.53788 4.52915 4.52545Z" :fill="profileSearchMessages ? 'var(--primary)' : '#414141'"/>
           </svg>
@@ -36,6 +36,7 @@
           type="text"
           placeholder="Search in conversation..."
           class="cnw-msg-profile-search-input"
+          aria-label="Search in conversation"
           ref="profileSearchInput"
         />
         <div v-if="profileSearchQuery.trim() && profileSearchResults.length" class="cnw-msg-profile-search-count">
@@ -59,7 +60,7 @@
       </div>
       <!-- Chat Info section -->
       <div class="cnw-msg-profile-section">
-        <div class="cnw-msg-profile-section-header" @click="profileChatInfoOpen = !profileChatInfoOpen">
+        <div class="cnw-msg-profile-section-header" @click="profileChatInfoOpen = !profileChatInfoOpen" role="button" tabindex="0" @keydown.enter="profileChatInfoOpen = !profileChatInfoOpen" :aria-expanded="profileChatInfoOpen">
           <span>Chat Info</span>
           <svg :class="{ 'cnw-chevron-open': profileChatInfoOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
@@ -77,7 +78,7 @@
       </div>
       <!-- Media Files section -->
       <div class="cnw-msg-profile-section">
-        <div class="cnw-msg-profile-section-header" @click="profileMediaOpen = !profileMediaOpen">
+        <div class="cnw-msg-profile-section-header" @click="profileMediaOpen = !profileMediaOpen" role="button" tabindex="0" @keydown.enter="profileMediaOpen = !profileMediaOpen" :aria-expanded="profileMediaOpen">
           <span>Media Files</span>
           <svg :class="{ 'cnw-chevron-open': profileMediaOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
@@ -104,7 +105,7 @@
       </div>
       <!-- Privacy & Support section -->
       <div class="cnw-msg-profile-section">
-        <div class="cnw-msg-profile-section-header" @click="profilePrivacyOpen = !profilePrivacyOpen">
+        <div class="cnw-msg-profile-section-header" @click="profilePrivacyOpen = !profilePrivacyOpen" role="button" tabindex="0" @keydown.enter="profilePrivacyOpen = !profilePrivacyOpen" :aria-expanded="profilePrivacyOpen">
           <span>Privacy &amp; Support</span>
           <svg :class="{ 'cnw-chevron-open': profilePrivacyOpen }" class="cnw-msg-profile-chevron" width="12" height="12" viewBox="0 0 10.5133 6.01313" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10.3583 0.954562L5.83072 5.7651C5.51947 6.09581 4.99391 6.09581 4.68266 5.7651L0.155056 0.954562C-0.185106 0.5931 0.0711314 0 0.567481 0H9.94582C10.4422 0 10.6984 0.5931 10.3583 0.954562Z" fill="#414141"/>
@@ -147,8 +148,8 @@
     <div class="cnw-msg-list">
       <div class="cnw-msg-list-header">
         <h2 class="cnw-msg-list-title">Chats</h2>
-        <button class="cnw-msg-compose-btn" @click="showNewChat = !showNewChat" title="New message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <button class="cnw-msg-compose-btn" @click="showNewChat = !showNewChat" title="New message" aria-label="New message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <g clip-path="url(#clip0_20106_16335)">
               <path d="M13.0938 6.94365L13.0844 6.93428L9.05317 2.8999C9.05317 2.8999 4.14067 7.8124 1.77192 10.2312C1.47817 10.5312 1.25317 10.9499 1.12192 11.3562C0.734418 12.5437 0.412543 13.7562 0.0531678 14.953C-0.0437072 15.2749 -0.0249572 15.5593 0.228168 15.7968C0.465668 16.0218 0.734418 16.0343 1.04067 15.9405C2.18442 15.5968 3.33442 15.2718 4.48129 14.9437C5.08442 14.7718 5.59067 14.453 6.03442 14.0062C8.29067 11.7405 13.0938 6.94365 13.0938 6.94365Z" fill="#414141"/>
               <path d="M15.4466 1.93125L14.0685 0.553125C13.331 -0.184375 12.1403 -0.184375 11.4028 0.553125L9.84033 2.11563L13.8841 6.15938L15.4466 4.59688C16.1841 3.8625 16.1841 2.66875 15.4466 1.93125Z" fill="#414141"/>
@@ -171,6 +172,7 @@
           type="text"
           placeholder="Search user to message..."
           class="cnw-msg-new-chat-input"
+          aria-label="Search user to message"
         />
         <div v-if="searchResults.length" class="cnw-msg-search-results">
           <div
@@ -199,8 +201,17 @@
         </div>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loadingList" class="cnw-msg-loading">Loading chats...</div>
+      <!-- Loading skeleton -->
+      <div v-if="loadingList" class="cnw-msg-conversations">
+        <div v-for="n in 6" :key="n" class="cnw-skeleton-card" style="flex-direction:row;padding:12px;gap:10px">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:44px;height:44px"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:40%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:70%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:25%"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- Conversation list -->
       <div v-else class="cnw-msg-conversations" ref="conversationsList" @scroll="onConversationsScroll">
@@ -209,7 +220,10 @@
           :key="conv.other_user_id"
           class="cnw-msg-conv-card"
           :class="{ active: activeUserId === Number(conv.other_user_id), unread: !isUserRestricted(conv.other_user_id) && conv.unread_count > 0 }"
+          role="button"
+          tabindex="0"
           @click="openConversation(conv)"
+          @keydown.enter="openConversation(conv)"
         >
 
           <div class="cnw-msg-conv-avatar-col">
@@ -252,8 +266,8 @@
       <template v-if="activeUserId">
         <!-- Chat header -->
         <div class="cnw-msg-detail-header">
-          <button class="cnw-msg-back-btn" @click="backToList" title="Back">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <button class="cnw-msg-back-btn" @click="backToList" title="Back" aria-label="Back to conversations">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <img :src="otherUser.avatar" :alt="otherUser.name" class="cnw-social-worker-avatar cnw-msg-header-clickable" width="44" height="44" @click="toggleProfile" />
           <div class="cnw-msg-header-clickable" @click="toggleProfile">
@@ -281,7 +295,18 @@
         <!-- Messages -->
         <div class="cnw-msg-detail-messages" ref="messagesContainer" @scroll="onMessagesScroll">
           <div v-if="loadingOlder" class="cnw-msg-loading-older">Loading older messages...</div>
-          <div v-if="loadingMessages" class="cnw-msg-loading">Loading messages...</div>
+          <template v-if="loadingMessages">
+            <div v-for="n in 5" :key="'skel-'+n" class="cnw-msg-bubble-wrap" :class="{ mine: n % 3 === 0 }">
+              <div class="cnw-skeleton-card" style="flex-direction:row;padding:10px;gap:8px">
+                <div v-if="n % 3 !== 0" class="cnw-skeleton cnw-skeleton-circle" style="width:34px;height:34px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+                  <div v-if="n % 3 !== 0" class="cnw-skeleton cnw-skeleton-line-sm" style="width:30%"></div>
+                  <div class="cnw-skeleton cnw-skeleton-line" :style="{width: [65,80,45,90,55][n-1]+'%'}"></div>
+                  <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+                </div>
+              </div>
+            </div>
+          </template>
           <div
             v-for="msg in messages"
             :key="msg.id"
@@ -320,7 +345,7 @@
           </div>
 
           <!-- Typing indicator -->
-          <div v-if="otherUserTyping" class="cnw-msg-typing-indicator">
+          <div v-if="otherUserTyping" class="cnw-msg-typing-indicator" aria-live="polite">
             <div class="cnw-msg-typing-dots">
               <span></span>
               <span></span>
@@ -339,6 +364,7 @@
             placeholder="Write Message:"
             class="cnw-msg-input"
             name="message"
+            aria-label="Write a message"
           ></textarea>
           <button class="cnw-msg-send-btn" @click="sendMsg">Send</button>
         </div>

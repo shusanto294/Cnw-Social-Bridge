@@ -1,7 +1,19 @@
 <template>
   <div class="cnw-guidelines">
     <h1 class="cnw-guidelines-title">Community Guidelines</h1>
-    <div class="cnw-guidelines-content" v-html="content"></div>
+    <div v-if="loading" class="cnw-guidelines-content" style="display:flex;flex-direction:column;gap:14px">
+      <div class="cnw-skeleton cnw-skeleton-line-xl" style="width:45%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:95%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:80%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:35%;margin-top:8px"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:90%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:40%;margin-top:8px"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+      <div class="cnw-skeleton cnw-skeleton-line" style="width:70%"></div>
+    </div>
+    <div v-else class="cnw-guidelines-content" v-html="content"></div>
   </div>
 </template>
 
@@ -43,6 +55,7 @@ export default {
   data() {
     return {
       content: defaultContent,
+      loading: true,
     };
   },
   async created() {
@@ -52,6 +65,7 @@ export default {
         this.content = data.html;
       }
     } catch { /* use default */ }
+    finally { this.loading = false; }
   },
 };
 </script>

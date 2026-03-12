@@ -2,11 +2,11 @@
   <header class="cnw-social-worker-header">
     <div class="cnw-social-worker-header-inner">
     <!-- Logo -->
-    <div class="cnw-social-worker-header-logo" @click="$router.push('/')" role="link" tabindex="0">
+    <div class="cnw-social-worker-header-logo" @click="$router.push('/')" @keydown.enter="$router.push('/')" role="link" tabindex="0" aria-label="Social Bridge home">
       <!-- Desktop logo -->
       <div class="logo-desktop">
         <span class="logo-text">SOCIAL</span>
-        <svg class="logo-icon" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="logo-icon" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M45.041 21.7709C45.0611 21.7302 44.3947 19.0327 43.2705 16.2905C42.2653 13.839 40.347 10.9998 39.9137 10.5799C39.6193 10.2947 38.8291 10.833 37.2112 11.6874C36.9575 11.8214 35.2898 12.7021 34.1286 13.5201C30.3863 16.1566 27.4511 18.6533 24.0634 22.8423C21.4614 26.0596 19.9835 29.036 19.9226 29.1434C19.2373 30.3534 19.0276 31.6476 17.616 31.8909C17.2399 31.9557 7.74751 31.9093 3.42191 31.9231C2.06435 31.9275 0.989599 32.0845 0.309714 31.0424C0.0106363 30.5842 0.00319033 29.9458 0.00208774 29.8472C-0.0315413 26.9906 0.351197 24.5597 0.422865 24.1047C1.9239 14.5704 5.9077 9.63884 6.0968 9.35786C7.20214 7.71564 9.44454 5.5461 10.3598 4.85959C12.5055 3.2505 15.4093 1.10395 21.1954 0.241575C25.4644 -0.394836 29.746 0.415117 29.9177 0.523512C30.1905 0.695822 29.82 0.772872 29.3409 0.986104C28.9954 1.1398 28.9489 1.18182 28.7891 1.25696C26.9506 2.12248 25.2912 3.49603 25.1866 3.54297C24.7951 3.71871 18.4475 3.12746 12.8259 7.57919C9.20183 10.4492 7.57275 13.9224 7.08444 14.9004C4.16699 20.744 3.76413 27.391 3.77185 27.9355C3.77722 28.3189 4.18408 28.2312 4.3864 28.2311C14.2786 28.2184 14.2777 28.2459 15.1378 28.2345C16.055 28.2223 14.8708 27.2808 16.9012 19.4382C17.8365 15.8256 19.5084 12.6327 19.7813 12.1693C20.7705 10.4888 23.5232 5.22652 30.3076 2.08703C30.915 1.80591 34.1468 0.310415 38.4323 0.0618722C42.3775 -0.166962 47.7098 0.156307 52.9212 3.53476C53.5196 3.92277 56.9272 5.9378 59.8765 10.584C65.1801 18.9388 65.1763 28.8738 65.1794 29.8474C65.1831 31.0989 64.3429 31.7433 63.6455 31.8777C63.1467 31.9739 54.6273 31.8983 49.3172 31.928C47.9176 31.9358 46.6634 32.0973 45.9979 30.6742C44.9084 28.3441 43.5062 26.1124 43.018 25.4381C41.6071 23.4888 41.6792 23.4365 40.1018 21.6191C36.1132 17.0235 34.0669 15.9999 33.9169 15.6034C33.8822 15.5113 33.8489 15.4232 34.8369 14.7793C36.0795 13.9693 36.8008 13.4674 37.0614 13.5204C37.2552 13.5598 40.5092 16.3015 42.9893 19.2997C44.5925 21.238 44.8206 21.8614 44.9185 21.8716C44.9311 21.873 44.9875 21.8789 45.041 21.7709ZM28.9094 7.11537C28.6153 7.33366 28.1221 7.62682 28.4905 7.83266C28.6371 7.91464 29.752 8.45155 30.5495 8.94549C30.9049 9.1657 32.3641 10.0196 32.4905 10.047C32.695 10.0912 32.7096 10.0675 34.8089 8.84408C36.7571 7.70894 36.9125 7.76601 36.8453 7.57071C36.8151 7.48366 35.6935 6.73297 35.4276 6.53767C34.7267 6.02252 34.4713 6.05153 34.6623 5.86321C34.7308 5.7956 34.7392 5.80778 35.8235 5.53488C36.9056 5.26252 39.2565 4.92789 39.6364 5.1366C40.3561 5.53214 43.9144 8.94741 46.0982 13.5829C47.4573 16.4675 49.1547 20.9633 49.6439 27.9264C49.6705 28.3038 49.8538 28.2429 50.971 28.2408C61.1688 28.2231 61.1892 28.2776 61.3014 28.1959C61.4428 28.0931 61.4496 28.0543 61.2401 26.0217C60.9206 22.923 59.557 17.1087 57.2081 13.266C56.0771 11.4159 53.0914 6.32854 45.7526 4.32679C39.6967 2.67486 33.3589 3.8813 28.9094 7.11537ZM21.5949 19.9785C25.0192 15.7298 29.0216 12.7262 29.0348 12.7152C29.0571 12.697 29.2971 12.4995 29.1484 12.3747C29.1029 12.3367 27.6981 11.5519 26.1885 10.7744C25.6256 10.4846 25.4484 10.2891 25.1159 10.7305C23.6225 12.7135 22.821 14.3042 22.6267 14.6799C21.0818 17.6662 20.0759 21.7786 20.079 21.7799C20.2462 21.8538 20.3803 21.6774 20.3908 21.6528C20.4511 21.5118 21.3455 20.3137 21.5949 19.9785Z" fill="url(#paint0_linear_logo)"/>
           <defs>
             <linearGradient id="paint0_linear_logo" x1="5.69586" y1="18.5561" x2="59.585" y2="18.8337" gradientUnits="userSpaceOnUse">
@@ -22,7 +22,7 @@
         <button v-if="isLoggedIn" class="mobile-menu-btn" @click.stop="toggleMobileSidebar" aria-label="Menu">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <svg class="logo-icon-mobile" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="logo-icon-mobile" viewBox="0 0 65.1794 31.9372" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M45.041 21.7709C45.0611 21.7302 44.3947 19.0327 43.2705 16.2905C42.2653 13.839 40.347 10.9998 39.9137 10.5799C39.6193 10.2947 38.8291 10.833 37.2112 11.6874C36.9575 11.8214 35.2898 12.7021 34.1286 13.5201C30.3863 16.1566 27.4511 18.6533 24.0634 22.8423C21.4614 26.0596 19.9835 29.036 19.9226 29.1434C19.2373 30.3534 19.0276 31.6476 17.616 31.8909C17.2399 31.9557 7.74751 31.9093 3.42191 31.9231C2.06435 31.9275 0.989599 32.0845 0.309714 31.0424C0.0106363 30.5842 0.00319033 29.9458 0.00208774 29.8472C-0.0315413 26.9906 0.351197 24.5597 0.422865 24.1047C1.9239 14.5704 5.9077 9.63884 6.0968 9.35786C7.20214 7.71564 9.44454 5.5461 10.3598 4.85959C12.5055 3.2505 15.4093 1.10395 21.1954 0.241575C25.4644 -0.394836 29.746 0.415117 29.9177 0.523512C30.1905 0.695822 29.82 0.772872 29.3409 0.986104C28.9954 1.1398 28.9489 1.18182 28.7891 1.25696C26.9506 2.12248 25.2912 3.49603 25.1866 3.54297C24.7951 3.71871 18.4475 3.12746 12.8259 7.57919C9.20183 10.4492 7.57275 13.9224 7.08444 14.9004C4.16699 20.744 3.76413 27.391 3.77185 27.9355C3.77722 28.3189 4.18408 28.2312 4.3864 28.2311C14.2786 28.2184 14.2777 28.2459 15.1378 28.2345C16.055 28.2223 14.8708 27.2808 16.9012 19.4382C17.8365 15.8256 19.5084 12.6327 19.7813 12.1693C20.7705 10.4888 23.5232 5.22652 30.3076 2.08703C30.915 1.80591 34.1468 0.310415 38.4323 0.0618722C42.3775 -0.166962 47.7098 0.156307 52.9212 3.53476C53.5196 3.92277 56.9272 5.9378 59.8765 10.584C65.1801 18.9388 65.1763 28.8738 65.1794 29.8474C65.1831 31.0989 64.3429 31.7433 63.6455 31.8777C63.1467 31.9739 54.6273 31.8983 49.3172 31.928C47.9176 31.9358 46.6634 32.0973 45.9979 30.6742C44.9084 28.3441 43.5062 26.1124 43.018 25.4381C41.6071 23.4888 41.6792 23.4365 40.1018 21.6191C36.1132 17.0235 34.0669 15.9999 33.9169 15.6034C33.8822 15.5113 33.8489 15.4232 34.8369 14.7793C36.0795 13.9693 36.8008 13.4674 37.0614 13.5204C37.2552 13.5598 40.5092 16.3015 42.9893 19.2997C44.5925 21.238 44.8206 21.8614 44.9185 21.8716C44.9311 21.873 44.9875 21.8789 45.041 21.7709ZM28.9094 7.11537C28.6153 7.33366 28.1221 7.62682 28.4905 7.83266C28.6371 7.91464 29.752 8.45155 30.5495 8.94549C30.9049 9.1657 32.3641 10.0196 32.4905 10.047C32.695 10.0912 32.7096 10.0675 34.8089 8.84408C36.7571 7.70894 36.9125 7.76601 36.8453 7.57071C36.8151 7.48366 35.6935 6.73297 35.4276 6.53767C34.7267 6.02252 34.4713 6.05153 34.6623 5.86321C34.7308 5.7956 34.7392 5.80778 35.8235 5.53488C36.9056 5.26252 39.2565 4.92789 39.6364 5.1366C40.3561 5.53214 43.9144 8.94741 46.0982 13.5829C47.4573 16.4675 49.1547 20.9633 49.6439 27.9264C49.6705 28.3038 49.8538 28.2429 50.971 28.2408C61.1688 28.2231 61.1892 28.2776 61.3014 28.1959C61.4428 28.0931 61.4496 28.0543 61.2401 26.0217C60.9206 22.923 59.557 17.1087 57.2081 13.266C56.0771 11.4159 53.0914 6.32854 45.7526 4.32679C39.6967 2.67486 33.3589 3.8813 28.9094 7.11537ZM21.5949 19.9785C25.0192 15.7298 29.0216 12.7262 29.0348 12.7152C29.0571 12.697 29.2971 12.4995 29.1484 12.3747C29.1029 12.3367 27.6981 11.5519 26.1885 10.7744C25.6256 10.4846 25.4484 10.2891 25.1159 10.7305C23.6225 12.7135 22.821 14.3042 22.6267 14.6799C21.0818 17.6662 20.0759 21.7786 20.079 21.7799C20.2462 21.8538 20.3803 21.6774 20.3908 21.6528C20.4511 21.5118 21.3455 20.3137 21.5949 19.9785Z" fill="url(#paint0_linear_logo_m)"/>
           <defs>
             <linearGradient id="paint0_linear_logo_m" x1="5.69586" y1="18.5561" x2="59.585" y2="18.8337" gradientUnits="userSpaceOnUse">
@@ -41,17 +41,17 @@
       </button>
       <template v-else>
         <button class="cnw-social-worker-btn cnw-social-worker-btn-primary ask-btn login-header-btn" @click="openModal('login')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Login
         </button>
         <button class="cnw-social-worker-btn ask-btn login-header-btn cnw-register-header-btn" @click="openModal('register')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           Register
         </button>
       </template>
       <div class="notif-wrapper" v-if="isLoggedIn">
-        <button class="notif-btn" title="Notifications" @click="toggleDropdown">
-        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <button class="notif-btn" title="Notifications" @click="toggleDropdown" aria-label="Notifications" aria-haspopup="true" :aria-expanded="showDropdown">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
           <path d="M19.9999 23.75C19.9999 26.512 17.7609 28.75 14.9999 28.75C12.2379 28.75 9.99994 26.512 9.99994 23.75C9.99994 20.989 12.2379 18.75 14.9999 18.75C17.7609 18.75 19.9999 20.989 19.9999 23.75Z" fill="#5FBF91"/>
           <path d="M24.7629 17.48H24.7749C25.2059 18.273 25.7579 19.004 26.4319 19.632C25.7539 19.001 25.1929 18.274 24.7629 17.48Z" fill="#3AA9DA"/>
           <path d="M3.56806 19.632C4.24206 19.004 4.79406 18.273 5.22506 17.48H5.23706C4.80706 18.274 4.24606 19.001 3.56806 19.632Z" fill="#3AA9DA"/>
@@ -60,16 +60,24 @@
         </svg>
 
 
-          <span v-if="unreadCount > 0" class="notif-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+          <span v-if="unreadCount > 0" class="notif-badge" aria-live="polite">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
         </button>
 
         <!-- Dropdown -->
-        <div v-if="showDropdown" class="notif-dropdown">
+        <div v-if="showDropdown" class="notif-dropdown" role="menu" aria-label="Notifications">
           <div class="notif-dropdown-header">
             <span class="notif-dropdown-title">Notifications</span>
-            <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllRead">Mark all read</button>
+            <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllRead" aria-label="Mark all notifications as read">Mark all read</button>
           </div>
-          <div v-if="loading" class="notif-dropdown-loading">Loading...</div>
+          <div v-if="loading" style="padding:8px 12px;display:flex;flex-direction:column;gap:10px">
+            <div v-for="i in 4" :key="i" style="display:flex;gap:8px;align-items:flex-start">
+              <div class="cnw-skeleton cnw-skeleton-circle" style="width:32px;height:32px"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                <div class="cnw-skeleton cnw-skeleton-line-sm" :style="{width: [70,55,80,60][i-1]+'%'}"></div>
+                <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:30%"></div>
+              </div>
+            </div>
+          </div>
           <div v-else-if="notifications.length === 0" class="notif-dropdown-empty">No notifications yet.</div>
           <div v-else class="notif-dropdown-list">
             <div
@@ -78,8 +86,12 @@
               class="notif-item"
               :class="{ 'notif-unread': !parseInt(n.is_read) }"
               @click="handleNotifClick(n)"
+              role="menuitem"
+              tabindex="0"
+              @keydown.enter="handleNotifClick(n)"
+              :aria-label="n.message"
             >
-              <img :src="n.actor_avatar" class="notif-item-avatar" width="32" height="32" />
+              <img :src="n.actor_avatar" class="notif-item-avatar" width="32" height="32" alt="" />
               <div class="notif-item-body">
                 <p class="notif-item-msg">{{ n.message }}</p>
                 <span class="notif-item-time">{{ timeAgo(n.created_at) }}</span>
@@ -98,9 +110,9 @@
     </div><!-- /.cnw-social-worker-header-inner -->
 
     <!-- Login Modal -->
-    <div v-if="showLoginModal" class="cnw-login-overlay" @click.self="closeLoginModal">
+    <div v-if="showLoginModal" class="cnw-login-overlay" @click.self="closeLoginModal" role="dialog" aria-modal="true" aria-label="Authentication">
       <div class="cnw-login-modal">
-        <button class="cnw-login-close" @click="closeLoginModal">&times;</button>
+        <button class="cnw-login-close" @click="closeLoginModal" aria-label="Close">&times;</button>
         <AuthForm :initial-view="modalView" @auth-success="closeLoginModal" />
       </div>
     </div>

@@ -2,7 +2,7 @@
   <div class="cnw-social-worker-app-wrapper">
     <AppHeader />
     <div class="cnw-social-worker-layout">
-      <div v-if="isLoggedIn" class="cnw-sidebar-mobile-overlay" @click="closeMobileSidebar"></div>
+      <div v-if="isLoggedIn" class="cnw-sidebar-mobile-overlay" @click="closeMobileSidebar" aria-label="Close navigation menu"></div>
       <AppSidebar v-if="isLoggedIn" />
       <main :class="['cnw-social-worker-main', routeComponentClass]">
         <router-view />

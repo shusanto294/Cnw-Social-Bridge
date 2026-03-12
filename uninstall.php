@@ -76,6 +76,7 @@ $meta_keys = array(
     'cnw_verified_label',
     'cnw_professional_title',
     'cnw_is_online',
+    'cnw_preferences',
 );
 
 foreach ( $meta_keys as $key ) {

@@ -8,7 +8,7 @@
         <p class="tags-view-subtitle">Browse and follow topics you're interested in</p>
       </div>
       <button v-if="isLoggedIn" class="tags-create-btn" @click="openCreateModal">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New Tag
       </button>
     </div>
@@ -22,22 +22,29 @@
         <button v-if="isLoggedIn" class="tags-filter-tab" :class="{ active: filter === 'notfollowing' }" @click="filter = 'notfollowing'">Not Following</button>
       </div>
       <div class="tags-search-wrap">
-        <svg class="tags-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="tags-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
           v-model="search"
           type="text"
           class="tags-search-input"
           placeholder="Search tags..."
+          aria-label="Search tags"
         />
-        <button v-if="search" class="tags-search-clear" @click="search = ''">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button v-if="search" class="tags-search-clear" @click="search = ''" aria-label="Clear search">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="cnw-social-worker-loading">Loading tags...</div>
+    <div v-if="loading" class="tags-grid">
+      <div v-for="n in 8" :key="n" class="cnw-skeleton-card" style="padding:14px;gap:8px">
+        <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:50%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:80%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:35%"></div>
+      </div>
+    </div>
     <div v-else-if="filteredTags.length === 0" class="tags-empty">
-      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span>{{ filter === 'mine' ? 'You haven\'t created any tags yet.' : filter === 'following' ? 'You aren\'t following any tags yet.' : 'No tags found.' }}</span>
     </div>
 
@@ -53,11 +60,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </div>
           <div class="tag-card-actions">
-            <button v-if="canEdit(tag)" class="tag-icon-btn tag-edit-btn" data-tooltip="Edit" @click="openEditModal(tag)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button v-if="canEdit(tag)" class="tag-icon-btn tag-edit-btn" data-tooltip="Edit" @click="openEditModal(tag)" aria-label="Edit tag">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button v-if="canEdit(tag)" class="tag-icon-btn tag-delete-btn" data-tooltip="Delete" @click="openDeleteConfirm(tag)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <button v-if="canEdit(tag)" class="tag-icon-btn tag-delete-btn" data-tooltip="Delete" @click="openDeleteConfirm(tag)" aria-label="Delete tag">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </div>
@@ -83,25 +90,27 @@
       </div>
     </div>
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="tags-pagination">
-      <button class="tags-page-btn" :disabled="currentPage <= 1" @click="currentPage--">‹</button>
+    <nav v-if="totalPages > 1" class="tags-pagination" aria-label="Pagination">
+      <button class="tags-page-btn" :disabled="currentPage <= 1" @click="currentPage--" aria-label="Previous page">&#x2039;</button>
       <button
         v-for="p in pageNumbers"
         :key="p"
         class="tags-page-btn"
         :class="{ 'is-active': p === currentPage }"
         @click="currentPage = p"
+        :aria-label="'Page ' + p"
+        :aria-current="p === currentPage ? 'page' : undefined"
       >{{ p }}</button>
-      <button class="tags-page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">›</button>
-    </div>
+      <button class="tags-page-btn" :disabled="currentPage >= totalPages" @click="currentPage++" aria-label="Next page">&#x203A;</button>
+    </nav>
 
     <!-- Modal (create + edit) -->
     <div v-if="showModal" class="tags-modal-overlay" @click.self="closeModal">
-      <div class="tags-modal">
+      <div class="tags-modal" role="dialog" aria-modal="true" aria-labelledby="tags-modal-title">
         <div class="tags-modal-header">
-          <h3 class="tags-modal-title">{{ modalMode === 'create' ? 'New Tag' : 'Edit Tag' }}</h3>
-          <button class="tags-modal-close" @click="closeModal">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 class="tags-modal-title" id="tags-modal-title">{{ modalMode === 'create' ? 'New Tag' : 'Edit Tag' }}</h3>
+          <button class="tags-modal-close" @click="closeModal" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="tags-modal-body">
@@ -132,11 +141,11 @@
 
     <!-- Delete Confirmation Modal -->
     <div v-if="showDeleteConfirm" class="tags-modal-overlay" @click.self="showDeleteConfirm = false">
-      <div class="tags-modal">
+      <div class="tags-modal" role="dialog" aria-modal="true" aria-labelledby="tags-delete-modal-title">
         <div class="tags-modal-header">
-          <h3 class="tags-modal-title">Delete Tag</h3>
-          <button class="tags-modal-close" @click="showDeleteConfirm = false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 class="tags-modal-title" id="tags-delete-modal-title">Delete Tag</h3>
+          <button class="tags-modal-close" @click="showDeleteConfirm = false" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="tags-modal-body">

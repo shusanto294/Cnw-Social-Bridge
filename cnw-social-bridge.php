@@ -56,6 +56,13 @@ class Cnw_Social_Bridge {
         // Mark user offline on WordPress logout
         add_action( 'wp_logout', array( $this, 'on_user_logout' ) );
 
+        // Email notification cron
+        add_action( 'cnw_send_email_notifications', array( $this, 'process_email_notifications' ) );
+        add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
+
+        // Ensure DB migration + cron are set up (runs once via version check)
+        add_action( 'init', array( $this, 'maybe_run_upgrades' ) );
+
         // Sub-modules
         new Cnw_Social_Bridge_Admin();
         new Cnw_Social_Bridge_REST_API();
@@ -387,7 +394,20 @@ class Cnw_Social_Bridge {
             $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
         }
 
+        // ── Add emailed column to notifications ──────────────────────────
+        $notif_table = $wpdb->prefix . 'cnw_social_worker_notifications';
+        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$notif_table} LIKE 'emailed'" );
+        if ( empty( $row ) ) {
+            $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
+            $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
+        }
+
         $this->create_user_roles();
+
+        // Schedule email notification cron (every 5 minutes)
+        if ( ! wp_next_scheduled( 'cnw_send_email_notifications' ) ) {
+            wp_schedule_event( time(), 'cnw_every_5_min', 'cnw_send_email_notifications' );
+        }
 
         add_option( 'cnw_social_bridge_version', CNW_SOCIAL_BRIDGE_VERSION );
 
@@ -438,7 +458,272 @@ class Cnw_Social_Bridge {
         ) );
     }
 
+    /**
+     * Run DB migrations and schedule cron if not yet done.
+     */
+    public function maybe_run_upgrades() {
+        global $wpdb;
+
+        // Add emailed column if missing
+        $notif_table = $wpdb->prefix . 'cnw_social_worker_notifications';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$notif_table} LIKE 'emailed'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
+            $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
+        }
+
+        // Schedule cron if not already scheduled
+        if ( ! wp_next_scheduled( 'cnw_send_email_notifications' ) ) {
+            wp_schedule_event( time(), 'cnw_every_5_min', 'cnw_send_email_notifications' );
+        }
+    }
+
+    /**
+     * Register custom cron interval.
+     */
+    public function add_cron_intervals( $schedules ) {
+        $schedules['cnw_every_5_min'] = array(
+            'interval' => 300,
+            'display'  => __( 'Every 5 Minutes', 'cnw-social-bridge' ),
+        );
+        return $schedules;
+    }
+
+    /** Notification type → preference key mapping. */
+    private static $notif_pref_map = array(
+        'reply'               => 'notify_replies',
+        'vote'                => 'notify_votes',
+        'save'                => 'notify_votes',
+        'solution'            => 'notify_solutions',
+        'solution_removed'    => 'notify_solutions',
+        'connection_request'  => 'notify_connections',
+        'connection_accepted' => 'notify_connections',
+        'mention'             => 'notify_mentions',
+    );
+
+    /** Default preference values (mirrors REST API defaults). */
+    private static $pref_defaults = array(
+        'notify_replies'      => true,
+        'notify_mentions'     => true,
+        'notify_votes'        => true,
+        'notify_solutions'    => true,
+        'notify_connections'  => true,
+        'notify_messages'     => true,
+        'email_notifications' => 'inactive',
+    );
+
+    /**
+     * Get merged preferences for a user (with defaults).
+     */
+    private function get_user_prefs( $user_id ) {
+        $saved = get_user_meta( $user_id, 'cnw_preferences', true );
+        return is_array( $saved ) ? array_merge( self::$pref_defaults, $saved ) : self::$pref_defaults;
+    }
+
+    /**
+     * Cron callback — send email notification digests.
+     *
+     * Runs every 5 minutes. Fetches the oldest 50 un-emailed, unread
+     * notifications, groups them by user, checks each user's preferences,
+     * and sends one digest email per user.
+     */
+    public function process_email_notifications() {
+        global $wpdb;
+
+        $table         = $wpdb->prefix . 'cnw_social_worker_notifications';
+        $batch_size    = 50;  // Process oldest 50 notifications per run
+        $max_in_email  = 20;  // Max items shown in one email
+
+        // Mark any already-read notifications as emailed so they stop showing up
+        $wpdb->query( "UPDATE {$table} SET emailed = 1 WHERE emailed = 0 AND is_read = 1" );
+
+        // Fetch the oldest 50 un-emailed, unread notifications
+        $notifications = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE emailed = 0 AND is_read = 0 ORDER BY created_at ASC LIMIT %d",
+            $batch_size
+        ) );
+
+        if ( empty( $notifications ) ) {
+            return;
+        }
+
+        // Group by user_id
+        $by_user = array();
+        foreach ( $notifications as $notif ) {
+            $uid = (int) $notif->user_id;
+            if ( ! isset( $by_user[ $uid ] ) ) {
+                $by_user[ $uid ] = array();
+            }
+            $by_user[ $uid ][] = $notif;
+        }
+
+        $site_name = get_bloginfo( 'name' );
+        $site_url  = home_url( '/' );
+
+        foreach ( $by_user as $user_id => $user_notifs ) {
+            $user = get_userdata( $user_id );
+
+            // Collect all IDs in this batch for this user
+            $all_ids = array_map( function( $n ) { return (int) $n->id; }, $user_notifs );
+
+            if ( ! $user || ! $user->user_email ) {
+                // No valid user — mark as emailed and skip
+                $this->mark_notifs_emailed( $table, $all_ids );
+                continue;
+            }
+
+            $prefs         = $this->get_user_prefs( $user_id );
+            $email_setting = isset( $prefs['email_notifications'] ) ? $prefs['email_notifications'] : 'inactive';
+
+            if ( $email_setting === 'none' ) {
+                // User opted out — mark as emailed, no email
+                $this->mark_notifs_emailed( $table, $all_ids );
+                continue;
+            }
+
+            if ( $email_setting === 'inactive' ) {
+                $is_online = (bool) get_user_meta( $user_id, 'cnw_is_online', true );
+                if ( $is_online ) {
+                    continue; // Skip — will retry next cron run
+                }
+            }
+
+            // Filter by individual notification type preferences
+            $eligible = array();
+            foreach ( $user_notifs as $notif ) {
+                $pref_key = isset( self::$notif_pref_map[ $notif->type ] ) ? self::$notif_pref_map[ $notif->type ] : null;
+                if ( $pref_key === null || ! empty( $prefs[ $pref_key ] ) ) {
+                    $eligible[] = $notif;
+                }
+            }
+
+            // Mark ALL as emailed (even filtered-out ones)
+            $this->mark_notifs_emailed( $table, $all_ids );
+
+            if ( empty( $eligible ) ) {
+                continue;
+            }
+
+            // Cap shown items; pass total for summary
+            $total_eligible = count( $eligible );
+            $to_show        = array_slice( $eligible, 0, $max_in_email );
+
+            $this->send_notification_email( $user, $to_show, $total_eligible, $site_name, $site_url );
+        }
+    }
+
+    /**
+     * Mark a batch of notification IDs as emailed.
+     */
+    private function mark_notifs_emailed( $table, $ids ) {
+        global $wpdb;
+        if ( empty( $ids ) ) return;
+        $placeholders = implode( ',', array_map( 'intval', $ids ) );
+        $wpdb->query( "UPDATE {$table} SET emailed = 1 WHERE id IN ({$placeholders})" );
+    }
+
+    /**
+     * Build and send a notification digest email.
+     */
+    /**
+     * Build and send a notification digest email.
+     *
+     * @param WP_User $user           Recipient user object.
+     * @param array   $notifications  Notifications to show (already capped to max).
+     * @param int     $total_eligible Total eligible count (may be > count of $notifications).
+     * @param string  $site_name      Site name for branding.
+     * @param string  $site_url       Site URL for links.
+     */
+    private function send_notification_email( $user, $notifications, $total_eligible, $site_name, $site_url ) {
+        $shown = count( $notifications );
+        $subject = sprintf(
+            '[%s] You have %d new %s',
+            $site_name,
+            $total_eligible,
+            $total_eligible === 1 ? 'notification' : 'notifications'
+        );
+
+        // Build HTML email
+        $body = '<div style="font-family: \'Poppins\', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f7f7f7; padding: 0;">';
+
+        // Header
+        $body .= '<div style="background: linear-gradient(90deg, #3AA9DA 0%, #5FBF91 100%); padding: 24px 30px; text-align: center;">';
+        $body .= '<h1 style="margin: 0; color: #fff; font-size: 20px; font-weight: 600;">' . esc_html( $site_name ) . '</h1>';
+        $body .= '</div>';
+
+        // Greeting
+        $body .= '<div style="background: #fff; padding: 24px 30px; border-bottom: 1px solid #e2e4e8;">';
+        $body .= '<p style="margin: 0 0 8px; font-size: 16px; color: #1a1a2e;">Hi ' . esc_html( $user->display_name ) . ',</p>';
+        $body .= '<p style="margin: 0; font-size: 14px; color: #555565;">You have ' . $total_eligible . ' new ' . ( $total_eligible === 1 ? 'notification' : 'notifications' ) . ' waiting for you:</p>';
+        $body .= '</div>';
+
+        // Notification list
+        $body .= '<div style="background: #fff; padding: 10px 30px 20px;">';
+        foreach ( $notifications as $notif ) {
+            $icon = $this->get_notif_icon( $notif->type );
+            $time = human_time_diff( strtotime( $notif->created_at ), current_time( 'timestamp' ) ) . ' ago';
+
+            $body .= '<div style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">';
+            $body .= '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>';
+            $body .= '<td style="width: 40px; vertical-align: top;"><div style="width: 32px; height: 32px; border-radius: 50%; background: #e6f7fb; text-align: center; line-height: 32px; font-size: 16px;">' . $icon . '</div></td>';
+            $body .= '<td style="vertical-align: top;">';
+            $body .= '<p style="margin: 0 0 2px; font-size: 14px; color: #1a1a2e;">' . esc_html( $notif->message ) . '</p>';
+            $body .= '<p style="margin: 0; font-size: 12px; color: #888899;">' . esc_html( $time ) . '</p>';
+            $body .= '</td>';
+            $body .= '</tr></table>';
+            $body .= '</div>';
+        }
+
+        // If there are more than shown
+        if ( $total_eligible > $shown ) {
+            $remaining = $total_eligible - $shown;
+            $body .= '<p style="padding: 12px 0 0; font-size: 13px; color: #555565; text-align: center;">...and ' . $remaining . ' more ' . ( $remaining === 1 ? 'notification' : 'notifications' ) . '</p>';
+        }
+
+        $body .= '</div>';
+
+        // CTA button
+        $body .= '<div style="background: #fff; padding: 10px 30px 24px; text-align: center;">';
+        $body .= '<a href="' . esc_url( $site_url ) . '" style="display: inline-block; padding: 10px 28px; background: #3AA9DA; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 500;">View All Notifications</a>';
+        $body .= '</div>';
+
+        // Footer
+        $body .= '<div style="padding: 16px 30px; text-align: center; font-size: 12px; color: #888899;">';
+        $body .= '<p style="margin: 0;">You can manage your email preferences in your <a href="' . esc_url( $site_url ) . '#/profile?tab=settings" style="color: #3bbdd4;">profile settings</a>.</p>';
+        $body .= '</div>';
+
+        $body .= '</div>';
+
+        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+
+        wp_mail( $user->user_email, $subject, $body, $headers );
+    }
+
+    /**
+     * Get emoji icon for notification type.
+     */
+    private function get_notif_icon( $type ) {
+        $icons = array(
+            'reply'               => '&#128172;',
+            'vote'                => '&#11014;',
+            'save'                => '&#128278;',
+            'solution'            => '&#9989;',
+            'solution_removed'    => '&#10060;',
+            'connection_request'  => '&#129309;',
+            'connection_accepted' => '&#127881;',
+            'mention'             => '&#64;',
+            'warning'             => '&#9888;',
+            'suspension'          => '&#128683;',
+        );
+        return isset( $icons[ $type ] ) ? $icons[ $type ] : '&#128276;';
+    }
+
     public function deactivate() {
+        // Clear scheduled cron
+        $timestamp = wp_next_scheduled( 'cnw_send_email_notifications' );
+        if ( $timestamp ) {
+            wp_unschedule_event( $timestamp, 'cnw_send_email_notifications' );
+        }
         // Keep data on deactivation; roles remain until explicitly removed.
     }
 

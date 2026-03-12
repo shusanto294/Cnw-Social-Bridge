@@ -1,11 +1,39 @@
 <template>
   <div class="thread-detail-view">
     <button class="back-btn" @click="$router.push('/')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
       Back to Questions
     </button>
 
-    <div v-if="loading" class="cnw-social-worker-loading">Loading…</div>
+    <!-- Loading skeleton -->
+    <template v-if="loading">
+      <div class="cnw-skeleton-card" style="gap:14px">
+        <div class="cnw-skeleton-row">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:34px;height:34px"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:25%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:15%"></div>
+          </div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line-xl" style="width:65%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:100%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:80%"></div>
+        <div class="cnw-skeleton-row" style="gap:6px">
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:50px;height:20px;border-radius:var(--radius-pill)"></div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:20px;border-radius:var(--radius-pill)"></div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:40%"></div>
+      </div>
+      <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="margin-top:12px;gap:10px">
+        <div class="cnw-skeleton-row">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:28px;height:28px"></div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:20%"></div>
+        </div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:90%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:50%"></div>
+      </div>
+    </template>
     <NotFoundView v-else-if="notFound" message="This thread does not exist or has been removed." />
 
     <template v-else>
@@ -36,23 +64,23 @@
             <span class="qcard-date">{{ formatDate(thread.created_at) }}</span>
           </div>
           <div class="qcard-meta-right">
-            <button v-if="isLoggedIn" class="td-action-btn td-report-btn" @click="showReportModal = true" title="Report">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <button v-if="isLoggedIn" class="td-action-btn td-report-btn" @click="showReportModal = true" title="Report" aria-label="Report thread">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
             </button>
             <template v-if="canModerate">
-              <button class="td-action-btn" :class="isPinned ? 'td-unpin-btn' : 'td-pin-btn'" @click="togglePin" :title="isPinned ? 'Unpin' : 'Pin'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" :stroke="isPinned ? '#e67e22' : 'currentColor'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></svg>
+              <button class="td-action-btn" :class="isPinned ? 'td-unpin-btn' : 'td-pin-btn'" @click="togglePin" :title="isPinned ? 'Unpin' : 'Pin'" :aria-label="isPinned ? 'Unpin thread' : 'Pin thread'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" :stroke="isPinned ? '#e67e22' : 'currentColor'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></svg>
               </button>
-              <button class="td-action-btn" :class="isClosed ? 'td-reopen-btn' : 'td-close-btn'" @click="toggleClose" :title="isClosed ? 'Reopen Thread' : 'Close Thread'">
-                <svg v-if="!isClosed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22a55b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+              <button class="td-action-btn" :class="isClosed ? 'td-reopen-btn' : 'td-close-btn'" @click="toggleClose" :title="isClosed ? 'Reopen Thread' : 'Close Thread'" :aria-label="isClosed ? 'Reopen thread' : 'Close thread'">
+                <svg v-if="!isClosed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22a55b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
               </button>
             </template>
-            <button v-if="isOwner || canModerate" class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button v-if="isOwner || canModerate" class="td-action-btn td-edit-btn" @click="openEditModal" title="Edit" aria-label="Edit thread">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button v-if="isOwner || canModerate" class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <button v-if="isOwner || canModerate" class="td-action-btn td-delete-btn" @click="showDeleteConfirm = true" title="Delete" aria-label="Delete thread">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </div>
@@ -74,20 +102,20 @@
 
         <!-- Stats row 1: Upvote/Downvote + Helpful + Views -->
         <div class="qcard-stats-row">
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-up': userVote === 1 }" @click="vote(1)" :aria-pressed="userVote === 1" aria-label="Upvote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
             <span>{{ localUpvotes }}</span>
             <span>Upvote</span>
           </button>
           <span class="stat-divider"></span>
-          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+          <button class="stat-btn vote-btn" :class="{ 'vote-active-down': userVote === -1 }" @click="vote(-1)" :aria-pressed="userVote === -1" aria-label="Downvote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
             <span>{{ localDownvotes }}</span>
             <span>Downvote</span>
           </button>
           <span class="stat-divider"></span>
-          <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click="toggleSave">
-            <svg width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <button class="stat-btn save-btn" :class="{ 'save-active': isSaved }" @click="toggleSave" :aria-pressed="isSaved" :aria-label="isSaved ? 'Remove from helpful' : 'Mark as helpful'">
+            <svg width="14" height="14" viewBox="0 0 24 24" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             <span>{{ localSavesCount }}</span>
             <span>Helpful</span>
           </button>
@@ -132,7 +160,17 @@
 
         <!-- Replies section — same as QuestionCard expanded -->
         <div class="qcard-replies">
-          <div v-if="loadingReplies" class="cnw-social-worker-loading" style="padding:16px">Loading replies…</div>
+          <div v-if="loadingReplies" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+            <div v-for="n in 3" :key="'rskel-'+n" class="cnw-skeleton-card" style="padding:10px;gap:8px">
+              <div class="cnw-skeleton-row">
+                <div class="cnw-skeleton cnw-skeleton-circle" style="width:28px;height:28px"></div>
+                <div class="cnw-skeleton cnw-skeleton-line" style="width:20%"></div>
+              </div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:85%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:55%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:30%"></div>
+            </div>
+          </div>
           <template v-else>
             <ReplyCard
               v-for="(reply, idx) in topLevelReplies"
@@ -170,6 +208,7 @@
                 placeholder="Write Message:"
                 class="inline-reply-input"
                 rows="3"
+                aria-label="Write a reply"
                 @keydown.enter.ctrl.prevent="submitReply"
               ></textarea>
               <div class="inline-reply-actions">
@@ -190,11 +229,11 @@
 
     <!-- Edit Modal -->
     <div v-if="showEditModal" class="td-modal-overlay" @click.self="closeEditModal">
-      <div class="td-modal">
+      <div class="td-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
         <div class="td-modal-header">
-          <h3>Edit Thread</h3>
-          <button class="td-modal-close" @click="closeEditModal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="edit-modal-title">Edit Thread</h3>
+          <button class="td-modal-close" @click="closeEditModal" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -214,11 +253,11 @@
 
     <!-- Delete Confirmation -->
     <div v-if="showDeleteConfirm" class="td-modal-overlay" @click.self="showDeleteConfirm = false">
-      <div class="td-modal td-modal-sm">
+      <div class="td-modal td-modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
         <div class="td-modal-header">
-          <h3>Delete Thread</h3>
-          <button class="td-modal-close" @click="showDeleteConfirm = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="delete-modal-title">Delete Thread</h3>
+          <button class="td-modal-close" @click="showDeleteConfirm = false" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">
@@ -235,11 +274,11 @@
 
     <!-- Report Modal -->
     <div v-if="showReportModal" class="td-modal-overlay" @click.self="showReportModal = false">
-      <div class="td-modal">
+      <div class="td-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
         <div class="td-modal-header">
-          <h3>Report Thread</h3>
-          <button class="td-modal-close" @click="showReportModal = false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <h3 id="report-modal-title">Report Thread</h3>
+          <button class="td-modal-close" @click="showReportModal = false" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="td-modal-body">

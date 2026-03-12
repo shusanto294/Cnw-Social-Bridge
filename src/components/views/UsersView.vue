@@ -30,21 +30,29 @@
         </button>
       </div>
       <div class="cnw-users-search-wrap">
-        <svg class="cnw-users-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="cnw-users-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
           v-model="search"
           @input="onSearch"
           type="text"
           placeholder="Search members..."
           class="cnw-users-search"
+          aria-label="Search members"
         />
-        <button v-if="search" class="cnw-users-search-clear" @click="search = ''; onSearch()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button v-if="search" class="cnw-users-search-clear" @click="search = ''; onSearch()" aria-label="Clear search">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="cnw-social-worker-loading">Loading members...</div>
+    <div v-if="loading" class="cnw-users-grid">
+      <div v-for="n in 6" :key="n" class="cnw-skeleton-card" style="align-items:center;padding:20px;gap:10px">
+        <div class="cnw-skeleton cnw-skeleton-circle" style="width:60px;height:60px"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:50%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:35%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:45%"></div>
+      </div>
+    </div>
 
     <div v-else-if="isTabEmpty" class="cnw-social-worker-empty">
       <template v-if="tab === 'requests'">
@@ -68,7 +76,10 @@
             v-for="req in requests"
             :key="req.user_id"
             class="cnw-user-card"
+            role="button"
+            tabindex="0"
             @click="viewProfile(req)"
+            @keydown.enter="viewProfile(req)"
           >
             <div class="cnw-user-card-top">
               <div class="cnw-user-avatar-wrap">
@@ -125,7 +136,10 @@
             v-for="user in users"
             :key="user.id"
             class="cnw-user-card"
+            role="button"
+            tabindex="0"
             @click="viewProfile(user)"
+            @keydown.enter="viewProfile(user)"
           >
             <div class="cnw-user-card-top">
               <div class="cnw-user-avatar-wrap">
@@ -229,13 +243,13 @@
 
     <!-- User detail modal -->
     <div v-if="selectedUser" class="cnw-user-modal-overlay" @click.self="selectedUser = null">
-      <div class="cnw-user-modal">
-        <button class="cnw-user-modal-close" @click="selectedUser = null">&times;</button>
+      <div class="cnw-user-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-name">
+        <button class="cnw-user-modal-close" @click="selectedUser = null" aria-label="Close">&times;</button>
         <div class="cnw-user-modal-header">
           <img :src="selectedUser.avatar" :alt="selectedUser.name" class="cnw-social-worker-avatar" width="72" height="72" />
           <div>
             <div class="cnw-user-name-row">
-              <h2 class="cnw-user-modal-name">{{ selectedUser.name }}</h2>
+              <h2 id="user-modal-name" class="cnw-user-modal-name">{{ selectedUser.name }}</h2>
               <span v-if="selectedUser.verified_label" class="cnw-social-worker-verified" title="Verified">&#10003;</span>
             </div>
             <p v-if="selectedUser.professional_title" class="cnw-user-modal-title">{{ selectedUser.professional_title }}</p>
@@ -243,7 +257,14 @@
           </div>
         </div>
 
-        <div v-if="modalLoading" class="cnw-social-worker-loading" style="padding:20px;">Loading...</div>
+        <div v-if="modalLoading" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:80%"></div>
+          <div class="cnw-skeleton-row" style="justify-content:center;gap:16px">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:36px;border-radius:var(--radius-m)"></div>
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:36px;border-radius:var(--radius-m)"></div>
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:60px;height:36px;border-radius:var(--radius-m)"></div>
+          </div>
+        </div>
         <template v-else-if="modalUser">
           <p v-if="modalUser.bio" class="cnw-user-modal-bio">{{ modalUser.bio }}</p>
           <div class="cnw-user-modal-stats">

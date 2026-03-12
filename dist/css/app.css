@@ -516,6 +516,12 @@
   background: linear-gradient(88deg, var(--bg-body) 22.95%, var(--secondary) 80.13%);
   color: #fff;
 }
+.sidebar-nav-item:focus-visible {
+  background: linear-gradient(88deg, var(--bg-body) 22.95%, var(--secondary) 80.13%);
+  color: #fff;
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
 .nav-icon {
   width: 13px;
   height: 13px;
@@ -5737,6 +5743,27 @@ main.cnw-social-worker-main.messages-view
 }
 
 /* ── Empty State ────────────────────────────────────────────── */
+.profile-restricted-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-med);
+  font-size: 15px;
+}
+.profile-restricted-notice svg {
+  color: var(--text-light);
+}
+.profile-restricted-pending {
+  font-size: 13px;
+  color: var(--text-light);
+  font-style: italic;
+}
 .profile-empty-state {
   border: var(--radius-xs, 1px) solid var(--primary);
   border-radius: var(--radius);
@@ -5878,6 +5905,154 @@ main.cnw-social-worker-main.messages-view
 .profile-stats-grid {
     grid-template-columns: repeat(2, 1fr);
 }
+.settings-select {
+    max-width: 50%;
+    min-width: 120px;
+}
+}
+
+/* ── Settings Tab ─────────────────────────────────────────── */
+.profile-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.settings-section {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.settings-section-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.settings-section-header svg {
+  color: var(--primary);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child {
+  border-bottom: none;
+}
+.settings-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.settings-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+.settings-desc {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.settings-select {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--white);
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 40%;
+  flex-shrink: 0;
+}
+.settings-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(58, 169, 218, 0.1);
+}
+
+/* Toggle switch */
+.settings-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.settings-toggle-track {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: #ccc;
+  border-radius: 11px;
+  position: relative;
+  transition: background 0.2s;
+}
+.settings-toggle.on .settings-toggle-track {
+  background: var(--primary);
+}
+.settings-toggle-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.settings-toggle.on .settings-toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* Save footer */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.settings-saved-msg {
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 500;
+}
+.settings-save-btn {
+  padding: 10px 28px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.settings-save-btn:hover {
+  background: var(--teal-dark);
+  box-shadow: 0 2px 8px rgba(58, 169, 218, 0.3);
+}
+.settings-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 
@@ -6896,5 +7071,93 @@ button {
   padding: 48px 20px;
   color: var(--text-light);
   font-size: 15px;
+}
+
+/* ── Skeleton / Shimmer loading ──────────────────────────────────── */
+
+@keyframes cnw-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.cnw-skeleton {
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+  background-size: 800px 100%;
+  animation: cnw-shimmer 1.5s infinite ease-in-out;
+  border-radius: var(--radius-m);
+}
+
+.cnw-skeleton-card {
+  background: #fff;
+  border-radius: var(--radius-l);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cnw-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cnw-skeleton-circle {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cnw-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.cnw-skeleton-line-sm  { height: 10px; border-radius: 5px; }
+.cnw-skeleton-line-lg  { height: 16px; border-radius: 8px; }
+.cnw-skeleton-line-xl  { height: 20px; border-radius: 10px; }
+
+/* ── Error state ────────────────────────────────────────────────── */
+
+.cnw-error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-med);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.cnw-error-state svg {
+  color: var(--red);
+  opacity: 0.6;
+}
+.cnw-error-state p {
+  margin: 0;
+}
+.cnw-error-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border: 1px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cnw-error-retry-btn:hover {
+  background: var(--teal-light);
+}
+
+/* Search highlight */
+.cnw-search-highlight {
+  background: #fef08a;
+  color: inherit;
+  padding: 1px 2px;
+  border-radius: 2px;
 }
 

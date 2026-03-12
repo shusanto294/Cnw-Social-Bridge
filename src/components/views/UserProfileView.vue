@@ -1,7 +1,35 @@
 <template>
   <div class="cnw-profile-view">
-    <div v-if="loading" class="cnw-social-worker-loading">Loading profile...</div>
-    <div v-else-if="error" class="cnw-social-worker-empty">{{ error }}</div>
+    <!-- Loading skeleton -->
+    <template v-if="loading">
+      <div class="cnw-skeleton-card" style="flex-direction:row;gap:20px;padding:20px;align-items:flex-start">
+        <div class="cnw-skeleton cnw-skeleton-circle" style="width:100px;height:100px"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-xl" style="width:40%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line" style="width:30%"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:50%"></div>
+        </div>
+      </div>
+      <div class="cnw-skeleton-card" style="gap:10px;margin-top:14px;padding:20px">
+        <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:25%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:60%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:55%"></div>
+        <div class="cnw-skeleton cnw-skeleton-line" style="width:40%"></div>
+      </div>
+      <div class="cnw-skeleton-card" style="margin-top:14px;padding:16px">
+        <div class="cnw-skeleton-row" style="gap:8px">
+          <div v-for="n in 4" :key="n" class="cnw-skeleton cnw-skeleton-line" style="width:80px;height:30px;border-radius:var(--radius-m)"></div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Error -->
+    <div v-else-if="error" class="cnw-error-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>{{ error }}</p>
+      <button class="cnw-error-retry-btn" @click="loadProfile">Retry</button>
+    </div>
     <template v-else>
       <!-- Profile Header -->
       <div class="profile-header">
@@ -26,7 +54,7 @@
             </template>
           </div>
           <p class="profile-title">{{ user.professional_title || 'Licensed Clinical Social Worker' }}</p>
-          <div class="profile-stats-row">
+          <div v-if="!user.profile_restricted" class="profile-stats-row">
             <p class="profile-helpful">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="#e53935"/></svg>
               {{ user.helpful_count || 0 }}&nbsp; Helpful answers
@@ -38,13 +66,12 @@
             </p>
           </div>
           <!-- Connection / Message buttons -->
-          <div v-if="!isOwn && connectionStatus !== null" class="profile-action-buttons">
-            <template v-if="connectionStatus === 'connected'">
-              <button class="profile-action-btn profile-action-message" @click="goToMessage">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                Message
-              </button>
-            </template>
+          <div v-if="!isOwn && connectionStatus !== null && !user.profile_restricted" class="profile-action-buttons">
+            <button v-if="user.can_message" class="profile-action-btn profile-action-message" @click="goToMessage">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Message
+            </button>
+            <template v-if="connectionStatus === 'connected'"></template>
             <template v-else-if="connectionStatus === 'pending_received'">
               <button class="profile-action-btn profile-action-accept" :disabled="connectionLoading" @click="handleAcceptConnection">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
@@ -71,22 +98,32 @@
         </div>
       </div>
 
+      <!-- Profile Restricted Notice -->
+      <div v-if="user.profile_restricted" class="profile-restricted-notice">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <p>This profile is only visible to connections.</p>
+        <button v-if="connectionStatus === 'none'" class="profile-action-btn profile-action-connect" :disabled="connectionLoading" @click="handleSendConnection">
+          {{ connectionLoading ? 'Sending...' : 'Send Connection Request' }}
+        </button>
+        <p v-else-if="connectionStatus === 'pending_sent'" class="profile-restricted-pending">Connection request sent</p>
+      </div>
+
       <!-- Anonymous Toggle -->
-      <div v-if="isOwn" class="profile-anon-row">
-        <button type="button" class="ask-anon-toggle" :class="{ 'is-active': user.anonymous }" @click="handleToggleAnonymous">
+      <div v-if="isOwn && !user.profile_restricted" class="profile-anon-row">
+        <button type="button" class="ask-anon-toggle" :class="{ 'is-active': user.anonymous }" @click="handleToggleAnonymous" role="switch" :aria-checked="!!user.anonymous">
           <span>Anonymous</span>
-          <span class="toggle-track" :class="{ on: user.anonymous }">
+          <span class="toggle-track" :class="{ on: user.anonymous }" aria-hidden="true">
             <span class="toggle-thumb"></span>
           </span>
         </button>
       </div>
 
       <!-- Personal Info -->
-      <div class="profile-info-card">
+      <div v-if="!user.profile_restricted" class="profile-info-card">
         <div class="profile-info-header">
           <h3>Personal Info</h3>
-          <button v-if="isOwn" class="profile-edit-btn" @click="startEdit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <button v-if="isOwn" class="profile-edit-btn" @click="startEdit" aria-label="Edit personal info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
           </button>
         </div>
@@ -107,11 +144,11 @@
       </div>
 
       <!-- Edit Profile Modal -->
-      <div v-if="editing" class="profile-modal-overlay" @click.self="cancelEdit">
-        <div class="profile-modal">
+      <div v-if="editing && !user.profile_restricted" class="profile-modal-overlay" @click.self="cancelEdit">
+        <div class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="edit-profile-modal-title">
           <div class="profile-modal-header">
-            <h3>Edit Personal Info</h3>
-            <button class="profile-modal-close" @click="cancelEdit">&times;</button>
+            <h3 id="edit-profile-modal-title">Edit Personal Info</h3>
+            <button class="profile-modal-close" @click="cancelEdit" aria-label="Close">&times;</button>
           </div>
           <div class="profile-modal-body">
             <div class="profile-modal-field">
@@ -147,8 +184,8 @@
       </div>
 
       <!-- Tabs -->
-      <div class="profile-tabs">
-        <button v-for="tab in tabs" :key="tab.key" class="profile-tab" :class="{ 'is-active': activeTab === tab.key }" @click="activeTab = tab.key">
+      <div v-if="!user.profile_restricted" class="profile-tabs" role="tablist">
+        <button v-for="tab in tabs" :key="tab.key" class="profile-tab" :class="{ 'is-active': activeTab === tab.key }" @click="activeTab = tab.key" role="tab" :aria-selected="activeTab === tab.key">
 <svg v-if="tab.key === 'answers'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
   <g clip-path="url(#clip0_20075_10658)">
     <path d="M12.2589 5.53003H5.11674C5.00295 5.52992 4.89026 5.55225 4.78511 5.59575C4.67996 5.63924 4.58443 5.70305 4.50397 5.78351C4.42351 5.86397 4.3597 5.95951 4.31621 6.06465C4.27271 6.1698 4.25038 6.28249 4.25049 6.39628V10.4716C4.25064 10.7013 4.34195 10.9215 4.50437 11.084C4.66679 11.2464 4.88704 11.3377 5.11674 11.3378H9.87018C9.89291 11.3377 9.91544 11.3421 9.93646 11.3507C9.95749 11.3594 9.97659 11.3721 9.99268 11.3882L10.8502 12.2457C10.9109 12.3062 10.9882 12.3475 11.0724 12.3642C11.1565 12.3809 11.2437 12.3724 11.323 12.3396C11.4023 12.3069 11.4701 12.2514 11.5179 12.1802C11.5658 12.109 11.5914 12.0252 11.5917 11.9394V11.5107C11.5923 11.4646 11.611 11.4207 11.6438 11.3884C11.6765 11.356 11.7207 11.3379 11.7667 11.3379H12.2589C12.4885 11.3373 12.7085 11.2459 12.8709 11.0836C13.0332 10.9212 13.1247 10.7012 13.1252 10.4716V6.39628C13.125 6.16658 13.0337 5.94634 12.8713 5.78392C12.7089 5.6215 12.4886 5.53018 12.2589 5.53003ZM11.3577 9.34722C11.3028 9.36524 11.2431 9.36087 11.1915 9.33506C11.1399 9.30925 11.1005 9.26408 11.0821 9.2094L10.8939 8.64284H9.92705L9.74549 9.17878C9.72633 9.23277 9.68677 9.2771 9.63531 9.30226C9.58384 9.32743 9.52457 9.33142 9.47019 9.31339C9.41581 9.29536 9.37067 9.25674 9.34444 9.2058C9.31821 9.15487 9.31298 9.09569 9.32988 9.04095L9.99705 7.06128C10.0277 6.97544 10.0842 6.9012 10.1588 6.84879C10.2333 6.79638 10.3223 6.76837 10.4135 6.76861C10.5046 6.76885 10.5934 6.79734 10.6677 6.85015C10.742 6.90295 10.7981 6.97749 10.8283 7.06349L11.4977 9.07159C11.5066 9.09888 11.5101 9.12767 11.5079 9.15631C11.5057 9.18495 11.4979 9.21287 11.4849 9.23848C11.4719 9.26409 11.454 9.28687 11.4321 9.30553C11.4103 9.32419 11.385 9.33836 11.3577 9.34722ZM9.53768 10.1019H6.0858C6.02835 10.1011 5.97353 10.0776 5.93321 10.0367C5.89288 9.99577 5.87027 9.94061 5.87027 9.88315C5.87027 9.82569 5.89288 9.77054 5.93321 9.72961C5.97353 9.68868 6.02835 9.66526 6.0858 9.6644H9.53768C9.59513 9.66526 9.64994 9.68868 9.69027 9.72961C9.7306 9.77054 9.75321 9.82569 9.75321 9.88315C9.75321 9.94061 9.7306 9.99577 9.69027 10.0367C9.64994 10.0776 9.59513 10.1011 9.53768 10.1019ZM6.0858 8.37159H8.6758C8.73326 8.37244 8.78807 8.39587 8.8284 8.4368C8.86872 8.47773 8.89133 8.53288 8.89133 8.59034C8.89133 8.6478 8.86872 8.70296 8.8284 8.74389C8.78807 8.78482 8.73326 8.80824 8.6758 8.80909H6.0858C6.02835 8.80824 5.97353 8.78482 5.93321 8.74389C5.89288 8.70296 5.87027 8.6478 5.87027 8.59034C5.87027 8.53288 5.89288 8.47773 5.93321 8.4368C5.97353 8.39587 6.02835 8.37244 6.0858 8.37159ZM5.86705 7.29534C5.86722 7.23738 5.89033 7.18184 5.93131 7.14085C5.9723 7.09987 6.02784 7.07676 6.0858 7.07659H8.6758C8.73382 7.07659 8.78946 7.09964 8.83048 7.14066C8.8715 7.18169 8.89455 7.23733 8.89455 7.29534C8.89455 7.35336 8.8715 7.409 8.83048 7.45002C8.78946 7.49104 8.73382 7.51409 8.6758 7.51409H6.0858C6.02784 7.51392 5.9723 7.49082 5.93131 7.44983C5.89033 7.40884 5.86722 7.3533 5.86705 7.29534Z" fill="currentColor"/>
@@ -198,22 +235,29 @@
 
           <svg v-if="tab.key === 'warnings'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <svg v-if="tab.key === 'stats'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+          <svg v-if="tab.key === 'settings'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           {{ tab.label }}
         </button>
       </div>
 
       <!-- Tab Content -->
-      <div class="profile-tab-content">
+      <div v-if="!user.profile_restricted" class="profile-tab-content">
         <!-- Answers Tab -->
         <template v-if="activeTab === 'answers'">
-          <div v-if="loadingReplies" class="cnw-social-worker-loading" style="padding:20px">Loading answers...</div>
+          <div v-if="loadingReplies" class="profile-cards-grid">
+            <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:14px;gap:8px">
+              <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:60%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:90%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:30%"></div>
+            </div>
+          </div>
           <div v-else-if="replies.length === 0" class="profile-empty-state">
             <p class="profile-empty-title">No answers yet</p>
             <p class="profile-empty-desc">When this user shares answers, they'll appear here.</p>
             <router-link to="/" class="profile-empty-link">unanswered questions</router-link>
           </div>
           <div v-else class="profile-cards-grid">
-            <div v-for="reply in replies" :key="reply.id" class="profile-content-card" @click="$router.push('/thread/' + reply.thread_id)">
+            <div v-for="reply in replies" :key="reply.id" class="profile-content-card" role="button" tabindex="0" @click="$router.push('/thread/' + reply.thread_id)" @keydown.enter="$router.push('/thread/' + reply.thread_id)">
               <h4 class="profile-card-title">{{ reply.thread_title }}</h4>
               <p class="profile-card-excerpt">{{ truncate(reply.content, 120) }}</p>
               <div class="profile-card-tags">
@@ -231,13 +275,19 @@
 
         <!-- Questions Tab -->
         <template v-if="activeTab === 'questions'">
-          <div v-if="loadingThreads" class="cnw-social-worker-loading" style="padding:20px">Loading questions...</div>
+          <div v-if="loadingThreads" class="profile-cards-grid">
+            <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:14px;gap:8px">
+              <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:55%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:85%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:35%"></div>
+            </div>
+          </div>
           <div v-else-if="threads.length === 0" class="profile-empty-state">
             <p class="profile-empty-title">No questions yet</p>
             <p class="profile-empty-desc">When this user asks questions, they'll appear here.</p>
           </div>
           <div v-else class="profile-cards-grid">
-            <div v-for="thread in threads" :key="thread.id" class="profile-content-card" @click="$router.push('/thread/' + thread.id)">
+            <div v-for="thread in threads" :key="thread.id" class="profile-content-card" role="button" tabindex="0" @click="$router.push('/thread/' + thread.id)" @keydown.enter="$router.push('/thread/' + thread.id)">
               <h4 class="profile-card-title">{{ thread.title }}</h4>
               <p class="profile-card-excerpt">{{ truncate(thread.content, 120) }}</p>
               <div class="profile-card-tags">
@@ -255,13 +305,19 @@
 
         <!-- Saved Tab -->
         <template v-if="activeTab === 'saved'">
-          <div v-if="loadingSaved" class="cnw-social-worker-loading" style="padding:20px">Loading saved threads...</div>
+          <div v-if="loadingSaved" class="profile-cards-grid">
+            <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:14px;gap:8px">
+              <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:50%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:80%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:25%"></div>
+            </div>
+          </div>
           <div v-else-if="savedThreads.length === 0" class="profile-empty-state">
             <p class="profile-empty-title">No saved threads yet</p>
             <p class="profile-empty-desc">Threads you mark as helpful will appear here.</p>
           </div>
           <div v-else class="profile-cards-grid">
-            <div v-for="thread in savedThreads" :key="thread.id" class="profile-content-card" @click="$router.push('/thread/' + thread.id)">
+            <div v-for="thread in savedThreads" :key="thread.id" class="profile-content-card" role="button" tabindex="0" @click="$router.push('/thread/' + thread.id)" @keydown.enter="$router.push('/thread/' + thread.id)">
               <h4 class="profile-card-title">{{ thread.title }}</h4>
               <p class="profile-card-excerpt">{{ truncate(thread.content, 120) }}</p>
               <div class="profile-card-tags">
@@ -279,7 +335,15 @@
 
         <!-- Activity Tab -->
         <template v-if="activeTab === 'activity'">
-          <div v-if="loadingActivity" class="cnw-social-worker-loading" style="padding:20px">Loading activity...</div>
+          <div v-if="loadingActivity" style="display:flex;flex-direction:column;gap:10px">
+            <div v-for="n in 4" :key="n" class="cnw-skeleton-card" style="flex-direction:row;padding:10px;gap:10px">
+              <div class="cnw-skeleton cnw-skeleton-circle" style="width:32px;height:32px"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+                <div class="cnw-skeleton cnw-skeleton-line" :style="{width: [65,80,50,70][n-1]+'%'}"></div>
+                <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:20%"></div>
+              </div>
+            </div>
+          </div>
           <div v-else-if="activities.length === 0" class="profile-empty-state">
             <p class="profile-empty-title">No activity yet</p>
             <p class="profile-empty-desc">Your actions will be recorded here.</p>
@@ -318,7 +382,13 @@
 
         <!-- Warnings & Suspensions Tab -->
         <template v-if="activeTab === 'warnings'">
-          <div v-if="loadingWarnings" class="cnw-social-worker-loading" style="padding:20px">Loading warnings...</div>
+          <div v-if="loadingWarnings" style="display:flex;flex-direction:column;gap:10px">
+            <div v-for="n in 3" :key="n" class="cnw-skeleton-card" style="padding:12px;gap:8px">
+              <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:35%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:80%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:25%"></div>
+            </div>
+          </div>
           <div v-else-if="userWarnings.length === 0" class="profile-empty-state">
             <p class="profile-empty-title">No warnings or suspensions</p>
             <p class="profile-empty-desc">This account has a clean record.</p>
@@ -328,8 +398,8 @@
               <div class="profile-warning-header">
                 <span class="profile-warning-type" :class="w.type === 'suspension' ? 'pw-type-suspension' : 'pw-type-warning'">{{ w.type === 'suspension' ? 'Suspension' : 'Warning' }}</span>
                 <span class="profile-warning-date">{{ formatWarningDate(w.created_at) }}</span>
-                <button v-if="canModerate" class="profile-warning-delete" @click="deleteUserWarning(w)" :disabled="w._deleting" title="Delete">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                <button v-if="canModerate" class="profile-warning-delete" @click="deleteUserWarning(w)" :disabled="w._deleting" title="Delete" aria-label="Delete warning">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 </button>
               </div>
               <div class="profile-warning-reason">{{ w.reason }}</div>
@@ -392,13 +462,163 @@
             </div>
           </div>
         </template>
+
+        <!-- Settings Tab -->
+        <template v-if="activeTab === 'settings' && isOwn">
+          <div v-if="loadingPrefs" style="display:flex;flex-direction:column;gap:14px;padding:20px">
+            <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:30%"></div>
+            <div v-for="n in 4" :key="n" class="cnw-skeleton-card" style="flex-direction:row;justify-content:space-between;padding:10px;gap:10px">
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:40%"></div>
+              <div class="cnw-skeleton cnw-skeleton-line" style="width:80px;height:24px;border-radius:12px"></div>
+            </div>
+          </div>
+          <div v-else-if="preferences" class="profile-settings">
+
+            <!-- Privacy Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <h3>Privacy</h3>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Profile Visibility</span>
+                  <span class="settings-desc">Who can see your profile details</span>
+                </div>
+                <select v-model="preferences.profile_visibility" class="settings-select">
+                  <option value="everyone">Everyone</option>
+                  <option value="connections">Connections Only</option>
+                </select>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Message Privacy</span>
+                  <span class="settings-desc">Who can send you messages</span>
+                </div>
+                <select v-model="preferences.message_privacy" class="settings-select">
+                  <option value="everyone">Everyone</option>
+                  <option value="connections">Connections Only</option>
+                </select>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Show Online Status</span>
+                  <span class="settings-desc">Let others see when you're online</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.show_online_status }" @click="preferences.show_online_status = !preferences.show_online_status" role="switch" :aria-checked="!!preferences.show_online_status">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Show Activity</span>
+                  <span class="settings-desc">Display your activity on your profile</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.show_activity }" @click="preferences.show_activity = !preferences.show_activity" role="switch" :aria-checked="!!preferences.show_activity">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Notifications Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <h3>Notifications</h3>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Replies</span>
+                  <span class="settings-desc">When someone replies to your thread</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_replies }" @click="preferences.notify_replies = !preferences.notify_replies" role="switch" :aria-checked="!!preferences.notify_replies">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Mentions</span>
+                  <span class="settings-desc">When someone mentions you</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_mentions }" @click="preferences.notify_mentions = !preferences.notify_mentions" role="switch" :aria-checked="!!preferences.notify_mentions">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Votes</span>
+                  <span class="settings-desc">When someone votes on your content</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_votes }" @click="preferences.notify_votes = !preferences.notify_votes" role="switch" :aria-checked="!!preferences.notify_votes">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Solutions</span>
+                  <span class="settings-desc">When your answer is marked as solution</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_solutions }" @click="preferences.notify_solutions = !preferences.notify_solutions" role="switch" :aria-checked="!!preferences.notify_solutions">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Connections</span>
+                  <span class="settings-desc">Connection requests and acceptances</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_connections }" @click="preferences.notify_connections = !preferences.notify_connections" role="switch" :aria-checked="!!preferences.notify_connections">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Messages</span>
+                  <span class="settings-desc">New direct messages</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_messages }" @click="preferences.notify_messages = !preferences.notify_messages" role="switch" :aria-checked="!!preferences.notify_messages">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <span class="settings-label">Email Notifications</span>
+                  <span class="settings-desc">How often to receive email notifications</span>
+                </div>
+                <select v-model="preferences.email_notifications" class="settings-select">
+                  <option value="always">Always</option>
+                  <option value="inactive">When I'm Inactive</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="settings-footer">
+              <span v-if="prefsSaved" class="settings-saved-msg" aria-live="polite">Settings saved!</span>
+              <button class="settings-save-btn" :disabled="savingPrefs" @click="savePreferences">
+                {{ savingPrefs ? 'Saving...' : 'Save Settings' }}
+              </button>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
   </div>
 </template>
 
 <script>
-import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar, getConnectionStatus, sendConnectionRequest, acceptConnection, declineConnection, getUserWarnings, deleteWarning } from '@/api/index.js';
+import { getUser, getUserThreads, getUserReplies, getSavedThreads, getUserActivity, updateUserProfile, toggleAnonymous, uploadAvatar, getConnectionStatus, sendConnectionRequest, acceptConnection, declineConnection, getUserWarnings, deleteWarning, getPreferences, updatePreferences } from '@/api/index.js';
 
 export default {
   name: 'UserProfileView',
@@ -408,14 +628,7 @@ export default {
       loading: true,
       error: '',
       activeTab: 'answers',
-      tabs: [
-        { key: 'answers', label: 'Answers' },
-        { key: 'questions', label: 'Questions' },
-        { key: 'saved', label: 'Saved' },
-        { key: 'activity', label: 'Activity' },
-        { key: 'warnings', label: 'Warnings & Suspensions' },
-        { key: 'stats', label: 'Stats' },
-      ],
+      tabs: [],
       threads: [],
       replies: [],
       savedThreads: [],
@@ -442,6 +655,11 @@ export default {
       defaultAvatar: window.cnwData?.defaultAvatar || '',
       connectionStatus: null,
       connectionLoading: false,
+      // Settings
+      preferences: null,
+      loadingPrefs: false,
+      savingPrefs: false,
+      prefsSaved: false,
     };
   },
   computed: {
@@ -498,6 +716,7 @@ export default {
       if (tab === 'saved' && this.savedThreads.length === 0) this.fetchSaved(1);
       if (tab === 'activity' && this.activities.length === 0) this.fetchActivity(1);
       if (tab === 'warnings' && this.userWarnings.length === 0) this.fetchWarnings(1);
+      if (tab === 'settings' && !this.preferences) this.loadPreferences();
     },
   },
   created() {
@@ -515,7 +734,13 @@ export default {
       this.replies = [];
       try {
         this.user = await getUser(this.userId);
-        this.fetchReplies();
+        this.buildTabs();
+        if (!this.user.profile_restricted) {
+          this.fetchReplies();
+        }
+        if (this.user.is_own && this.user.preferences) {
+          this.preferences = { ...this.user.preferences };
+        }
         if (!this.user.is_own) {
           this.loadConnectionStatus();
         }
@@ -687,6 +912,42 @@ export default {
         }
       } catch { /* silent */ }
       this.$refs.fileInput.value = '';
+    },
+    buildTabs() {
+      const base = [
+        { key: 'answers', label: 'Answers' },
+        { key: 'questions', label: 'Questions' },
+        { key: 'saved', label: 'Saved' },
+      ];
+      // Only show Activity tab if user allows it (or it's own profile)
+      if (this.user.show_activity !== false) {
+        base.push({ key: 'activity', label: 'Activity' });
+      }
+      base.push(
+        { key: 'warnings', label: 'Warnings & Suspensions' },
+        { key: 'stats', label: 'Stats' },
+      );
+      if (this.user.is_own) {
+        base.push({ key: 'settings', label: 'Settings' });
+      }
+      this.tabs = base;
+    },
+    async loadPreferences() {
+      this.loadingPrefs = true;
+      try {
+        this.preferences = await getPreferences();
+      } catch {}
+      finally { this.loadingPrefs = false; }
+    },
+    async savePreferences() {
+      this.savingPrefs = true;
+      this.prefsSaved = false;
+      try {
+        this.preferences = await updatePreferences(this.preferences);
+        this.prefsSaved = true;
+        setTimeout(() => { this.prefsSaved = false; }, 2500);
+      } catch {}
+      finally { this.savingPrefs = false; }
     },
     truncate(str, len) {
       if (!str) return '';
@@ -1371,6 +1632,28 @@ export default {
 }
 
 /* ── Empty State ────────────────────────────────────────────── */
+.profile-restricted-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-med);
+  font-size: 15px;
+}
+.profile-restricted-notice svg {
+  color: var(--text-light);
+}
+.profile-restricted-pending {
+  font-size: 13px;
+  color: var(--text-light);
+  font-style: italic;
+}
+
 .profile-empty-state {
   border: var(--radius-xs, 1px) solid var(--primary);
   border-radius: var(--radius);
@@ -1506,5 +1789,153 @@ export default {
   .profile-stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .settings-select {
+    max-width: 50%;
+    min-width: 120px;
+  }
+}
+
+/* ── Settings Tab ─────────────────────────────────────────── */
+.profile-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.settings-section {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.settings-section-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.settings-section-header svg {
+  color: var(--primary);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child {
+  border-bottom: none;
+}
+.settings-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.settings-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+.settings-desc {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.settings-select {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--white);
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 40%;
+  flex-shrink: 0;
+}
+.settings-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(58, 169, 218, 0.1);
+}
+
+/* Toggle switch */
+.settings-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.settings-toggle-track {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: #ccc;
+  border-radius: 11px;
+  position: relative;
+  transition: background 0.2s;
+}
+.settings-toggle.on .settings-toggle-track {
+  background: var(--primary);
+}
+.settings-toggle-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.settings-toggle.on .settings-toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* Save footer */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.settings-saved-msg {
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 500;
+}
+.settings-save-btn {
+  padding: 10px 28px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.settings-save-btn:hover {
+  background: var(--teal-dark);
+  box-shadow: 0 2px 8px rgba(58, 169, 218, 0.3);
+}
+.settings-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

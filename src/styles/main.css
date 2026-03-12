@@ -204,3 +204,91 @@ button {
   color: var(--text-light);
   font-size: 15px;
 }
+
+/* ── Skeleton / Shimmer loading ──────────────────────────────────── */
+
+@keyframes cnw-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.cnw-skeleton {
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+  background-size: 800px 100%;
+  animation: cnw-shimmer 1.5s infinite ease-in-out;
+  border-radius: var(--radius-m);
+}
+
+.cnw-skeleton-card {
+  background: #fff;
+  border-radius: var(--radius-l);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cnw-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cnw-skeleton-circle {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cnw-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.cnw-skeleton-line-sm  { height: 10px; border-radius: 5px; }
+.cnw-skeleton-line-lg  { height: 16px; border-radius: 8px; }
+.cnw-skeleton-line-xl  { height: 20px; border-radius: 10px; }
+
+/* ── Error state ────────────────────────────────────────────────── */
+
+.cnw-error-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-med);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.cnw-error-state svg {
+  color: var(--red);
+  opacity: 0.6;
+}
+.cnw-error-state p {
+  margin: 0;
+}
+.cnw-error-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border: 1px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cnw-error-retry-btn:hover {
+  background: var(--teal-light);
+}
+
+/* Search highlight */
+.cnw-search-highlight {
+  background: #fef08a;
+  color: inherit;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
