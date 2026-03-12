@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cnw Social Bridge
  * Description: A social forum plugin with threads, replies, messages, and user roles.
- * Version: 1.0.14
+ * Version: 1.0.17
  * Author: Cloud Nine Web
  * Author URI: https://cloudnineweb.co/
  * License: GPL-2.0-or-later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.14' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.17' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
@@ -130,6 +130,8 @@ class Cnw_Social_Bridge {
             status     varchar(20)         DEFAULT 'published',
             is_anonymous tinyint(1)         DEFAULT 0,
             views      int(11)             DEFAULT 0,
+            is_pinned  tinyint(1)          DEFAULT 0,
+            is_closed  tinyint(1)          DEFAULT 0,
             created_at datetime            DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -311,6 +313,7 @@ class Cnw_Social_Bridge {
             reference_id  bigint(20) unsigned DEFAULT NULL,
             message       varchar(500)        NOT NULL,
             is_read       tinyint(1)          DEFAULT 0,
+            emailed       tinyint(1)          DEFAULT 0,
             created_at    datetime            DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY user_id    (user_id),
@@ -489,18 +492,54 @@ class Cnw_Social_Bridge {
      */
     public function maybe_run_upgrades() {
         $db_version = get_option( 'cnw_db_version', '0' );
-        if ( $db_version === '1.3' ) {
+        if ( $db_version === '1.5' ) {
             return; // Current version, skip all upgrade checks
         }
 
-        global $wpdb;
+        // Run full activation to create any missing tables + columns.
+        $this->activate();
 
-        // Add emailed column if missing
-        $notif_table = $wpdb->prefix . 'cnw_social_worker_notifications';
+        global $wpdb;
+        $prefix = $wpdb->prefix . 'cnw_social_worker_';
+
+        // ── Threads: add is_pinned & is_closed columns ──────────────────
+        $threads_table = $prefix . 'threads';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_pinned'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER views" );
+        }
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_closed'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_closed tinyint(1) DEFAULT 0 AFTER is_pinned" );
+        }
+
+        // ── Messages: add is_pinned & attachment columns ────────────────
+        $messages_table = $prefix . 'messages';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'is_pinned'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER is_read" );
+        }
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'attachment_url'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_url text DEFAULT NULL AFTER is_pinned" );
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_name varchar(255) DEFAULT NULL AFTER attachment_url" );
+            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_type varchar(50) DEFAULT NULL AFTER attachment_name" );
+        }
+
+        // ── Notifications: add emailed column ───────────────────────────
+        $notif_table = $prefix . 'notifications';
         $col = $wpdb->get_results( "SHOW COLUMNS FROM {$notif_table} LIKE 'emailed'" );
         if ( empty( $col ) ) {
             $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
             $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
+        }
+
+        // ── Reports: add content_type & content_id columns ──────────────
+        $reports_table = $prefix . 'reports';
+        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$reports_table} LIKE 'content_type'" );
+        if ( empty( $col ) ) {
+            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_type varchar(20) DEFAULT NULL AFTER link" );
+            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
         }
 
         // Schedule cron if not already scheduled
@@ -511,7 +550,7 @@ class Cnw_Social_Bridge {
         // Add composite indexes for existing installations
         $this->maybe_add_indexes();
 
-        update_option( 'cnw_db_version', '1.3' );
+        update_option( 'cnw_db_version', '1.5' );
     }
 
     /**

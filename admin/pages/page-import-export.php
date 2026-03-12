@@ -210,7 +210,9 @@ $import_id = isset( $_GET['import_ready'] ) ? sanitize_text_field( $_GET['import
                     el.className = 'cnw-import-step done';
                     el.querySelector('.step-icon').innerHTML = '<span class="dashicons dashicons-yes-alt" style="color:#22a55b;"></span>';
                     var cnt = resp.data.count || 0;
-                    el.querySelector('.step-count').textContent = cnt + ' record' + (cnt !== 1 ? 's' : '');
+                    var label = cnt + ' record' + (cnt !== 1 ? 's' : '');
+                    if (resp.data.debug) { label += ' — ' + resp.data.debug; }
+                    el.querySelector('.step-count').textContent = label;
                     currentIdx++;
                     runStep();
                 } else {

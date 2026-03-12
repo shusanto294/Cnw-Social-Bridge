@@ -1595,44 +1595,10 @@ class Cnw_Social_Bridge_Admin {
         global $wpdb;
         $p = $wpdb->prefix . 'cnw_social_worker_';
 
-        // ── Ensure DB columns added by recent migrations exist ──────────
-        // This prevents silent insert failures on sites that haven't been
-        // deactivated / reactivated since the columns were introduced.
+        // ── Ensure ALL tables + columns exist before importing ─────────
+        // Covers sites where the plugin was never properly activated.
         if ( $step === 'users' ) { // first import step — run once
-            $t_threads = $p . 'threads';
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_threads} LIKE 'is_pinned'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_threads} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER views" );
-            }
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_threads} LIKE 'is_closed'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_threads} ADD COLUMN is_closed tinyint(1) DEFAULT 0 AFTER is_pinned" );
-            }
-
-            $t_messages = $p . 'messages';
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_messages} LIKE 'is_pinned'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_messages} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER is_read" );
-            }
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_messages} LIKE 'attachment_url'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_messages} ADD COLUMN attachment_url text DEFAULT NULL AFTER is_pinned" );
-                $wpdb->query( "ALTER TABLE {$t_messages} ADD COLUMN attachment_name varchar(255) DEFAULT NULL AFTER attachment_url" );
-                $wpdb->query( "ALTER TABLE {$t_messages} ADD COLUMN attachment_type varchar(50) DEFAULT NULL AFTER attachment_name" );
-            }
-
-            $t_notifs = $p . 'notifications';
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_notifs} LIKE 'emailed'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_notifs} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
-            }
-
-            $t_reports = $p . 'reports';
-            $row = $wpdb->get_results( "SHOW COLUMNS FROM {$t_reports} LIKE 'content_type'" );
-            if ( empty( $row ) ) {
-                $wpdb->query( "ALTER TABLE {$t_reports} ADD COLUMN content_type varchar(20) DEFAULT NULL AFTER link" );
-                $wpdb->query( "ALTER TABLE {$t_reports} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
-            }
+            Cnw_Social_Bridge::get_instance()->activate();
         }
 
         // Helper: read a JSON file from the extracted dir.
@@ -1780,10 +1746,12 @@ class Cnw_Social_Bridge_Admin {
             case 'threads':
                 $threads = $read_json( 'threads' );
                 $state['thread_map'] = array();
+                $errors = array();
                 foreach ( $threads as $row ) {
                     $old_id = (int) $row['id'];
-                    $wpdb->insert( $p . 'threads', array(
-                        'author_id'    => $ru( $row['author_id'] ),
+                    $author = $ru( $row['author_id'] );
+                    $data = array(
+                        'author_id'    => $author,
                         'title'        => $row['title'],
                         'content'      => $row['content'],
                         'status'       => $row['status'] ?? 'published',
@@ -1793,9 +1761,17 @@ class Cnw_Social_Bridge_Admin {
                         'is_closed'    => (int) ( $row['is_closed'] ?? 0 ),
                         'created_at'   => $row['created_at'] ?? current_time( 'mysql' ),
                         'updated_at'   => $row['updated_at'] ?? current_time( 'mysql' ),
-                    ) );
-                    $state['thread_map'][ $old_id ] = (int) $wpdb->insert_id;
-                    $count++;
+                    );
+                    $result = $wpdb->insert( $p . 'threads', $data );
+                    if ( $result !== false && $wpdb->insert_id ) {
+                        $state['thread_map'][ $old_id ] = (int) $wpdb->insert_id;
+                        $count++;
+                    } else {
+                        $errors[] = 'Thread #' . $old_id . ' (author=' . $author . '): ' . $wpdb->last_error;
+                    }
+                }
+                if ( ! empty( $errors ) ) {
+                    $state['thread_errors'] = $errors;
                 }
                 break;
 
@@ -2125,7 +2101,11 @@ class Cnw_Social_Bridge_Admin {
 
         // Save updated state (with new ID maps) back to the transient.
         set_transient( 'cnw_import_' . $import_id, $state, HOUR_IN_SECONDS );
-        wp_send_json_success( array( 'count' => $count ) );
+        $response = array( 'count' => $count );
+        if ( ! empty( $state['thread_errors'] ) ) {
+            $response['debug'] = implode( ' | ', array_slice( $state['thread_errors'], 0, 3 ) );
+        }
+        wp_send_json_success( $response );
     }
 
     private function rmdir_recursive( $dir ) {
