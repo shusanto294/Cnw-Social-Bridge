@@ -3818,6 +3818,35 @@ main.cnw-social-worker-main.messages-view
   color: #999;
   padding: 10px 0;
 }
+.cnw-msg-skeleton-item {
+  cursor: default;
+  pointer-events: none;
+}
+.cnw-msg-skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+  background-size: 800px 100%;
+  animation: cnw-shimmer 1.5s infinite linear;
+}
+.cnw-msg-skeleton-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cnw-msg-skeleton-name {
+  width: 100px;
+  height: 14px;
+  border-radius: 7px;
+}
+.cnw-msg-skeleton-item:nth-child(2) .cnw-msg-skeleton-name { width: 80px;
+}
+.cnw-msg-skeleton-item:nth-child(3) .cnw-msg-skeleton-name { width: 120px;
+}
+.cnw-msg-skeleton-item:nth-child(4) .cnw-msg-skeleton-name { width: 90px;
+}
+.cnw-msg-skeleton-item:nth-child(5) .cnw-msg-skeleton-name { width: 110px;
+}
 
 /* Empty & loading states */
 .cnw-msg-empty {
@@ -6924,20 +6953,20 @@ main.cnw-social-worker-main.messages-view
 .mod-user-search--inline {
   min-width: 220px;
   flex: 1;
-  max-width: 300px;
 }
 
 /* ── Form elements ──────────────────────────────────────────── */
 .mod-select {
-  padding: 8px 12px;
+  padding: 9px 32px 9px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
   color: var(--text-body);
-  background: var(--white);
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272.5%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E") no-repeat right 12px center;
   transition: border-color 0.2s;
-  appearance: auto;
+  appearance: none;
+  box-sizing: border-box;
 }
 .mod-input, .mod-textarea {
   padding: 9px 12px;
@@ -7323,6 +7352,23 @@ main.cnw-social-worker-main.messages-view
 /* ── User search dropdown ───────────────────────────────────── */
 .mod-user-search {
   position: relative;
+}
+.mod-search-input-wrap {
+  position: relative;
+  width: 100%;
+}
+.mod-search-input-wrap .mod-input--with-icon {
+  padding-right: 36px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.mod-search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  pointer-events: none;
 }
 .mod-selected-user {
   display: flex;

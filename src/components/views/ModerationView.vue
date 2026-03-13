@@ -157,14 +157,17 @@
           <option value="suspension">Suspensions Only</option>
         </select>
         <div class="mod-user-search mod-user-search--inline">
-          <input
-            v-model="warningUserSearch"
-            class="mod-input"
-            placeholder="Filter by user name..."
-            aria-label="Filter warnings by user name"
-            @input="searchWarningUsers"
-            @focus="warningUserDropdownOpen = true"
-          />
+          <div class="mod-search-input-wrap">
+            <input
+              v-model="warningUserSearch"
+              class="mod-input mod-input--with-icon"
+              placeholder="Filter by user name..."
+              aria-label="Filter warnings by user name"
+              @input="searchWarningUsers"
+              @focus="warningUserDropdownOpen = true"
+            />
+            <svg class="mod-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
           <div v-if="warningUserSelected" class="mod-selected-user">
             <img :src="warningUserSelected.avatar" class="mod-selected-avatar" />
             <span>{{ warningUserSelected.name }}</span>
@@ -249,14 +252,17 @@
           <div class="mod-action-form">
             <label class="mod-form-label">User</label>
             <div class="mod-user-search">
-              <input
-                v-model="suspendSearch"
-                class="mod-input"
-                placeholder="Search by name, email or phone..."
-                aria-label="Search user to suspend"
-                @input="searchSuspendUsers"
-                @focus="suspendDropdownOpen = true"
-              />
+              <div class="mod-search-input-wrap">
+                <input
+                  v-model="suspendSearch"
+                  class="mod-input mod-input--with-icon"
+                  placeholder="Search by name, email or phone..."
+                  aria-label="Search user to suspend"
+                  @input="searchSuspendUsers"
+                  @focus="suspendDropdownOpen = true"
+                />
+                <svg class="mod-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
               <div v-if="suspendSelectedUser" class="mod-selected-user">
                 <img :src="suspendSelectedUser.avatar" class="mod-selected-avatar" />
                 <span>{{ suspendSelectedUser.name }}</span>
@@ -313,14 +319,17 @@
           <div class="mod-action-form">
             <label class="mod-form-label">User</label>
             <div class="mod-user-search">
-              <input
-                v-model="warnSearch"
-                class="mod-input"
-                placeholder="Search by name, email or phone..."
-                aria-label="Search user to warn"
-                @input="searchWarnUsers"
-                @focus="warnDropdownOpen = true"
-              />
+              <div class="mod-search-input-wrap">
+                <input
+                  v-model="warnSearch"
+                  class="mod-input mod-input--with-icon"
+                  placeholder="Search by name, email or phone..."
+                  aria-label="Search user to warn"
+                  @input="searchWarnUsers"
+                  @focus="warnDropdownOpen = true"
+                />
+                <svg class="mod-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
               <div v-if="warnSelectedUser" class="mod-selected-user">
                 <img :src="warnSelectedUser.avatar" class="mod-selected-avatar" />
                 <span>{{ warnSelectedUser.name }}</span>
@@ -796,20 +805,20 @@ export default {
 .mod-user-search--inline {
   min-width: 220px;
   flex: 1;
-  max-width: 300px;
 }
 
 /* ── Form elements ──────────────────────────────────────────── */
 .mod-select {
-  padding: 8px 12px;
+  padding: 9px 32px 9px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
   color: var(--text-body);
-  background: var(--white);
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;
   transition: border-color 0.2s;
-  appearance: auto;
+  appearance: none;
+  box-sizing: border-box;
 }
 .mod-input, .mod-textarea {
   padding: 9px 12px;
@@ -1170,6 +1179,23 @@ export default {
 /* ── User search dropdown ───────────────────────────────────── */
 .mod-user-search {
   position: relative;
+}
+.mod-search-input-wrap {
+  position: relative;
+  width: 100%;
+}
+.mod-search-input-wrap .mod-input--with-icon {
+  padding-right: 36px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.mod-search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  pointer-events: none;
 }
 .mod-selected-user {
   display: flex;

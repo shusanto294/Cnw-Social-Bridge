@@ -410,7 +410,7 @@
         </div>
 
         <!-- Input -->
-        <div v-if="isConnected" class="cnw-msg-input-bar">
+        <div v-if="connectionChecked && isConnected" class="cnw-msg-input-bar">
           <!-- Editing banner -->
           <div v-if="editingMsgId" class="cnw-msg-editing-banner">
             <div class="cnw-msg-editing-banner-left">
@@ -453,7 +453,7 @@
           <input type="file" ref="fileInput" class="cnw-msg-file-hidden" @change="onFileSelect" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt" />
           <div v-if="uploading" class="cnw-msg-uploading">Uploading...</div>
         </div>
-        <div v-else class="cnw-msg-not-connected">
+        <div v-else-if="connectionChecked && !isConnected" class="cnw-msg-not-connected">
           <div class="cnw-msg-not-connected-line">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
             You can't send messages to this user because you are not connected.
@@ -504,7 +504,14 @@
         <!-- Suggested users (shown when not searching) -->
         <template v-if="!composeSearch.trim()">
           <div class="cnw-msg-compose-section-label">Suggested</div>
-          <div v-if="loadingSuggested" class="cnw-msg-loading">Loading...</div>
+          <div v-if="loadingSuggested" class="cnw-msg-compose-user-list">
+            <div v-for="n in 5" :key="'skel-' + n" class="cnw-msg-compose-user-item cnw-msg-skeleton-item">
+              <div class="cnw-msg-conv-avatar-wrap">
+                <span class="cnw-msg-skeleton cnw-msg-skeleton-avatar"></span>
+              </div>
+              <span class="cnw-msg-skeleton cnw-msg-skeleton-name"></span>
+            </div>
+          </div>
           <div v-else class="cnw-msg-compose-user-list">
             <div
               v-for="user in suggestedUsers"
@@ -518,7 +525,7 @@
               </div>
               <span class="cnw-msg-compose-user-name">{{ user.name }}</span>
             </div>
-            <div v-if="!suggestedUsers.length" class="cnw-msg-compose-no-results">No connections yet</div>
+            <div v-if="!loadingSuggested && !suggestedUsers.length" class="cnw-msg-compose-no-results">No connections yet</div>
           </div>
         </template>
       </div>
@@ -560,6 +567,7 @@ export default {
       mobileShowDetail: false,
       showHeaderMenu: false,
       isConnected: true,
+      connectionChecked: false,
       blockedBy: null,
       showProfile: false,
       profileChatInfoOpen: true,
@@ -576,7 +584,7 @@ export default {
       restrictedUsers: [],
       restrictedByUsers: [],
       suggestedUsers: [],
-      loadingSuggested: false,
+      loadingSuggested: true,
       composeSearch: '',
       composeFilteredUsers: [],
       composeSearchTimeout: null,
@@ -828,7 +836,19 @@ export default {
       this.loadingSuggested = true;
       try {
         const data = await getConnections({ page: 1 });
-        this.suggestedUsers = (data.users || []).slice(0, 10);
+        const connections = (data.users || []).slice(0, 10);
+        const connIds = new Set(connections.map(u => Number(u.id)));
+        // Also include users from existing conversations who aren't already connected
+        const convUsers = this.conversations
+          .filter(c => !connIds.has(Number(c.other_user_id)))
+          .map(c => ({
+            id: Number(c.other_user_id),
+            name: c.other_name,
+            avatar: c.other_avatar,
+            verified_label: c.other_verified_label || '',
+            is_online: !!c.is_online,
+          }));
+        this.suggestedUsers = [...connections, ...convUsers].slice(0, 15);
       } catch { this.suggestedUsers = []; }
       this.loadingSuggested = false;
     },
@@ -1042,6 +1062,7 @@ export default {
       this.loadingMoreConvs = false;
     },
     async openConversation(conv) {
+      this.connectionChecked = false;
       this.showProfile = false;
       this.profileSearchMessages = false;
       this.profileSearchQuery = '';
@@ -1069,6 +1090,7 @@ export default {
       }
     },
     async startConversation(user) {
+      this.connectionChecked = false;
       this.showNewChat = false;
       this.newChatSearch = '';
       this.searchResults = [];
@@ -1102,6 +1124,7 @@ export default {
           this.otherUser = { ...data.other_user, is_online: data.other_user.is_online ?? false };
         }
       } catch { this.messages = []; }
+      this.connectionChecked = true;
       this.loadingMessages = false;
       this.$nextTick(() => {
         this.$nextTick(() => {
@@ -2032,6 +2055,31 @@ main.cnw-social-worker-main.messages-view
   color: #999;
   padding: 10px 0;
 }
+.cnw-msg-skeleton-item {
+  cursor: default;
+  pointer-events: none;
+}
+.cnw-msg-skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+  background-size: 800px 100%;
+  animation: cnw-shimmer 1.5s infinite linear;
+}
+.cnw-msg-skeleton-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cnw-msg-skeleton-name {
+  width: 100px;
+  height: 14px;
+  border-radius: 7px;
+}
+.cnw-msg-skeleton-item:nth-child(2) .cnw-msg-skeleton-name { width: 80px; }
+.cnw-msg-skeleton-item:nth-child(3) .cnw-msg-skeleton-name { width: 120px; }
+.cnw-msg-skeleton-item:nth-child(4) .cnw-msg-skeleton-name { width: 90px; }
+.cnw-msg-skeleton-item:nth-child(5) .cnw-msg-skeleton-name { width: 110px; }
 
 /* Empty & loading states */
 .cnw-msg-empty {

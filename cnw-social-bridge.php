@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Cnw Social Bridge
  * Description: A social forum plugin with threads, replies, messages, and user roles.
- * Version: 1.0.22
- * Author: Cloud nine Web
+ * Version: 1.0.25
+ * Author: Cloud Nine Web
  * Author URI: https://cloudnineweb.co/
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.22' );
+define( 'CNW_SOCIAL_BRIDGE_VERSION',    '1.0.25' );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR', plugin_dir_url( __FILE__ ) . 'assets/images/default-avatar.png' );
