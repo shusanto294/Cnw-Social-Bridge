@@ -46,11 +46,23 @@
     </div>
 
     <div v-if="loading" class="cnw-users-grid">
-      <div v-for="n in 6" :key="n" class="cnw-skeleton-card" style="align-items:center;padding:20px;gap:10px">
-        <div class="cnw-skeleton cnw-skeleton-circle" style="width:60px;height:60px"></div>
-        <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:50%"></div>
-        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:35%"></div>
-        <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:45%"></div>
+      <div v-for="n in 6" :key="n" class="cnw-skeleton-card" style="padding:20px;gap:14px">
+        <div style="display:flex;gap:14px;align-items:center">
+          <div class="cnw-skeleton cnw-skeleton-circle" style="width:60px;height:60px;flex-shrink:0"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="cnw-skeleton cnw-skeleton-line-lg" style="width:65%"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:45%"></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-around;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:50px"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:60px"></div>
+          <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:50px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="cnw-skeleton" style="width:80px;height:32px;border-radius:var(--radius-sm)"></div>
+          <div class="cnw-skeleton" style="width:80px;height:32px;border-radius:var(--radius-sm)"></div>
+        </div>
       </div>
     </div>
 

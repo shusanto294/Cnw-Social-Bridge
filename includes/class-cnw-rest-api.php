@@ -1929,7 +1929,10 @@ class Cnw_Social_Bridge_REST_API {
 
         delete_transient( 'cnw_categories' );
 
-        return array( 'success' => true, 'id' => $wpdb->insert_id );
+        $cat_id = $wpdb->insert_id;
+        $this->log_activity( get_current_user_id(), 'category_created', 'Created category: ' . sanitize_text_field( $params['name'] ), 0, null, 'category', $cat_id );
+
+        return array( 'success' => true, 'id' => $cat_id );
     }
 
     public function update_category( WP_REST_Request $request ) {
@@ -1960,6 +1963,9 @@ class Cnw_Social_Bridge_REST_API {
 
         delete_transient( 'cnw_categories' );
 
+        $cat_name = isset( $data['name'] ) ? $data['name'] : '#' . $id;
+        $this->log_activity( get_current_user_id(), 'category_updated', 'Updated category: ' . $cat_name, 0, null, 'category', $id );
+
         return array( 'success' => true, 'id' => $id );
     }
 
@@ -1974,6 +1980,8 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         delete_transient( 'cnw_categories' );
+
+        $this->log_activity( get_current_user_id(), 'category_deleted', 'Deleted category #' . $id, 0, null, 'category', $id );
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -2201,6 +2209,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', 'Failed to delete vote', array( 'status' => 500 ) );
         }
 
+        $this->log_activity( get_current_user_id(), 'vote_deleted', 'Deleted vote #' . $id, 0, null, 'vote', $id );
+
         return array( 'success' => true, 'deleted' => $id );
     }
 
@@ -2278,6 +2288,10 @@ class Cnw_Social_Bridge_REST_API {
 
         $this->recalc_user_reputation( $rep_user_id );
 
+        $rep_user = get_userdata( $rep_user_id );
+        $rep_name = $rep_user ? $rep_user->display_name : '#' . $rep_user_id;
+        $this->log_activity( get_current_user_id(), 'reputation_created', 'Awarded ' . intval( $params['points'] ) . ' reputation to ' . $rep_name, 0, null, 'user', $rep_user_id );
+
         return array( 'success' => true, 'id' => $wpdb->insert_id );
     }
 
@@ -2315,6 +2329,8 @@ class Cnw_Social_Bridge_REST_API {
             $this->recalc_user_reputation( intval( $params['user_id'] ) );
         }
 
+        $this->log_activity( get_current_user_id(), 'reputation_updated', 'Updated reputation entry #' . $id, 0, null, 'reputation', $id );
+
         return array( 'success' => true, 'id' => $id );
     }
 
@@ -2337,6 +2353,8 @@ class Cnw_Social_Bridge_REST_API {
         if ( $rep_user_id ) {
             $this->recalc_user_reputation( $rep_user_id );
         }
+
+        $this->log_activity( get_current_user_id(), 'reputation_deleted', 'Deleted reputation entry #' . $id, 0, null, 'reputation', $id );
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -2389,6 +2407,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', $wpdb->last_error ?: 'Insert failed.', array( 'status' => 500 ) );
         }
 
+        $this->log_activity( get_current_user_id(), 'tag_created', 'Created tag: ' . $name, 0, null, 'tag', (int) $wpdb->insert_id );
+
         return array( 'success' => true, 'id' => (int) $wpdb->insert_id );
     }
 
@@ -2432,6 +2452,10 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         $wpdb->update( $table, $data, array( 'id' => $tag_id ), $formats, array( '%d' ) );
+
+        $tag_label = isset( $data['name'] ) ? $data['name'] : '#' . $tag_id;
+        $this->log_activity( $user_id, 'tag_updated', 'Updated tag: ' . $tag_label, 0, null, 'tag', $tag_id );
+
         return array( 'success' => true );
     }
 
@@ -2448,6 +2472,8 @@ class Cnw_Social_Bridge_REST_API {
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to delete tag', array( 'status' => 500 ) );
         }
+
+        $this->log_activity( get_current_user_id(), 'tag_deleted', 'Deleted tag #' . $tag_id, 0, null, 'tag', $tag_id );
 
         return array( 'success' => true, 'deleted' => $tag_id );
     }
@@ -3404,6 +3430,11 @@ class Cnw_Social_Bridge_REST_API {
         }
         $new_val = $thread->is_closed ? 0 : 1;
         $wpdb->update( $table, array( 'is_closed' => $new_val ), array( 'id' => $id ) );
+
+        $action = $new_val ? 'thread_closed' : 'thread_reopened';
+        $desc   = $new_val ? 'Closed thread #' . $id : 'Reopened thread #' . $id;
+        $this->log_activity( get_current_user_id(), $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+
         return array( 'success' => true, 'is_closed' => (bool) $new_val );
     }
 
@@ -3417,6 +3448,11 @@ class Cnw_Social_Bridge_REST_API {
         }
         $new_val = $thread->is_pinned ? 0 : 1;
         $wpdb->update( $table, array( 'is_pinned' => $new_val ), array( 'id' => $id ) );
+
+        $action = $new_val ? 'thread_pinned' : 'thread_unpinned';
+        $desc   = $new_val ? 'Pinned thread #' . $id : 'Unpinned thread #' . $id;
+        $this->log_activity( get_current_user_id(), $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+
         return array( 'success' => true, 'is_pinned' => (bool) $new_val );
     }
 
@@ -3478,6 +3514,9 @@ class Cnw_Social_Bridge_REST_API {
         delete_transient( 'cnw_admin_badge_counts' );
         $this->notify_moderators_new_report();
 
+        $status_label = isset( $update['status'] ) ? $update['status'] : 'updated';
+        $this->log_activity( get_current_user_id(), 'report_updated', 'Updated report #' . $id . ' status to ' . $status_label, 0, null, 'report', $id );
+
         return array( 'success' => true );
     }
 
@@ -3531,6 +3570,8 @@ class Cnw_Social_Bridge_REST_API {
             $user_id,
             'You have received a warning from the moderation team.'
         );
+
+        $this->log_activity( get_current_user_id(), 'user_warned', 'Issued a warning to ' . $user->display_name, 0, null, 'user', $user_id, '#/user/' . $user_id );
 
         return array( 'success' => true, 'id' => $insert_id );
     }
@@ -3614,6 +3655,11 @@ class Cnw_Social_Bridge_REST_API {
             $suspend_msg
         );
 
+        $suspend_desc = $duration
+            ? sprintf( 'Suspended %s for %d day%s', $user->display_name, $duration, $duration > 1 ? 's' : '' )
+            : 'Permanently suspended ' . $user->display_name;
+        $this->log_activity( get_current_user_id(), 'user_suspended', $suspend_desc, 0, null, 'user', $user_id, '#/user/' . $user_id );
+
         return array( 'success' => true, 'id' => $insert_id );
     }
 
@@ -3679,6 +3725,11 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         $wpdb->delete( $table, array( 'id' => $id ) );
+
+        $warn_type = $warning->type === 'suspension' ? 'suspension' : 'warning';
+        $warn_user = get_userdata( (int) $warning->user_id );
+        $warn_name = $warn_user ? $warn_user->display_name : 'user #' . $warning->user_id;
+        $this->log_activity( get_current_user_id(), 'warning_deleted', 'Removed ' . $warn_type . ' for ' . $warn_name, 0, null, 'user', (int) $warning->user_id, '#/user/' . $warning->user_id );
 
         return array( 'success' => true );
     }
@@ -3748,6 +3799,8 @@ class Cnw_Social_Bridge_REST_API {
 
         // Notify all moderators in real-time so their report count updates
         $this->notify_moderators_new_report();
+
+        $this->log_activity( get_current_user_id(), 'report_created', 'Submitted a report: ' . sanitize_text_field( $params['subject'] ), 0, null, 'report', $wpdb->insert_id );
 
         return array( 'success' => true, 'id' => $wpdb->insert_id );
     }
@@ -4158,6 +4211,10 @@ class Cnw_Social_Bridge_REST_API {
             array( 'remover_id' => $me )
         );
 
+        $other_user = get_userdata( $other );
+        $other_name = $other_user ? $other_user->display_name : 'user #' . $other;
+        $this->log_activity( $me, 'connection_removed', 'Removed connection with ' . $other_name, 0, null, 'user', $other, '#/user/' . $other );
+
         return array( 'status' => 'none' );
     }
 
@@ -4208,6 +4265,10 @@ class Cnw_Social_Bridge_REST_API {
             array( 'blocker_id' => $me )
         );
 
+        $blocked_user = get_userdata( $other );
+        $blocked_name = $blocked_user ? $blocked_user->display_name : 'user #' . $other;
+        $this->log_activity( $me, 'user_blocked', 'Blocked ' . $blocked_name, 0, null, 'user', $other );
+
         return array( 'status' => 'blocked' );
     }
 
@@ -4231,6 +4292,10 @@ class Cnw_Social_Bridge_REST_API {
             'connection-unblocked',
             array( 'unblocker_id' => $me )
         );
+
+        $unblocked_user = get_userdata( $other );
+        $unblocked_name = $unblocked_user ? $unblocked_user->display_name : 'user #' . $other;
+        $this->log_activity( $me, 'user_unblocked', 'Unblocked ' . $unblocked_name, 0, null, 'user', $other );
 
         return array( 'status' => 'none' );
     }
@@ -4402,6 +4467,10 @@ class Cnw_Social_Bridge_REST_API {
             array( 'restricter_id' => $me )
         );
 
+        $restricted_user = get_userdata( $other );
+        $restricted_name = $restricted_user ? $restricted_user->display_name : 'user #' . $other;
+        $this->log_activity( $me, 'user_restricted', 'Restricted ' . $restricted_name, 0, null, 'user', $other );
+
         return array( 'success' => true );
     }
 
@@ -4422,6 +4491,10 @@ class Cnw_Social_Bridge_REST_API {
             'user-unrestricted',
             array( 'restricter_id' => $me )
         );
+
+        $unrestricted_user = get_userdata( $other );
+        $unrestricted_name = $unrestricted_user ? $unrestricted_user->display_name : 'user #' . $other;
+        $this->log_activity( $me, 'user_unrestricted', 'Unrestricted ' . $unrestricted_name, 0, null, 'user', $other );
 
         return array( 'success' => true );
     }
