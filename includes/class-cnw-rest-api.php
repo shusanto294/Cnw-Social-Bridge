@@ -831,13 +831,30 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'no_data', 'No fields to update', array( 'status' => 400 ) );
         }
 
+        $current_user_id = get_current_user_id();
+
+        // Get thread author before update for notification
+        $thread_author = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_threads WHERE id = %d", $id
+        ) );
+
         $result = $wpdb->update( $wpdb->prefix . 'cnw_social_worker_threads', $data, array( 'id' => $id ) );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to update thread', array( 'status' => 500 ) );
         }
 
-        $this->log_activity( get_current_user_id(), 'thread_updated', 'Updated a question', 0, 'No points for editing', 'thread', $id, '#/thread/' . $id );
+        $this->log_activity( $current_user_id, 'thread_updated', 'Updated a question', 0, 'No points for editing', 'thread', $id, '#/thread/' . $id );
+
+        // Notify thread author if edited by a moderator/admin
+        if ( $thread_author && $thread_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $this->insert_notification(
+                $thread_author, $current_user_id, 'thread_edited', 'thread', $id,
+                $actor_name . ' edited your thread.'
+            );
+        }
 
         return array( 'success' => true, 'id' => $id );
     }
@@ -893,7 +910,18 @@ class Cnw_Social_Bridge_REST_API {
             if ( $uid ) $this->recalc_user_reputation( (int) $uid );
         }
 
-        $this->log_activity( get_current_user_id(), 'thread_deleted', 'Deleted a question', -5, 'Points reversed for deleted question' );
+        $current_user_id = get_current_user_id();
+        $this->log_activity( $current_user_id, 'thread_deleted', 'Deleted a question', -5, 'Points reversed for deleted question' );
+
+        // Notify thread author if deleted by a moderator/admin
+        if ( $thread_author && $thread_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $this->insert_notification(
+                $thread_author, $current_user_id, 'thread_deleted', 'thread', $id,
+                $actor_name . ' deleted your thread.'
+            );
+        }
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -1073,16 +1101,32 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'no_data', 'No fields to update', array( 'status' => 400 ) );
         }
 
+        $current_user_id = get_current_user_id();
+
+        // Get reply author and thread_id before update for notification
+        $reply_row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT author_id, thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
+        ) );
+        $reply_author = $reply_row ? (int) $reply_row->author_id : 0;
+        $thread_id    = $reply_row ? (int) $reply_row->thread_id : 0;
+
         $result = $wpdb->update( $wpdb->prefix . 'cnw_social_worker_replies', $data, array( 'id' => $id ) );
 
         if ( false === $result ) {
             return new WP_Error( 'db_error', 'Failed to update reply', array( 'status' => 500 ) );
         }
 
-        $thread_id = (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
-        ) );
-        $this->log_activity( get_current_user_id(), 'reply_updated', 'Updated a reply', 0, 'No points for editing', 'thread', $thread_id, '#/thread/' . $thread_id );
+        $this->log_activity( $current_user_id, 'reply_updated', 'Updated a reply', 0, 'No points for editing', 'thread', $thread_id, '#/thread/' . $thread_id );
+
+        // Notify reply author if edited by a moderator/admin
+        if ( $reply_author && $reply_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $this->insert_notification(
+                $reply_author, $current_user_id, 'reply_edited', 'thread', $thread_id,
+                $actor_name . ' edited your reply.'
+            );
+        }
 
         return array( 'success' => true, 'id' => $id );
     }
@@ -1092,10 +1136,12 @@ class Cnw_Social_Bridge_REST_API {
 
         $id = intval( $request['id'] );
 
-        // Get reply author before deletion for reputation reversal
-        $reply_author = (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT author_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
+        // Get reply author and thread_id before deletion for reputation reversal and notification
+        $reply_row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT author_id, thread_id FROM {$wpdb->prefix}cnw_social_worker_replies WHERE id = %d", $id
         ) );
+        $reply_author = $reply_row ? (int) $reply_row->author_id : 0;
+        $reply_thread_id = $reply_row ? (int) $reply_row->thread_id : 0;
 
         // Collect all affected user IDs (vote reputation recipients)
         $affected_users = array( $reply_author );
@@ -1135,7 +1181,18 @@ class Cnw_Social_Bridge_REST_API {
             $this->recalc_user_reputation( (int) $uid );
         }
 
-        $this->log_activity( get_current_user_id(), 'reply_deleted', 'Deleted a reply', -2, 'Points reversed for deleted reply' );
+        $current_user_id = get_current_user_id();
+        $this->log_activity( $current_user_id, 'reply_deleted', 'Deleted a reply', -2, 'Points reversed for deleted reply' );
+
+        // Notify reply author if deleted by a moderator/admin
+        if ( $reply_author && $reply_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $this->insert_notification(
+                $reply_author, $current_user_id, 'reply_deleted', 'thread', $reply_thread_id,
+                $actor_name . ' deleted your reply.'
+            );
+        }
 
         return array( 'success' => true, 'deleted' => $id );
     }
@@ -3090,6 +3147,7 @@ class Cnw_Social_Bridge_REST_API {
         'notify_solutions'    => true,
         'notify_connections'  => true,
         'notify_messages'     => true,
+        'notify_moderation'   => true,
         'email_notifications' => 'inactive',     // always | inactive | none
     );
 
@@ -3129,6 +3187,7 @@ class Cnw_Social_Bridge_REST_API {
             'show_online_status', 'show_activity',
             'notify_replies', 'notify_mentions', 'notify_votes',
             'notify_solutions', 'notify_connections', 'notify_messages',
+            'notify_moderation',
         );
         foreach ( $allowed_booleans as $key ) {
             if ( isset( $body[ $key ] ) ) {
@@ -3375,6 +3434,14 @@ class Cnw_Social_Bridge_REST_API {
         'connection_request'  => 'notify_connections',
         'connection_accepted' => 'notify_connections',
         'mention'             => 'notify_mentions',
+        'thread_edited'       => 'notify_moderation',
+        'thread_deleted'      => 'notify_moderation',
+        'thread_closed'       => 'notify_moderation',
+        'thread_reopened'     => 'notify_moderation',
+        'thread_pinned'       => 'notify_moderation',
+        'thread_unpinned'     => 'notify_moderation',
+        'reply_edited'        => 'notify_moderation',
+        'reply_deleted'       => 'notify_moderation',
     );
 
     private function insert_notification( $user_id, $actor_id, $type, $ref_type, $ref_id, $message ) {
@@ -3443,16 +3510,29 @@ class Cnw_Social_Bridge_REST_API {
         global $wpdb;
         $id = (int) $request['id'];
         $table = $wpdb->prefix . 'cnw_social_worker_threads';
-        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_closed FROM {$table} WHERE id = %d", $id ) );
+        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_closed, author_id FROM {$table} WHERE id = %d", $id ) );
         if ( ! $thread ) {
             return new WP_Error( 'not_found', 'Thread not found.', array( 'status' => 404 ) );
         }
         $new_val = $thread->is_closed ? 0 : 1;
         $wpdb->update( $table, array( 'is_closed' => $new_val ), array( 'id' => $id ) );
 
+        $current_user_id = get_current_user_id();
         $action = $new_val ? 'thread_closed' : 'thread_reopened';
         $desc   = $new_val ? 'Closed thread #' . $id : 'Reopened thread #' . $id;
-        $this->log_activity( get_current_user_id(), $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+        $this->log_activity( $current_user_id, $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+
+        // Notify thread author
+        $thread_author = (int) $thread->author_id;
+        if ( $thread_author && $thread_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $notif_type = $new_val ? 'thread_closed' : 'thread_reopened';
+            $notif_msg  = $new_val
+                ? $actor_name . ' closed your thread.'
+                : $actor_name . ' reopened your thread.';
+            $this->insert_notification( $thread_author, $current_user_id, $notif_type, 'thread', $id, $notif_msg );
+        }
 
         return array( 'success' => true, 'is_closed' => (bool) $new_val );
     }
@@ -3461,16 +3541,29 @@ class Cnw_Social_Bridge_REST_API {
         global $wpdb;
         $id = (int) $request['id'];
         $table = $wpdb->prefix . 'cnw_social_worker_threads';
-        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_pinned FROM {$table} WHERE id = %d", $id ) );
+        $thread = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_pinned, author_id FROM {$table} WHERE id = %d", $id ) );
         if ( ! $thread ) {
             return new WP_Error( 'not_found', 'Thread not found.', array( 'status' => 404 ) );
         }
         $new_val = $thread->is_pinned ? 0 : 1;
         $wpdb->update( $table, array( 'is_pinned' => $new_val ), array( 'id' => $id ) );
 
+        $current_user_id = get_current_user_id();
         $action = $new_val ? 'thread_pinned' : 'thread_unpinned';
         $desc   = $new_val ? 'Pinned thread #' . $id : 'Unpinned thread #' . $id;
-        $this->log_activity( get_current_user_id(), $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+        $this->log_activity( $current_user_id, $action, $desc, 0, null, 'thread', $id, '#/thread/' . $id );
+
+        // Notify thread author
+        $thread_author = (int) $thread->author_id;
+        if ( $thread_author && $thread_author !== $current_user_id ) {
+            $actor = get_userdata( $current_user_id );
+            $actor_name = $actor ? $actor->display_name : 'A moderator';
+            $notif_type = $new_val ? 'thread_pinned' : 'thread_unpinned';
+            $notif_msg  = $new_val
+                ? $actor_name . ' pinned your thread.'
+                : $actor_name . ' unpinned your thread.';
+            $this->insert_notification( $thread_author, $current_user_id, $notif_type, 'thread', $id, $notif_msg );
+        }
 
         return array( 'success' => true, 'is_pinned' => (bool) $new_val );
     }

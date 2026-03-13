@@ -603,6 +603,16 @@
 
               <div class="settings-row">
                 <div class="settings-row-info">
+                  <span class="settings-label">Moderation</span>
+                  <span class="settings-desc">When a moderator edits, deletes, pins, or closes your content</span>
+                </div>
+                <button type="button" class="settings-toggle" :class="{ on: preferences.notify_moderation }" @click="preferences.notify_moderation = !preferences.notify_moderation" role="switch" :aria-checked="!!preferences.notify_moderation">
+                  <span class="settings-toggle-track" aria-hidden="true"><span class="settings-toggle-thumb"></span></span>
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-info">
                   <span class="settings-label">Email Notifications</span>
                   <span class="settings-desc">How often to receive email notifications</span>
                 </div>
