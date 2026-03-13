@@ -20,8 +20,12 @@
   cursor: pointer;
   text-decoration: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .cnw-social-worker-header-logo:focus {
+  outline: none;
+}
+.cnw-social-worker-header-logo:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 3px;
   border-radius: 3px;
@@ -1794,6 +1798,15 @@ button {
     flex: 1;
     min-width: 0;
 }
+.reply-user-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+.reply-user-info .cnw-social-worker-verified,
+  .reply-user-info .cnw-reputation-badge {
+    display: none;
+}
 .reply-best-answer-badge {
     position: absolute;
     bottom: 6px;
@@ -1810,6 +1823,8 @@ button {
 }
 .reply-body {
     padding-left: var(--space-xs);
+    margin-bottom: 10px;
+    font-size: 13px;
 }
 .reply-helpful,
   .reply-footer,
@@ -1818,9 +1833,6 @@ button {
 }
 }
 @media (max-width: 480px) {
-.nested-replies {
-    padding-left: 16px;
-}
 .reply-bubble {
     padding: var(--space-3xs) var(--space-2xs);
     gap: var(--space-3xs);
@@ -2386,6 +2398,12 @@ to   { opacity: 1; transform: translateY(0);
   flex-direction: column;
   padding: 4px 0;
   animation: dropFade 0.15s ease;
+}
+@media (max-width: 760px) {
+.layout-dropdown {
+    right: auto;
+    left: 0;
+}
 }
 
 /* Search */

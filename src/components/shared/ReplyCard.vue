@@ -859,6 +859,15 @@ export default {
     flex: 1;
     min-width: 0;
   }
+  .reply-user-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .reply-user-info .cnw-social-worker-verified,
+  .reply-user-info .cnw-reputation-badge {
+    display: none;
+  }
   .reply-best-answer-badge {
     position: absolute;
     bottom: 6px;
@@ -875,6 +884,8 @@ export default {
   }
   .reply-body {
     padding-left: var(--space-xs);
+    margin-bottom: 10px;
+    font-size: 13px;
   }
   .reply-helpful,
   .reply-footer,
@@ -884,9 +895,6 @@ export default {
 }
 
 @media (max-width: 480px) {
-  .nested-replies {
-    padding-left: 16px;
-  }
   .reply-bubble {
     padding: var(--space-3xs) var(--space-2xs);
     gap: var(--space-3xs);

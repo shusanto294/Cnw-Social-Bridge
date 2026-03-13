@@ -160,8 +160,8 @@ export default {
         this.loginError = 'Passwords do not match.';
         return;
       }
-      if (this.regPassword.length < 6) {
-        this.loginError = 'Password must be at least 6 characters.';
+      if (this.regPassword.length < 8) {
+        this.loginError = 'Password must be at least 8 characters.';
         return;
       }
       this.loginLoading = true;

@@ -188,7 +188,7 @@
 
           <!-- Write message box -->
           <div v-if="isClosed" class="td-closed-notice">
-            This thread has been closed by a moderator and is no longer accepting replies.
+            This thread has been closed by a moderator.
           </div>
           <div v-else-if="isLoggedIn" class="inline-reply-form">
             <span v-if="isCurrentUserAnonymous" class="qcard-anon-avatar qcard-anon-avatar-sm">

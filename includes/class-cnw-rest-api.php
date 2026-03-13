@@ -127,7 +127,7 @@ class Cnw_Social_Bridge_REST_API {
         // ── Categories ───────────────────────────────────────────────
         register_rest_route( $ns, '/categories', array(
             array( 'methods' => 'GET',  'callback' => array( $this, 'get_categories' ),  'permission_callback' => '__return_true' ),
-            array( 'methods' => 'POST', 'callback' => array( $this, 'create_category' ), 'permission_callback' => array( $this, 'can_create_thread' ) ),
+            array( 'methods' => 'POST', 'callback' => array( $this, 'create_category' ), 'permission_callback' => array( $this, 'can_manage' ) ),
         ) );
         register_rest_route( $ns, '/categories/(?P<id>\d+)', array(
             array( 'methods' => 'GET',      'callback' => array( $this, 'get_category' ),    'permission_callback' => '__return_true' ),
@@ -664,6 +664,7 @@ class Cnw_Social_Bridge_REST_API {
 
             $thread->tags = isset( $tags_by_thread[ $thread->id ] ) ? $tags_by_thread[ $thread->id ] : array();
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_id     = 0;
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
                 $thread->author_reputation = 0;
@@ -720,6 +721,7 @@ class Cnw_Social_Bridge_REST_API {
         ) );
 
         if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+            $thread->author_id         = 0;
             $thread->author_name       = 'Anonymous';
             $thread->author_avatar     = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             $thread->author_reputation = 0;
@@ -1429,6 +1431,13 @@ class Cnw_Social_Bridge_REST_API {
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        // Block dangerous file types (HTML, SVG, PHP, etc.)
+        $blocked_exts = array( 'php', 'phtml', 'php3', 'php4', 'php5', 'phps', 'phar', 'html', 'htm', 'svg', 'js', 'exe', 'bat', 'cmd', 'sh', 'cgi' );
+        $ext = strtolower( pathinfo( $files['file']['name'], PATHINFO_EXTENSION ) );
+        if ( in_array( $ext, $blocked_exts, true ) ) {
+            return new WP_Error( 'invalid_type', 'This file type is not allowed.', array( 'status' => 400 ) );
+        }
 
         $attachment_id = media_handle_upload( 'file', 0 );
 
@@ -2623,6 +2632,7 @@ class Cnw_Social_Bridge_REST_API {
         foreach ( $threads as &$thread ) {
             $thread->tags = isset( $saved_tags_by_thread[ $thread->id ] ) ? $saved_tags_by_thread[ $thread->id ] : array();
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_id     = 0;
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             } else {
@@ -2661,6 +2671,7 @@ class Cnw_Social_Bridge_REST_API {
 
         foreach ( $threads as &$thread ) {
             if ( ! empty( $thread->is_anonymous ) && (int) $thread->is_anonymous === 1 ) {
+                $thread->author_id     = 0;
                 $thread->author_name   = 'Anonymous';
                 $thread->author_avatar = CNW_SOCIAL_BRIDGE_DEFAULT_AVATAR;
             } else {
@@ -2779,11 +2790,9 @@ class Cnw_Social_Bridge_REST_API {
             $users[] = array(
                 'id'                 => $u->ID,
                 'name'               => $u->display_name,
-                'email'              => $u->user_email,
                 'avatar'             => $avatar,
                 'verified_label'     => get_user_meta( $u->ID, 'cnw_verified_label', true ),
                 'professional_title' => get_user_meta( $u->ID, 'cnw_professional_title', true ),
-                'phone'              => get_user_meta( $u->ID, 'cnw_phone', true ),
                 'reputation'         => $reputation,
                 'thread_count'       => $thread_count,
                 'reply_count'        => $reply_count,
@@ -2889,7 +2898,7 @@ class Cnw_Social_Bridge_REST_API {
             'display_name'    => $user->display_name,
             'first_name'      => $first_name,
             'last_name'       => $last_name,
-            'email'           => $user->user_email,
+            'email'           => $is_own ? $user->user_email : '',
             'phone'           => $is_own ? $phone : '',
             'bio'             => $bio,
             'avatar'          => $avatar,
@@ -3184,9 +3193,10 @@ class Cnw_Social_Bridge_REST_API {
         require_once ABSPATH . 'wp-admin/includes/image.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
 
-        // Validate file type
-        $allowed = array( 'image/jpeg', 'image/png', 'image/gif', 'image/webp' );
-        if ( ! in_array( $files['file']['type'], $allowed, true ) ) {
+        // Validate file type using server-side check (not client-supplied MIME)
+        $allowed_mimes = array( 'jpg|jpeg|jpe' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp' );
+        $file_info = wp_check_filetype_and_ext( $files['file']['tmp_name'], $files['file']['name'], $allowed_mimes );
+        if ( ! $file_info['type'] ) {
             return new WP_Error( 'invalid_type', 'Only JPEG, PNG, GIF, and WebP images are allowed.', array( 'status' => 400 ) );
         }
 
@@ -3470,7 +3480,7 @@ class Cnw_Social_Bridge_REST_API {
         }
 
         $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" );
-        $reports = $wpdb->get_results( "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}" );
+        $reports = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d", $per_page, $offset ) );
 
         // Attach reporter info and thread_id for reply reports
         foreach ( $reports as &$r ) {
@@ -3695,7 +3705,7 @@ class Cnw_Social_Bridge_REST_API {
         $offset = ( $page - 1 ) * $per_page;
 
         $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
-        $warnings = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}" );
+        $warnings = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d", $per_page, $offset ) );
 
         foreach ( $warnings as &$w ) {
             $user = get_userdata( $w->user_id );
@@ -3839,6 +3849,9 @@ class Cnw_Social_Bridge_REST_API {
      * ================================================================== */
 
     public function handle_register( WP_REST_Request $request ) {
+        $rl = $this->rate_limit( 'register', 5, 600 ); // 5 attempts per 10 min
+        if ( is_wp_error( $rl ) ) return $rl;
+
         $first_name = sanitize_text_field( $request->get_param( 'first_name' ) );
         $last_name  = sanitize_text_field( $request->get_param( 'last_name' ) );
         $username   = sanitize_user( $request->get_param( 'username' ) );
@@ -3849,8 +3862,8 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'missing_fields', 'All fields are required.', array( 'status' => 400 ) );
         }
 
-        if ( strlen( $password ) < 6 ) {
-            return new WP_Error( 'weak_password', 'Password must be at least 6 characters.', array( 'status' => 400 ) );
+        if ( strlen( $password ) < 8 ) {
+            return new WP_Error( 'weak_password', 'Password must be at least 8 characters.', array( 'status' => 400 ) );
         }
 
         if ( ! is_email( $email ) ) {
@@ -3894,6 +3907,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function handle_forgot_password( WP_REST_Request $request ) {
+        $rl = $this->rate_limit( 'forgot_pw', 3, 600 ); // 3 attempts per 10 min
+        if ( is_wp_error( $rl ) ) return $rl;
+
         $user_login = sanitize_text_field( $request->get_param( 'user_login' ) );
 
         if ( empty( $user_login ) ) {
@@ -3908,6 +3924,9 @@ class Cnw_Social_Bridge_REST_API {
     }
 
     public function handle_login( WP_REST_Request $request ) {
+        $rl = $this->rate_limit( 'login', 10, 300 ); // 10 attempts per 5 min
+        if ( is_wp_error( $rl ) ) return $rl;
+
         $username = sanitize_text_field( $request->get_param( 'username' ) );
         $password = $request->get_param( 'password' );
 
@@ -3947,6 +3966,20 @@ class Cnw_Social_Bridge_REST_API {
     /* ------------------------------------------------------------------
      * Activity log
      * ------------------------------------------------------------------ */
+
+    /**
+     * Simple rate limiter using transients. Returns WP_Error if limit exceeded.
+     */
+    private function rate_limit( $action, $max_attempts = 5, $window = 300 ) {
+        $ip   = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $key  = 'cnw_rl_' . $action . '_' . md5( $ip );
+        $hits = (int) get_transient( $key );
+        if ( $hits >= $max_attempts ) {
+            return new WP_Error( 'rate_limited', 'Too many attempts. Please try again later.', array( 'status' => 429 ) );
+        }
+        set_transient( $key, $hits + 1, $window );
+        return false;
+    }
 
     private function log_activity( $user_id, $action_type, $description, $points = 0, $reason = null, $reference_type = null, $reference_id = null, $link = null ) {
         global $wpdb;

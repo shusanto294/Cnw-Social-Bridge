@@ -381,6 +381,12 @@ export default {
   padding: 4px 0;
   animation: dropFade 0.15s ease;
 }
+@media (max-width: 760px) {
+  .layout-dropdown {
+    right: auto;
+    left: 0;
+  }
+}
 
 /* Search */
 .list-search {

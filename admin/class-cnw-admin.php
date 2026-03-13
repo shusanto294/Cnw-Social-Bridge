@@ -190,8 +190,8 @@ class Cnw_Social_Bridge_Admin {
         " );
 
         // Select2 for searchable dropdowns on add/edit forms
-        $page = isset( $_GET['page'] ) ? $_GET['page'] : '';
-        $act  = isset( $_GET['action'] ) ? $_GET['action'] : '';
+        $page = sanitize_text_field( isset( $_GET['page'] ) ? $_GET['page'] : '' );
+        $act  = sanitize_text_field( isset( $_GET['action'] ) ? $_GET['action'] : '' );
         $need_select2 = ( strpos( $hook, 'cnw' ) !== false && in_array( $act, array( 'add', 'edit' ), true ) && $page !== 'cnw-settings' )
                      || $page === 'cnw-take-action';
         if ( $need_select2 ) {
@@ -239,8 +239,8 @@ class Cnw_Social_Bridge_Admin {
         }
 
         // Avatar picker on user edit page
-        $page = isset( $_GET['page'] ) ? $_GET['page'] : '';
-        $act  = isset( $_GET['action'] ) ? $_GET['action'] : '';
+        $page = sanitize_text_field( isset( $_GET['page'] ) ? $_GET['page'] : '' );
+        $act  = sanitize_text_field( isset( $_GET['action'] ) ? $_GET['action'] : '' );
         if ( $page === 'cnw-users' && $act === 'edit' ) {
             wp_enqueue_media();
             wp_add_inline_script( 'jquery', "
@@ -1367,7 +1367,7 @@ class Cnw_Social_Bridge_Admin {
                 'id'           => $uid,
                 'user_login'   => $u->user_login,
                 'user_email'   => $u->user_email,
-                'user_pass'    => $u->user_pass,
+                // Password hashes excluded for security
                 'display_name' => $u->display_name,
                 'first_name'   => get_user_meta( $uid, 'first_name', true ),
                 'last_name'    => get_user_meta( $uid, 'last_name', true ),
@@ -1387,7 +1387,7 @@ class Cnw_Social_Bridge_Admin {
             'cnw_pusher_cluster'               => get_option( 'cnw_pusher_cluster', 'mt1' ),
             'cnw_pusher_app_id'                => get_option( 'cnw_pusher_app_id', '' ),
             'cnw_pusher_key'                   => get_option( 'cnw_pusher_key', '' ),
-            'cnw_pusher_secret'                => get_option( 'cnw_pusher_secret', '' ),
+            // Pusher secret excluded for security
             'cnw_community_guidelines'         => get_option( 'cnw_community_guidelines', '' ),
             'cnw_community_guidelines_html'    => get_option( 'cnw_community_guidelines_html', '' ),
             'cnw_default_thread_status'        => get_option( 'cnw_default_thread_status', 'pending' ),
@@ -1480,6 +1480,22 @@ class Cnw_Social_Bridge_Admin {
             $zip = new ZipArchive();
             if ( $zip->open( $file['tmp_name'] ) !== true ) {
                 $redirect_args['import_error'] = urlencode( 'Could not open ZIP file.' );
+                wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+                exit;
+            }
+            // Validate ZIP entries for path traversal before extracting
+            $safe = true;
+            for ( $i = 0; $i < $zip->numFiles; $i++ ) {
+                $entry = $zip->getNameIndex( $i );
+                if ( strpos( $entry, '..' ) !== false || strpos( $entry, '/' ) === 0 || strpos( $entry, '\\' ) === 0 ) {
+                    $safe = false;
+                    break;
+                }
+            }
+            if ( ! $safe ) {
+                $zip->close();
+                $this->rmdir_recursive( $extract_dir );
+                $redirect_args['import_error'] = urlencode( 'ZIP file contains invalid file paths.' );
                 wp_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
                 exit;
             }

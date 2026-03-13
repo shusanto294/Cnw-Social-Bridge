@@ -133,7 +133,7 @@
         />
         <!-- Closed thread notice -->
         <div v-if="isClosed" class="td-closed-notice">
-          This thread has been closed by a moderator and is no longer accepting replies.
+          This thread has been closed by a moderator.
         </div>
         <!-- Write message box (logged-in only) -->
         <div v-else-if="isLoggedIn" class="inline-reply-form">

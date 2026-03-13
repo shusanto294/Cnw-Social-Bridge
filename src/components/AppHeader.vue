@@ -289,8 +289,12 @@ export default {
   cursor: pointer;
   text-decoration: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .cnw-social-worker-header-logo:focus {
+  outline: none;
+}
+.cnw-social-worker-header-logo:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 3px;
   border-radius: 3px;
