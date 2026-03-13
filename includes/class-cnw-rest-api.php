@@ -2416,9 +2416,18 @@ class Cnw_Social_Bridge_REST_API {
             return new WP_Error( 'db_error', $wpdb->last_error ?: 'Insert failed.', array( 'status' => 500 ) );
         }
 
-        $this->log_activity( get_current_user_id(), 'tag_created', 'Created tag: ' . $name, 0, null, 'tag', (int) $wpdb->insert_id );
+        $new_tag_id = (int) $wpdb->insert_id;
 
-        return array( 'success' => true, 'id' => (int) $wpdb->insert_id );
+        $this->log_activity( get_current_user_id(), 'tag_created', 'Created tag: ' . $name, 0, null, 'tag', $new_tag_id );
+
+        // Auto-follow the tag for the creator.
+        $wpdb->replace(
+            $wpdb->prefix . 'cnw_social_worker_user_followed_tags',
+            array( 'user_id' => get_current_user_id(), 'tag_id' => $new_tag_id, 'created_at' => current_time( 'mysql' ) ),
+            array( '%d', '%d', '%s' )
+        );
+
+        return array( 'success' => true, 'id' => $new_tag_id );
     }
 
     public function update_tag( WP_REST_Request $request ) {

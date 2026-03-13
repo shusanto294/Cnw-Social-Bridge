@@ -280,6 +280,7 @@ export default {
           if (res && res.success && res.id) {
             if (!res.existing) {
               this.tags.push({ id: res.id, name, description: this.modalDescription.trim(), created_by: this.currentUserId });
+              this.followedIds.add(res.id);
             }
             this.closeModal();
           } else {
