@@ -609,6 +609,29 @@
   border-color: var(--teal);
   color: var(--teal-dark);
 }
+.tag-skeleton {
+  width: 80px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+}
+.tag-skeleton:nth-child(2) { width: 100px;
+}
+.tag-skeleton:nth-child(3) { width: 65px;
+}
+.tag-skeleton:nth-child(4) { width: 90px;
+}
+.tag-skeleton:nth-child(5) { width: 75px;
+}
+.tag-skeleton:nth-child(6) { width: 95px;
+}
+.tag-skeleton:nth-child(7) { width: 70px;
+}
+.tag-skeleton:nth-child(8) { width: 85px;
+}
+.tag-skeleton:nth-child(9) { width: 105px;
+}
+.tag-skeleton:nth-child(10) { width: 60px;
+}
 .tags-empty {
   font-size: var(--text-xs);
   font-weight: 300;

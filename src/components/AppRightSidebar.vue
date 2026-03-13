@@ -21,12 +21,17 @@
         </button>
       </div>
       <div class="tags-list">
-        <span
-          v-for="tag in tags"
-          :key="tag.id"
-          class="cnw-social-worker-tag-badge cnw-social-worker-tag-outline tag-item"
-        >{{ tag.name }}</span>
-        <p v-if="tags.length === 0" class="tags-empty">You are not following any tags.</p>
+        <template v-if="loadingTags">
+          <span v-for="n in 10" :key="'tag-skel-' + n" class="cnw-skeleton tag-skeleton"></span>
+        </template>
+        <template v-else>
+          <span
+            v-for="tag in tags"
+            :key="tag.id"
+            class="cnw-social-worker-tag-badge cnw-social-worker-tag-outline tag-item"
+          >{{ tag.name }}</span>
+          <p v-if="tags.length === 0" class="tags-empty">You are not following any tags.</p>
+        </template>
       </div>
     </div>
 
@@ -36,6 +41,19 @@
         <h3>Hot Questions</h3>
       </div>
       <div class="hot-questions-list">
+        <template v-if="loadingHQ">
+          <div v-for="n in 3" :key="'hq-skel-' + n" class="hot-question-item hq-skeleton-item">
+            <div class="cnw-skeleton cnw-skeleton-line" style="width:85%;height:14px"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:100%;height:10px"></div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:60%;height:10px"></div>
+            <div style="display:flex;gap:6px">
+              <div class="cnw-skeleton" style="width:50px;height:18px;border-radius:var(--radius-pill)"></div>
+              <div class="cnw-skeleton" style="width:65px;height:18px;border-radius:var(--radius-pill)"></div>
+            </div>
+            <div class="cnw-skeleton cnw-skeleton-line-sm" style="width:40%;height:10px"></div>
+          </div>
+        </template>
+        <template v-else>
         <div
           v-for="q in hotQuestions"
           :key="q.id"
@@ -88,6 +106,7 @@
           </div>
         </div>
         <p v-if="hotQuestions.length === 0" class="cnw-social-worker-empty" style="padding:20px">No hot questions yet.</p>
+        </template>
       </div>
     </div>
   </aside>
@@ -101,6 +120,8 @@ export default {
   data() {
     return {
       tags: [],
+      loadingTags: true,
+      loadingHQ: true,
       hotQuestions: [],
       isLoggedIn: !!(window.cnwData?.currentUser?.id > 0),
     };
@@ -115,6 +136,8 @@ export default {
       this.tags = tags || [];
       this.hotQuestions = hq || [];
     } catch (e) { /* silent */ }
+    this.loadingTags = false;
+    this.loadingHQ = false;
   },
   methods: {
     truncate(str, len) {
@@ -194,6 +217,21 @@ export default {
   border-color: var(--teal);
   color: var(--teal-dark);
 }
+
+.tag-skeleton {
+  width: 80px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+}
+.tag-skeleton:nth-child(2) { width: 100px; }
+.tag-skeleton:nth-child(3) { width: 65px; }
+.tag-skeleton:nth-child(4) { width: 90px; }
+.tag-skeleton:nth-child(5) { width: 75px; }
+.tag-skeleton:nth-child(6) { width: 95px; }
+.tag-skeleton:nth-child(7) { width: 70px; }
+.tag-skeleton:nth-child(8) { width: 85px; }
+.tag-skeleton:nth-child(9) { width: 105px; }
+.tag-skeleton:nth-child(10) { width: 60px; }
 
 .tags-empty {
   font-size: var(--text-xs);

@@ -1,6 +1,0 @@
-{
-    "name": "cnw/social-bridge",
-    "require": {
-        "pusher/pusher-php-server": "^7.2"
-    }
-}
