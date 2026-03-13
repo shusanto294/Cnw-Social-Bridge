@@ -1359,7 +1359,7 @@ class Cnw_Social_Bridge_Admin {
 
         // Build users array with all CNW meta.
         $users = array();
-        $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'cnw_reputation_total', 'description', 'cnw_suspended', 'cnw_suspended_until' );
+        $cnw_meta_keys = array( 'cnw_phone', 'cnw_avatar_url', 'cnw_avatar_attachment_id', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'cnw_reputation_total', 'description', 'cnw_suspended', 'cnw_suspended_until', 'cnw_preferences' );
         foreach ( array_keys( $user_ids ) as $uid ) {
             $u = get_userdata( $uid );
             if ( ! $u ) continue;
@@ -1642,7 +1642,7 @@ class Cnw_Social_Bridge_Admin {
 
                 $users = $read_json( 'users' );
                 $state['user_map'] = array( 0 => 0 );
-                $cnw_meta_keys = array( 'cnw_phone', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description', 'cnw_suspended', 'cnw_suspended_until' );
+                $cnw_meta_keys = array( 'cnw_phone', 'cnw_verified_label', 'cnw_professional_title', 'cnw_anonymous', 'description', 'cnw_suspended', 'cnw_suspended_until', 'cnw_preferences' );
                 foreach ( $users as $eu ) {
                     $old_id = (int) $eu['id'];
                     $existing = get_user_by( 'email', $eu['user_email'] );

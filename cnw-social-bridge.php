@@ -164,14 +164,19 @@ class Cnw_Social_Bridge {
         ) $charset_collate;";
 
         $sql_messages = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_messages (
-            id           bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            sender_id    bigint(20) unsigned NOT NULL,
-            recipient_id bigint(20) unsigned NOT NULL,
-            subject      varchar(255)        DEFAULT NULL,
-            content      longtext            NOT NULL,
-            is_read      tinyint(1)          DEFAULT 0,
-            parent_id    bigint(20) unsigned DEFAULT NULL,
-            created_at   datetime            DEFAULT CURRENT_TIMESTAMP,
+            id              bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            sender_id       bigint(20) unsigned NOT NULL,
+            recipient_id    bigint(20) unsigned NOT NULL,
+            subject         varchar(255)        DEFAULT NULL,
+            content         longtext            NOT NULL,
+            is_read         tinyint(1)          DEFAULT 0,
+            emailed         tinyint(1)          DEFAULT 0,
+            is_pinned       tinyint(1)          DEFAULT 0,
+            attachment_url  text                DEFAULT NULL,
+            attachment_name varchar(255)        DEFAULT NULL,
+            attachment_type varchar(50)         DEFAULT NULL,
+            parent_id       bigint(20) unsigned DEFAULT NULL,
+            created_at      datetime            DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY sender_id    (sender_id),
             KEY recipient_id (recipient_id),
@@ -179,7 +184,8 @@ class Cnw_Social_Bridge {
             KEY is_read      (is_read),
             KEY created_at   (created_at),
             KEY sender_recipient (sender_id, recipient_id),
-            KEY recipient_read (recipient_id, is_read)
+            KEY recipient_read (recipient_id, is_read),
+            KEY recipient_emailed (recipient_id, emailed)
         ) $charset_collate;";
 
         $sql_categories = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_categories (
@@ -331,6 +337,8 @@ class Cnw_Social_Bridge {
             subject      varchar(255)        NOT NULL,
             description  longtext            NOT NULL,
             link         varchar(500)        DEFAULT NULL,
+            content_type varchar(20)         DEFAULT NULL,
+            content_id   bigint(20) unsigned DEFAULT NULL,
             priority     varchar(20)         DEFAULT 'medium',
             status       varchar(20)         DEFAULT 'open',
             admin_notes  longtext            DEFAULT NULL,
@@ -369,17 +377,6 @@ class Cnw_Social_Bridge {
         ) $charset_collate;";
         dbDelta( $sql_restrictions );
 
-        // ── Add moderation columns to threads ─────────────────────────────
-        $threads_table = $wpdb->prefix . 'cnw_social_worker_threads';
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_pinned'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER views" );
-        }
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_closed'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_closed tinyint(1) DEFAULT 0 AFTER is_pinned" );
-        }
-
         // ── Warnings / suspensions table ──────────────────────────────────
         $sql_warnings = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}cnw_social_worker_warnings (
             id          bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -400,35 +397,6 @@ class Cnw_Social_Bridge {
             KEY user_active (user_id, is_active)
         ) $charset_collate;";
         dbDelta( $sql_warnings );
-
-        // ── Add content reference columns to reports ──────────────────────
-        $reports_table = $wpdb->prefix . 'cnw_social_worker_reports';
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$reports_table} LIKE 'content_type'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_type varchar(20) DEFAULT NULL AFTER link" );
-            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
-        }
-
-        // ── Add emailed column to notifications ──────────────────────────
-        $notif_table = $wpdb->prefix . 'cnw_social_worker_notifications';
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$notif_table} LIKE 'emailed'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
-            $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
-        }
-
-        // ── Add is_pinned and attachment columns to messages ──────────
-        $messages_table = $wpdb->prefix . 'cnw_social_worker_messages';
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'is_pinned'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER is_read" );
-        }
-        $row = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'attachment_url'" );
-        if ( empty( $row ) ) {
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_url text DEFAULT NULL AFTER is_pinned" );
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_name varchar(255) DEFAULT NULL AFTER attachment_url" );
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_type varchar(50) DEFAULT NULL AFTER attachment_name" );
-        }
 
         $this->create_user_roles();
 
@@ -492,125 +460,16 @@ class Cnw_Social_Bridge {
      */
     public function maybe_run_upgrades() {
         $db_version = get_option( 'cnw_db_version', '0' );
-        if ( $db_version === '1.5' ) {
+        if ( $db_version === '1.6' ) {
             return; // Current version, skip all upgrade checks
         }
 
-        // Run full activation to create any missing tables + columns.
+        // Run full activation — dbDelta() handles creating missing tables,
+        // adding missing columns, and adding missing indexes automatically
+        // by comparing the CREATE TABLE SQL against the existing schema.
         $this->activate();
 
-        global $wpdb;
-        $prefix = $wpdb->prefix . 'cnw_social_worker_';
-
-        // ── Threads: add is_pinned & is_closed columns ──────────────────
-        $threads_table = $prefix . 'threads';
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_pinned'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER views" );
-        }
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$threads_table} LIKE 'is_closed'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$threads_table} ADD COLUMN is_closed tinyint(1) DEFAULT 0 AFTER is_pinned" );
-        }
-
-        // ── Messages: add is_pinned & attachment columns ────────────────
-        $messages_table = $prefix . 'messages';
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'is_pinned'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN is_pinned tinyint(1) DEFAULT 0 AFTER is_read" );
-        }
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$messages_table} LIKE 'attachment_url'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_url text DEFAULT NULL AFTER is_pinned" );
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_name varchar(255) DEFAULT NULL AFTER attachment_url" );
-            $wpdb->query( "ALTER TABLE {$messages_table} ADD COLUMN attachment_type varchar(50) DEFAULT NULL AFTER attachment_name" );
-        }
-
-        // ── Notifications: add emailed column ───────────────────────────
-        $notif_table = $prefix . 'notifications';
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$notif_table} LIKE 'emailed'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$notif_table} ADD COLUMN emailed tinyint(1) DEFAULT 0 AFTER is_read" );
-            $wpdb->query( "ALTER TABLE {$notif_table} ADD KEY emailed (emailed)" );
-        }
-
-        // ── Reports: add content_type & content_id columns ──────────────
-        $reports_table = $prefix . 'reports';
-        $col = $wpdb->get_results( "SHOW COLUMNS FROM {$reports_table} LIKE 'content_type'" );
-        if ( empty( $col ) ) {
-            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_type varchar(20) DEFAULT NULL AFTER link" );
-            $wpdb->query( "ALTER TABLE {$reports_table} ADD COLUMN content_id bigint(20) unsigned DEFAULT NULL AFTER content_type" );
-        }
-
-        // Schedule cron if not already scheduled
-        if ( ! wp_next_scheduled( 'cnw_send_email_notifications' ) ) {
-            wp_schedule_event( time(), 'cnw_every_5_min', 'cnw_send_email_notifications' );
-        }
-
-        // Add composite indexes for existing installations
-        $this->maybe_add_indexes();
-
-        update_option( 'cnw_db_version', '1.5' );
-    }
-
-    /**
-     * Add composite indexes to existing tables (runs once).
-     */
-    private function maybe_add_indexes() {
-        global $wpdb;
-
-        if ( get_option( 'cnw_indexes_added', false ) ) {
-            return;
-        }
-
-        $prefix = $wpdb->prefix . 'cnw_social_worker_';
-
-        $indexes = array(
-            $prefix . 'threads' => array(
-                'author_status' => "ALTER TABLE `{$prefix}threads` ADD INDEX `author_status` (`author_id`, `status`)",
-                'status_pinned' => "ALTER TABLE `{$prefix}threads` ADD INDEX `status_pinned` (`status`, `is_pinned`)",
-            ),
-            $prefix . 'replies' => array(
-                'thread_status' => "ALTER TABLE `{$prefix}replies` ADD INDEX `thread_status` (`thread_id`, `status`)",
-                'parent_status' => "ALTER TABLE `{$prefix}replies` ADD INDEX `parent_status` (`parent_id`, `status`)",
-            ),
-            $prefix . 'messages' => array(
-                'sender_recipient' => "ALTER TABLE `{$prefix}messages` ADD INDEX `sender_recipient` (`sender_id`, `recipient_id`)",
-                'recipient_read'   => "ALTER TABLE `{$prefix}messages` ADD INDEX `recipient_read` (`recipient_id`, `is_read`)",
-            ),
-            $prefix . 'saved_threads' => array(
-                'user_thread' => "ALTER TABLE `{$prefix}saved_threads` ADD UNIQUE INDEX `user_thread` (`user_id`, `thread_id`)",
-            ),
-            $prefix . 'votes' => array(
-                'user_vote' => "ALTER TABLE `{$prefix}votes` ADD UNIQUE INDEX `user_vote` (`target_type`, `target_id`, `user_id`)",
-            ),
-            $prefix . 'notifications' => array(
-                'user_read'    => "ALTER TABLE `{$prefix}notifications` ADD INDEX `user_read` (`user_id`, `is_read`)",
-                'user_emailed' => "ALTER TABLE `{$prefix}notifications` ADD INDEX `user_emailed` (`user_id`, `emailed`)",
-            ),
-            $prefix . 'warnings' => array(
-                'user_active' => "ALTER TABLE `{$prefix}warnings` ADD INDEX `user_active` (`user_id`, `is_active`)",
-            ),
-        );
-
-        foreach ( $indexes as $table => $idx_sqls ) {
-            // Get existing indexes for this table
-            $existing = $wpdb->get_results( "SHOW INDEX FROM `{$table}`", ARRAY_A );
-            $existing_names = array();
-            if ( $existing ) {
-                foreach ( $existing as $row ) {
-                    $existing_names[ $row['Key_name'] ] = true;
-                }
-            }
-
-            foreach ( $idx_sqls as $idx_name => $sql ) {
-                if ( ! isset( $existing_names[ $idx_name ] ) ) {
-                    $wpdb->query( $sql );
-                }
-            }
-        }
-
-        update_option( 'cnw_indexes_added', '1' );
+        update_option( 'cnw_db_version', '1.6' );
     }
 
     /**
@@ -634,6 +493,14 @@ class Cnw_Social_Bridge {
         'connection_request'  => 'notify_connections',
         'connection_accepted' => 'notify_connections',
         'mention'             => 'notify_mentions',
+        'thread_edited'       => 'notify_moderation',
+        'thread_deleted'      => 'notify_moderation',
+        'thread_closed'       => 'notify_moderation',
+        'thread_reopened'     => 'notify_moderation',
+        'thread_pinned'       => 'notify_moderation',
+        'thread_unpinned'     => 'notify_moderation',
+        'reply_edited'        => 'notify_moderation',
+        'reply_deleted'       => 'notify_moderation',
     );
 
     /** Default preference values (mirrors REST API defaults). */
@@ -644,6 +511,7 @@ class Cnw_Social_Bridge {
         'notify_solutions'    => true,
         'notify_connections'  => true,
         'notify_messages'     => true,
+        'notify_moderation'   => true,
         'email_notifications' => 'inactive',
     );
 
@@ -665,16 +533,24 @@ class Cnw_Social_Bridge {
     public function process_email_notifications() {
         global $wpdb;
 
-        $table         = $wpdb->prefix . 'cnw_social_worker_notifications';
+        $notif_table   = $wpdb->prefix . 'cnw_social_worker_notifications';
+        $msg_table     = $wpdb->prefix . 'cnw_social_worker_messages';
         $user_batch    = 50;  // Process 50 users per cron run
         $max_in_email  = 20;  // Max items shown in one email
 
         // Mark any already-read notifications as emailed so they stop showing up
-        $wpdb->query( "UPDATE {$table} SET emailed = 1 WHERE emailed = 0 AND is_read = 1" );
+        $wpdb->query( "UPDATE {$notif_table} SET emailed = 1 WHERE emailed = 0 AND is_read = 1" );
 
-        // Find the next 50 users who have un-emailed, unread notifications
+        // Mark any already-read messages as emailed so they stop showing up
+        $wpdb->query( "UPDATE {$msg_table} SET emailed = 1 WHERE emailed = 0 AND is_read = 1" );
+
+        // Find users who have un-emailed, unread notifications OR un-emailed, unread messages
         $user_ids = $wpdb->get_col( $wpdb->prepare(
-            "SELECT DISTINCT user_id FROM {$table} WHERE emailed = 0 AND is_read = 0 ORDER BY user_id ASC LIMIT %d",
+            "SELECT DISTINCT user_id FROM (
+                SELECT user_id FROM {$notif_table} WHERE emailed = 0 AND is_read = 0
+                UNION
+                SELECT recipient_id AS user_id FROM {$msg_table} WHERE emailed = 0 AND is_read = 0
+            ) AS combined ORDER BY user_id ASC LIMIT %d",
             $user_batch
         ) );
 
@@ -682,33 +558,56 @@ class Cnw_Social_Bridge {
             return;
         }
 
-        // Fetch ALL un-emailed, unread notifications for these users
         $id_placeholders = implode( ',', array_map( 'intval', $user_ids ) );
+
+        // Fetch un-emailed, unread notifications for these users
         $notifications = $wpdb->get_results(
-            "SELECT * FROM {$table} WHERE emailed = 0 AND is_read = 0 AND user_id IN ({$id_placeholders}) ORDER BY created_at ASC"
+            "SELECT * FROM {$notif_table} WHERE emailed = 0 AND is_read = 0 AND user_id IN ({$id_placeholders}) ORDER BY created_at ASC"
         );
 
-        // Group by user_id
-        $by_user = array();
+        // Fetch un-emailed, unread messages for these users (individual messages for preview)
+        $unread_messages = $wpdb->get_results(
+            "SELECT id, recipient_id, sender_id, content, created_at
+             FROM {$msg_table}
+             WHERE emailed = 0 AND is_read = 0 AND recipient_id IN ({$id_placeholders})
+             ORDER BY created_at ASC"
+        );
+
+        // Group notifications by user_id
+        $notifs_by_user = array();
         foreach ( $notifications as $notif ) {
             $uid = (int) $notif->user_id;
-            if ( ! isset( $by_user[ $uid ] ) ) {
-                $by_user[ $uid ] = array();
+            if ( ! isset( $notifs_by_user[ $uid ] ) ) {
+                $notifs_by_user[ $uid ] = array();
             }
-            $by_user[ $uid ][] = $notif;
+            $notifs_by_user[ $uid ][] = $notif;
+        }
+
+        // Group unread messages by recipient user_id
+        $msgs_by_user = array();
+        foreach ( $unread_messages as $row ) {
+            $uid = (int) $row->recipient_id;
+            if ( ! isset( $msgs_by_user[ $uid ] ) ) {
+                $msgs_by_user[ $uid ] = array();
+            }
+            $msgs_by_user[ $uid ][] = $row;
         }
 
         $site_name = get_bloginfo( 'name' );
         $site_url  = home_url( '/' );
 
-        foreach ( $by_user as $user_id => $user_notifs ) {
+        foreach ( array_map( 'intval', $user_ids ) as $user_id ) {
             $user = get_userdata( $user_id );
 
-            // Collect all IDs for this user
-            $all_ids = array_map( function( $n ) { return (int) $n->id; }, $user_notifs );
+            $user_notifs = isset( $notifs_by_user[ $user_id ] ) ? $notifs_by_user[ $user_id ] : array();
+            $user_msgs   = isset( $msgs_by_user[ $user_id ] )   ? $msgs_by_user[ $user_id ]   : array();
+
+            // Collect all notification IDs for this user
+            $all_notif_ids = array_map( function( $n ) { return (int) $n->id; }, $user_notifs );
 
             if ( ! $user || ! $user->user_email ) {
-                $this->mark_notifs_emailed( $table, $all_ids );
+                $this->mark_notifs_emailed( $notif_table, $all_notif_ids );
+                $this->mark_messages_emailed( $msg_table, $user_id );
                 continue;
             }
 
@@ -716,7 +615,8 @@ class Cnw_Social_Bridge {
             $email_setting = isset( $prefs['email_notifications'] ) ? $prefs['email_notifications'] : 'inactive';
 
             if ( $email_setting === 'none' ) {
-                $this->mark_notifs_emailed( $table, $all_ids );
+                $this->mark_notifs_emailed( $notif_table, $all_notif_ids );
+                $this->mark_messages_emailed( $msg_table, $user_id );
                 continue;
             }
 
@@ -727,7 +627,7 @@ class Cnw_Social_Bridge {
                 }
             }
 
-            // Filter by individual notification type preferences
+            // Filter notifications by individual type preferences
             $eligible = array();
             foreach ( $user_notifs as $notif ) {
                 $pref_key = isset( self::$notif_pref_map[ $notif->type ] ) ? self::$notif_pref_map[ $notif->type ] : null;
@@ -736,19 +636,63 @@ class Cnw_Social_Bridge {
                 }
             }
 
-            // Mark ALL as emailed (even filtered-out ones)
-            $this->mark_notifs_emailed( $table, $all_ids );
+            // Build message notification items if notify_messages is enabled
+            $msg_items = array();
+            if ( ! empty( $prefs['notify_messages'] ) && ! empty( $user_msgs ) ) {
+                $sender_cache = array();
+                foreach ( $user_msgs as $msg_row ) {
+                    $sid = (int) $msg_row->sender_id;
+                    if ( ! isset( $sender_cache[ $sid ] ) ) {
+                        $s = get_userdata( $sid );
+                        $sender_cache[ $sid ] = $s ? $s->display_name : 'Someone';
+                    }
+                    $preview = wp_strip_all_tags( $msg_row->content );
+                    if ( mb_strlen( $preview ) > 120 ) {
+                        $preview = mb_substr( $preview, 0, 120 ) . '...';
+                    }
+                    $msg_items[] = (object) array(
+                        'type'       => 'message',
+                        'message'    => $sender_cache[ $sid ] . ': ' . $preview,
+                        'created_at' => $msg_row->created_at,
+                    );
+                }
+            }
 
-            if ( empty( $eligible ) ) {
+            // Mark ALL notifications as emailed (even filtered-out ones)
+            $this->mark_notifs_emailed( $notif_table, $all_notif_ids );
+            // Mark ALL unread messages for this user as emailed
+            $this->mark_messages_emailed( $msg_table, $user_id );
+
+            // Combine eligible notifications + message items
+            $all_eligible = array_merge( $eligible, $msg_items );
+            if ( empty( $all_eligible ) ) {
                 continue;
             }
 
+            // Sort by created_at
+            usort( $all_eligible, function( $a, $b ) {
+                $a_time = is_object( $a ) && isset( $a->created_at ) ? $a->created_at : '';
+                $b_time = is_object( $b ) && isset( $b->created_at ) ? $b->created_at : '';
+                return strcmp( $a_time, $b_time );
+            } );
+
             // Cap shown items; pass total for summary
-            $total_eligible = count( $eligible );
-            $to_show        = array_slice( $eligible, 0, $max_in_email );
+            $total_eligible = count( $all_eligible );
+            $to_show        = array_slice( $all_eligible, 0, $max_in_email );
 
             $this->send_notification_email( $user, $to_show, $total_eligible, $site_name, $site_url );
         }
+    }
+
+    /**
+     * Mark all un-emailed, unread messages for a user as emailed.
+     */
+    private function mark_messages_emailed( $table, $user_id ) {
+        global $wpdb;
+        $wpdb->query( $wpdb->prepare(
+            "UPDATE {$table} SET emailed = 1 WHERE emailed = 0 AND is_read = 0 AND recipient_id = %d",
+            (int) $user_id
+        ) );
     }
 
     /**
@@ -853,6 +797,15 @@ class Cnw_Social_Bridge {
             'mention'             => '&#64;',
             'warning'             => '&#9888;',
             'suspension'          => '&#128683;',
+            'message'             => '&#128233;',
+            'thread_edited'       => '&#9998;',
+            'thread_deleted'      => '&#128465;',
+            'thread_closed'       => '&#128274;',
+            'thread_reopened'     => '&#128275;',
+            'thread_pinned'       => '&#128204;',
+            'thread_unpinned'     => '&#128204;',
+            'reply_edited'        => '&#9998;',
+            'reply_deleted'       => '&#128465;',
         );
         return isset( $icons[ $type ] ) ? $icons[ $type ] : '&#128276;';
     }
@@ -982,9 +935,10 @@ class Cnw_Social_Bridge {
         ob_start();
         ?>
         <div id="cnw-social-bridge-app">
-            <div style="text-align:center;padding:48px 20px;color:#888;font-family:sans-serif;">
-                Loading Social Bridge&hellip;
+            <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+                <div style="width:40px;height:40px;border:3px solid #e0e0e0;border-top-color:#3AA9DA;border-radius:50%;animation:cnw-app-spin 0.8s linear infinite;"></div>
             </div>
+            <style>@keyframes cnw-app-spin{to{transform:rotate(360deg)}}</style>
         </div>
         <?php
         return ob_get_clean();
